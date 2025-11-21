@@ -47,7 +47,7 @@ const ListItem = ({ item, colorTheme }) => {
 
         <div className="flex-1">
           <div className={`text-sm font-medium text-gray-700 dark:text-gray-200 ${getLinkColors()} leading-relaxed`}>
-            {item.title}
+            <a href={`/post?_id=${item.id}`} className="hover:underline">{item.title}</a>
             {item.isNew && (
               <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded animate-pulse">
                 NEW
@@ -173,75 +173,118 @@ export default function HomeScreen() {
   useEffect(() => {
     fetch(`${baseUrl}/api/jobs/jobs`)
       .then(res => res.json())
-      .then(data => {
-        // Transform API data to match UI structure
-        const transformedData = {
-          results: data.filter(job => job.category === 'Result').map(job => ({
-              id: job._id,
-              title: job.postName,
-              // mark as new for 3 days after createdAt
-              isNew: (() => {
-                if (!job.createdAt) return false;
-                const created = new Date(job.createdAt).getTime();
-                const now = Date.now();
-                return (now - created) <= (3 * 24 * 60 * 60 * 1000);
-              })(),
-              details: {
-                postDate: job.postDate ? new Date(job.postDate).toLocaleDateString('en-GB') : 'N/A',
-                totalPost: job.vacancyDetails?.[0]?.totalPost || 'N/A',
-                eligibility: job.vacancyDetails?.[0]?.eligibility || 'See Official Notice',
-                ageLimit: `${job.ageLimit?.minAge || 'N/A'} - ${job.ageLimit?.maxAge || 'N/A'}`
-              }
-            })),
-          admitCards: data.filter(job => job.category === 'Admit Card').map(job => ({
-            id: job._id,
-            title: job.postName,
-            isNew: (() => {
-              if (!job.createdAt) return false;
-              const created = new Date(job.createdAt).getTime();
-              const now = Date.now();
-              return (now - created) <= (3 * 24 * 60 * 60 * 1000);
-            })(),
-            details: {
-              examDate: job.importantDates?.find(d => d.label.includes('Exam'))?.value || 'TBA',
-              downloadDate: job.importantDates?.find(d => d.label.includes('Admit'))?.value || 'TBA',
-              totalPost: job.vacancyDetails?.[0]?.totalPost || 'N/A',
-              type: job.category
-            }
-          })),
-          latestJobs: data.filter(job => job.category === 'Latest Jobs').map(job => ({
-            id: job._id,
-            title: job.postName,
-            isNew: (() => {
-              if (!job.createdAt) return false;
-              const created = new Date(job.createdAt).getTime();
-              const now = Date.now();
-              return (now - created) <= (3 * 24 * 60 * 60 * 1000);
-            })(),
-            details: {
-              lastDate: job.importantDates?.find(d => d.label.includes('Last Date'))?.value || 'See Notice',
-              fee: job.applicationFee?.[0]?.amount || 'N/A',
-              ageLimit: `${job.ageLimit?.minAge || 'N/A'} - ${job.ageLimit?.maxAge || 'N/A'}`,
-              totalPost: job.vacancyDetails?.[0]?.totalPost || 'N/A',
-              eligibility: job.vacancyDetails?.[0]?.eligibility || 'See Official Notice'
-            }
-          })),
-          important: mockData.important // Keep static important links
-        };
-        
-        setPostData(transformedData);
-        setLoading(false);
-      })
+    .then(data => {
+  const transformedData = {
+    results: data.filter(job => job.category === 'Result').map(job => ({
+      id: job._id,
+      title: job.organization || 'Untitled Job',
+      isNew: (() => {
+        const c = new Date(job.createdAt).getTime();
+        return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
+      })(),
+      details: {
+        postDate: job.post_date
+          ? new Date(job.post_date).toLocaleDateString('en-GB')
+          : 'N/A',
+
+        totalPost: job.total_posts || 'N/A',
+
+        eligibility: job.educational_qualification || 'See Notification',
+
+        ageLimit: job.age_limit
+          ? `${job.age_limit.minimum} - ${job.age_limit.maximum.general_male}`
+          : 'N/A',
+
+        examDate:
+          job.important_dates?.['Exam Date'] ||
+          job.important_dates?.['Exam'] ||
+          'TBA'
+      }
+    })),
+
+    admitCards: data.filter(job => job.category === 'Admit Card').map(job => ({
+      id: job._id,
+      title: job.organization || 'Untitled Admit Card',
+      isNew: (() => {
+        const c = new Date(job.createdAt).getTime();
+        return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
+      })(),
+      details: {
+        examDate:
+          job.important_dates?.['Exam Date'] ||
+          job.important_dates?.['Exam'] ||
+          'TBA',
+
+        downloadDate:
+          job.important_dates?.['Admit Card'] ||
+          job.important_dates?.['Download'] ||
+          'TBA',
+
+        totalPost: job.total_posts || 'N/A'
+      }
+    })),
+
+    latestJobs: data.map(job => ({
+      id: job._id,
+      title: job.organization || 'Latest Job',
+      isNew: (() => {
+        const c = new Date(job.createdAt).getTime();
+        return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
+      })(),
+      details: {
+        lastDate:
+          job.important_dates?.['Last Date'] ||
+          job.important_dates?.['Last'] ||
+          'See Notice',
+
+        fee:
+          job.application_fee?.['All Candidates'] ||
+          Object.values(job.application_fee || {})[0] ||
+          'N/A',
+
+        ageLimit: job.age_limit
+          ? `${job.age_limit.minimum} - ${job.age_limit.maximum.general_male}`
+          : 'N/A',
+
+        totalPost: job.total_posts || 'N/A',
+
+        eligibility: job.educational_qualification || 'See Notification'
+      }
+    })),
+
+    important: mockData.important
+  };
+
+  setPostData(transformedData);
+  setLoading(false);
+})
+
       .catch(err => {
         console.log('Error fetching jobs:', err);
         setLoading(false);
       });
   }, []);
 
-  // Sync initial state with the current <html> class so UI and Tailwind match
+  // On mount, set theme from localStorage or system preference
   useEffect(() => {
-    const hasDarkClass = document.documentElement.classList.contains('dark');
-    setIsDarkMode(hasDarkClass);
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      setIsDarkMode(true);
+    } else if (savedTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+      setIsDarkMode(false);
+    } else {
+      // fallback: system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+        setIsDarkMode(true);
+      } else {
+        document.documentElement.classList.remove('dark');
+        setIsDarkMode(false);
+      }
+    }
   }, []);
 
   const toggleTheme = () => {
@@ -249,8 +292,10 @@ export default function HomeScreen() {
       const next = !prev;
       if (next) {
         document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
       } else {
         document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
       }
       return next;
     });
