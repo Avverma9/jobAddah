@@ -8,9 +8,8 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/jobaddah";
-
+const GEMINI_API_KEY = "AIzaSyAu2WiQ14z1S2JYgiUJSP_bkscObP0G2nQ"
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://Avverma:Avverma95766@avverma.2g4orpk.mongodb.net/jobaddah?retryWrites=true&w=majority";
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
