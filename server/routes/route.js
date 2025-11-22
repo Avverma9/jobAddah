@@ -24,7 +24,7 @@ router.get('/jobs/:id', async (req, res) => {
     }
 });
 
-router.post('/jobs', async (req, res) => {
+router.post('/add-jobs', async (req, res) => {
     const job = new Job(req.body);
     try {
         const newJob = await job.save();
