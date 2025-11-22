@@ -9,11 +9,7 @@ const jobSchema = new mongoose.Schema(
     category: String,
     postDate: Date,
     updateDate: Date,
-    importantDates: [Object],
-    applicationFee: [Object],
     ageLimit: Object,
-    vacancyDetails: [Object],
-    importantLinks: [Object],
     originalUrl: String,
   },
   {
