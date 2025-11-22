@@ -174,83 +174,99 @@ export default function HomeScreen() {
     fetch(`${baseUrl}/api/jobs/jobs`)
       .then(res => res.json())
     .then(data => {
-  const transformedData = {
-    results: data.filter(job => job.category === 'Result').map(job => ({
-      id: job._id,
-      title: job.organization || 'Untitled Job',
-      isNew: (() => {
-        const c = new Date(job.createdAt).getTime();
-        return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
-      })(),
-      details: {
-        postDate: job.post_date
-          ? new Date(job.post_date).toLocaleDateString('en-GB')
-          : 'N/A',
+  // normalize various backend shapes into the small view model used by the UI
+  const mapImportantDates = (arrOrObj = []) => {
+    // accept either array [{label,value}] or object { notification_date: '01 June' }
+    const entries = [];
+    if (Array.isArray(arrOrObj)) {
+      for (const d of arrOrObj) entries.push({ label: d.label || d.name, value: d.value || d.date });
+    } else if (arrOrObj && typeof arrOrObj === 'object') {
+      for (const [k, v] of Object.entries(arrOrObj)) entries.push({ label: k.replace(/_/g, ' ').replace(/\b(\w)/g, l => l.toUpperCase()), value: v });
+    }
 
-        totalPost: job.total_posts || 'N/A',
-
-        eligibility: job.educational_qualification || 'See Notification',
-
-        ageLimit: job.age_limit
-          ? `${job.age_limit.minimum} - ${job.age_limit.maximum.general_male}`
-          : 'N/A',
-
-        examDate:
-          job.important_dates?.['Exam Date'] ||
-          job.important_dates?.['Exam'] ||
-          'TBA'
+    const find = (labels) => {
+      for (const l of labels) {
+        const found = entries.find(d => String(d.label).toLowerCase() === String(l).toLowerCase());
+        if (found) return found.value;
       }
-    })),
+      return undefined;
+    };
 
-    admitCards: data.filter(job => job.category === 'Admit Card').map(job => ({
-      id: job._id,
-      title: job.organization || 'Untitled Admit Card',
+    return {
+      notification: find(['Notification Date', 'Notification_Date', 'notification_date', 'Notification']),
+      start: find(['Application Start Date', 'application_start', 'Application_Start']),
+      last: find(['Last Date', 'last_date', 'Last']),
+      exam: find(['Exam Date', 'exam_date', 'Exam']),
+      admitCard: find(['Admit Card', 'admit_card', 'Admit Card'])
+    };
+  };
+
+  const transformedData = {
+    results: data.filter(job => (job.category || '').toLowerCase().includes('result')).map(job => {
+      const id = job._id || job.id;
+  const title = job.post_title || job.postName || job.post_name || job.organization || job.title || job.short_info || job.shortInfo || 'Untitled';
+      const created = job.createdAt || job.created_at;
+      const isNew = (() => {
+        const c = created ? new Date(created).getTime() : Date.now();
+        return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
+      })();
+      const dates = mapImportantDates(job.importantDates || job.important_dates || []);
+
+      return {
+        id,
+        title,
+        isNew,
+        details: {
+          postDate: dates.notification || 'N/A',
+          lastDate: dates.last || 'N/A',
+          totalPost: (job.vacancyDetails && job.vacancyDetails.totalPost) || job.total_posts || 'N/A',
+          eligibility: job.eligibility || job.shortInfo || job.educational_qualification || 'See Notification',
+          ageLimit: job.ageLimit ? `${job.ageLimit.minAge || ''} - ${job.ageLimit.maxAge || ''}` : (job.age_limit ? `${job.age_limit.minimum || ''} - ${job.age_limit.maximum || ''}` : 'N/A'),
+          examDate: dates.exam || 'TBA'
+        }
+      };
+    }),
+
+    admitCards: data.filter(job => (job.category || '').toLowerCase().includes('admit')).map(job => ({
+      id: job._id || job.id,
+      title: job.postName || job.organization || 'Admit Card',
       isNew: (() => {
-        const c = new Date(job.createdAt).getTime();
+        const c = job.createdAt ? new Date(job.createdAt).getTime() : Date.now();
         return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
       })(),
       details: {
-        examDate:
-          job.important_dates?.['Exam Date'] ||
-          job.important_dates?.['Exam'] ||
-          'TBA',
-
-        downloadDate:
-          job.important_dates?.['Admit Card'] ||
-          job.important_dates?.['Download'] ||
-          'TBA',
-
+        examDate: mapImportantDates(job.importantDates || job.important_dates || []).exam || 'TBA',
+        downloadDate: mapImportantDates(job.importantDates || job.important_dates || []).admitCard || 'TBA',
         totalPost: job.total_posts || 'N/A'
       }
     })),
 
-    latestJobs: data.map(job => ({
-      id: job._id,
-      title: job.organization || 'Latest Job',
-      isNew: (() => {
-        const c = new Date(job.createdAt).getTime();
+    latestJobs: (data || []).map(job => {
+      const id = job._id || job.id;
+      const title = job.postName || job.post_name || job.organization || job.title || job.shortInfo || 'Latest Job';
+      const created = job.createdAt || job.created_at;
+      const isNew = (() => {
+        const c = created ? new Date(created).getTime() : Date.now();
         return Date.now() - c <= 3 * 24 * 60 * 60 * 1000;
-      })(),
-      details: {
-        lastDate:
-          job.important_dates?.['Last Date'] ||
-          job.important_dates?.['Last'] ||
-          'See Notice',
+      })();
+      const dates = mapImportantDates(job.importantDates || job.important_dates || []);
 
-        fee:
-          job.application_fee?.['All Candidates'] ||
-          Object.values(job.application_fee || {})[0] ||
-          'N/A',
+      // derive a simple fee string
+      const feeFromArray = Array.isArray(job.applicationFee) && job.applicationFee.length ? job.applicationFee[0].amount : undefined;
 
-        ageLimit: job.age_limit
-          ? `${job.age_limit.minimum} - ${job.age_limit.maximum.general_male}`
-          : 'N/A',
-
-        totalPost: job.total_posts || 'N/A',
-
-        eligibility: job.educational_qualification || 'See Notification'
-      }
-    })),
+      return {
+        id,
+        title,
+        isNew,
+        details: {
+          lastDate: dates.last || 'See Notice',
+          fee: feeFromArray || job.application_fee?.['All Candidates'] || Object.values(job.application_fee || {})[0] || 'N/A',
+          ageLimit: job.ageLimit ? `${job.ageLimit.minAge || ''} - ${job.ageLimit.maxAge || ''}` : (job.age_limit ? `${job.age_limit.minimum || ''} - ${job.age_limit.maximum || ''}` : 'N/A'),
+          totalPost: job.total_posts || 'N/A',
+          eligibility: job.eligibility || job.shortInfo || job.educational_qualification || 'See Notification'
+        }
+      };
+    }),
 
     important: mockData.important
   };
@@ -258,7 +274,6 @@ export default function HomeScreen() {
   setPostData(transformedData);
   setLoading(false);
 })
-
       .catch(err => {
         console.log('Error fetching jobs:', err);
         setLoading(false);
