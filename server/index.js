@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes Connect Karein
-app.use('/api/jobs', require('./routes/route'));
+app.use('/api/v1', require('./routes/route'));
 
 // Basic env validation to catch empty/malformed MONGO_URI early and give a clear message
 const { MONGO_URI } = process.env;
