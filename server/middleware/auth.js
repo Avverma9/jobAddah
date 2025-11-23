@@ -16,9 +16,20 @@ function generateToken(user) {
 }
 
 async function verifyToken(req, res, next) {
-  const auth = req.headers.authorization || req.headers.Authorization;
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ message: 'No token provided' });
-  const token = auth.split(' ')[1];
+  // First try Authorization header
+  let auth = req.headers.authorization || req.headers.Authorization;
+  let token;
+  if (auth && auth.startsWith('Bearer ')) {
+    token = auth.split(' ')[1];
+  }
+
+  // Fallback: try cookie named 'token' (HttpOnly cookie set by server)
+  if (!token && req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) return res.status(401).json({ message: 'No token provided' });
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     // Attach minimal user info to request

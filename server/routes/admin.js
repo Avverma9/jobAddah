@@ -106,13 +106,26 @@ router.get('/sidebar/items', async (req, res) => {
 // Create menu item (super_admin only)
 router.post('/sidebar/items', verifyToken, authorizeRoles('super_admin'), async (req, res) => {
   try {
-    const { key, label, route, parent, order, isPublic, permission } = req.body;
+    const { key, label, route, parent, order, isPublic, permission, icon, iconType, badge, meta } = req.body;
     if (!key || !label) return res.status(400).json({ message: 'key and label required' });
 
     const exists = await MenuItem.findOne({ key });
     if (exists) return res.status(400).json({ message: 'Menu item with this key already exists' });
 
-    const mi = new MenuItem({ key, label, route, parent: parent || null, order: order || 0, isPublic: !!isPublic, permission: permission || null, createdBy: req.user.id });
+    const mi = new MenuItem({
+      key,
+      label,
+      route: route || '',
+      parent: parent || null,
+      order: order || 0,
+      isPublic: !!isPublic,
+      permission: permission || null,
+      icon: icon || null,
+      iconType: iconType || 'font',
+      badge: badge || null,
+      meta: meta || {},
+      createdBy: req.user.id
+    });
     await mi.save();
     res.status(201).json({ message: 'Menu item created', item: mi });
   } catch (err) {
