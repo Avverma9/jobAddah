@@ -18,6 +18,27 @@ const userSchema = new mongoose.Schema({
   banned: { type: Boolean, default: false }
 }, { timestamps: true });
 
+// Security pin for password reset
+userSchema.add({
+  securityPin: { type: String, default: null },
+  securityPinExpires: { type: Date, default: null }
+});
+
+// Generate an alphanumeric security pin of given length and set expiry (days)
+userSchema.methods.setSecurityPin = function(length = 15, daysValid = 7) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let pin = '';
+  for (let i = 0; i < length; i++) pin += chars.charAt(Math.floor(Math.random() * chars.length));
+  this.securityPin = pin;
+  this.securityPinExpires = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
+  return pin;
+};
+
+userSchema.methods.clearSecurityPin = function() {
+  this.securityPin = null;
+  this.securityPinExpires = null;
+};
+
 // Hash password before save
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

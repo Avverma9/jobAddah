@@ -27,7 +27,7 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("Mongo Error:", err));
 
-const ExamPost = require("./models/jobs");
+const ExamPost = require("../models/jobs");
 
 // --------------------------------------------------
 // BASIC HTML CLEANER

@@ -1,22 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { baseUrl } from "../../util/baseUrl";
 import {
-  Moon,
-  Sun,
-  ChevronLeft,
-  ExternalLink,
-  Calendar,
-  Briefcase,
-  GraduationCap,
-  IndianRupee,
-  Users,
-  FileText,
-  AlertCircle,
-  Clock,
-  Download,
-  Link as LinkIcon,
-  CheckCircle,
-  Info,
+  Moon, Sun, ChevronLeft, ExternalLink, Calendar, Briefcase,
+  GraduationCap, IndianRupee, Users, FileText, AlertCircle,
+  Clock, Download, Link as LinkIcon, CheckCircle, Info, MapPin,
+  Building2, Hash
 } from "lucide-react";
 
 export default function PostDetail({ idFromProp }) {
@@ -27,14 +15,11 @@ export default function PostDetail({ idFromProp }) {
 
   const id = idFromProp || new URLSearchParams(window.location.search).get("_id");
 
-  // -------------------------
-  // THEME LOADER
-  // -------------------------
+  // Theme loader
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const finalTheme = savedTheme || (prefersDark ? "dark" : "light");
-
     document.documentElement.classList.toggle("dark", finalTheme === "dark");
     setIsDarkMode(finalTheme === "dark");
   }, []);
@@ -46,9 +31,7 @@ export default function PostDetail({ idFromProp }) {
     setIsDarkMode(!isDarkMode);
   };
 
-  // -------------------------
-  // FETCH POST DATA
-  // -------------------------
+  // Fetch post data
   useEffect(() => {
     if (!id) {
       setError("Post ID missing");
@@ -56,7 +39,7 @@ export default function PostDetail({ idFromProp }) {
       return;
     }
 
-    fetch(`${baseUrl}/api/jobs/jobs/${id}`)
+    fetch(`${baseUrl}/jobs/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load post");
         return r.json();
@@ -71,14 +54,7 @@ export default function PostDetail({ idFromProp }) {
       });
   }, [id]);
 
-  // -------------------------
-  // HELPER FUNCTIONS
-  // -------------------------
-  const shouldHideField = (key) => {
-    const hiddenFields = ['_id', 'id', '__v', 'createdAt', 'updatedAt', 'pageAuthor', 'tag'];
-    return hiddenFields.includes(key);
-  };
-
+  // Helper functions
   const formatLabel = (key) => {
     return key
       .replace(/_/g, " ")
@@ -87,46 +63,45 @@ export default function PostDetail({ idFromProp }) {
       .trim();
   };
 
-  const isURL = (val) =>
-    typeof val === "string" &&
-    (val.startsWith("http://") || val.startsWith("https://"));
-
-  // -------------------------
+  // ============================
   // RENDER FUNCTIONS
-  // -------------------------
+  // ============================
 
-  // Render Important Dates Timeline
+  // Render Important Dates - Compact Table
   const renderImportantDates = (dates) => {
     if (!Array.isArray(dates) || dates.length === 0) return null;
 
     return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Important Dates</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full">
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <Calendar className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Important Dates</h2>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead>
-              <tr className="border-b-2 border-slate-200 dark:border-slate-700">
-                <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-200">Event</th>
-                <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-200">Date</th>
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Event
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {dates.map((item, idx) => (
                 <tr
                   key={idx}
-                  className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                 >
-                  <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-medium">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {item.label || item.event || '—'}
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
-                      <Clock size={14} />
-                      {item.value || item.date || '—'}
-                    </span>
+                  <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400 font-semibold">
+                    {item.value || item.date || '—'}
                   </td>
                 </tr>
               ))}
@@ -137,37 +112,110 @@ export default function PostDetail({ idFromProp }) {
     );
   };
 
+  // Render Age Limit - Compact Box
+  const renderAgeLimit = (ageData) => {
+    if (!ageData || typeof ageData !== 'object') return null;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <Users className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Age Limit</h2>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            {ageData.minAge && (
+              <div className="border-2 border-green-200 dark:border-green-800 rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
+                <div className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase mb-1">
+                  Minimum Age
+                </div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {ageData.minAge}
+                </div>
+              </div>
+            )}
+            
+            {ageData.maxAge && (
+              <div className="border-2 border-orange-200 dark:border-orange-800 rounded-lg p-4 bg-orange-50 dark:bg-orange-900/20">
+                <div className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase mb-1">
+                  Maximum Age
+                </div>
+                {typeof ageData.maxAge === 'object' ? (
+                  <div className="space-y-1">
+                    {Object.entries(ageData.maxAge).map(([key, value]) => (
+                      <div key={key} className="text-sm text-gray-700 dark:text-gray-300">
+                        <span className="font-semibold">{formatLabel(key)}:</span>{' '}
+                        <span className="text-orange-600 dark:text-orange-400 font-bold">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {ageData.maxAge}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {ageData.asOnDate && (
+            <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="font-semibold">Age as on:</span>{' '}
+                <span className="text-blue-600 dark:text-blue-400 font-bold">{ageData.asOnDate}</span>
+              </span>
+            </div>
+          )}
+
+          {ageData.details && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                {ageData.details}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Render Application Fee
   const renderApplicationFee = (fees) => {
     if (!Array.isArray(fees) || fees.length === 0) return null;
 
     return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <IndianRupee className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Application Fee</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <IndianRupee className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Application Fee</h2>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead>
-              <tr className="border-b-2 border-slate-200 dark:border-slate-700">
-                <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-200">Category</th>
-                <th className="text-left py-3 px-4 font-semibold text-slate-700 dark:text-slate-200">Fee Amount</th>
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-2/3">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-1/3">
+                  Fee Amount
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {fees.map((item, idx) => (
                 <tr
                   key={idx}
-                  className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/20 transition-colors"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                 >
-                  <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                     {item.category || '—'}
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-bold">
-                      {item.amount || item.fee || '—'}
-                    </span>
+                  <td className="px-6 py-4 text-sm font-bold text-green-600 dark:text-green-400">
+                    {item.amount || item.fee || '—'}
                   </td>
                 </tr>
               ))}
@@ -183,30 +231,55 @@ export default function PostDetail({ idFromProp }) {
     if (!Array.isArray(vacancies) || vacancies.length === 0) return null;
 
     return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Briefcase className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Vacancy Details</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <Briefcase className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Vacancy Details</h2>
+          </div>
         </div>
-        <div className="space-y-4">
+        <div className="p-6 space-y-6">
           {vacancies.map((item, idx) => (
-            <div
-              key={idx}
-              className="p-4 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/30 dark:to-slate-800/10 border border-slate-200 dark:border-slate-700/50 rounded-lg"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-100">
-                  {item.postName || item.post || 'Position'}
-                </h3>
-                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-rose-500 text-white rounded-full text-sm font-bold w-fit">
-                  <Briefcase size={14} />
-                  {item.totalPost || item.vacancies || '0'} Posts
-                </span>
+            <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 dark:bg-gray-900 px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
+                    {item.postName || item.post || 'Position'}
+                  </h3>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold w-fit">
+                    <Briefcase size={16} />
+                    {item.totalPost || item.vacancies || '0'} Posts
+                  </span>
+                </div>
               </div>
+              
+              {item.categoryBreakup && (
+                <div className="p-6">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase mb-3">
+                    Category-wise Breakup
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {Object.entries(item.categoryBreakup).map(([category, count]) => (
+                      <div
+                        key={category}
+                        className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg text-center"
+                      >
+                        <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          {formatLabel(category)}
+                        </div>
+                        <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                          {count}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {item.eligibility && (
-                <div className="mt-2">
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Eligibility: </span>
+                <div className="px-6 pb-6">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    <span className="font-semibold">Eligibility: </span>
                     {item.eligibility}
                   </p>
                 </div>
@@ -218,11 +291,64 @@ export default function PostDetail({ idFromProp }) {
     );
   };
 
+  // Render Educational Qualification
+  const renderQualification = (qualification) => {
+    if (!qualification) return null;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <GraduationCap className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Educational Qualification</h2>
+          </div>
+        </div>
+        <div className="p-6">
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            {qualification}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Selection Process
+  const renderModeOfSelection = (modes) => {
+    if (!Array.isArray(modes) || modes.length === 0) return null;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <CheckCircle className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Selection Process</h2>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {modes.map((mode, idx) => (
+              <div
+                key={idx}
+                className="relative border-2 border-indigo-200 dark:border-indigo-800 rounded-lg p-4 bg-indigo-50 dark:bg-indigo-900/20 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+              >
+                <div className="absolute -top-3 -left-3 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                  {idx + 1}
+                </div>
+                <div className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
+                  {mode}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Render Important Links
   const renderImportantLinks = (links) => {
     if (!Array.isArray(links) || links.length === 0) return null;
 
-    // Group links by category
     const primaryLinks = links.filter(l => 
       l.label?.toLowerCase().includes('apply') || 
       l.label?.toLowerCase().includes('form') ||
@@ -241,240 +367,150 @@ export default function PostDetail({ idFromProp }) {
     );
 
     return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <LinkIcon className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Important Links</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <LinkIcon className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Important Links</h2>
+          </div>
         </div>
-
-        {/* Primary Links */}
-        {primaryLinks.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              Application Links
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {primaryLinks.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group"
-                >
-                  <span className="font-medium">{link.label}</span>
-                  <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Download Links */}
-        {downloadLinks.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              Download Documents
-            </h3>
-            <div className="space-y-2">
-              {downloadLinks.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg transition-all duration-200 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Download size={16} className="text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm text-slate-700 dark:text-slate-300">{link.label}</span>
-                  </div>
-                  <ExternalLink size={14} className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Other Links */}
-        {otherLinks.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              Other Resources
-            </h3>
-            <div className="space-y-2">
-              {otherLinks.map((link, idx) => (
-                <a
-                  key={idx}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg transition-all duration-200 group"
-                >
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{link.label}</span>
-                  <ExternalLink size={14} className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Render Mode of Selection
-  const renderModeOfSelection = (modes) => {
-    if (!Array.isArray(modes) || modes.length === 0) return null;
-
-    return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <CheckCircle className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Selection Process</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {modes.map((mode, idx) => (
-            <div
-              key={idx}
-              className="relative p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg"
-            >
-              <div className="absolute top-2 left-2 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                {idx + 1}
+        <div className="p-6 space-y-6">
+          {primaryLinks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase mb-3 flex items-center gap-2">
+                <div className="w-1 h-4 bg-red-500 rounded"></div>
+                Application Links
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {primaryLinks.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group"
+                  >
+                    <span className="font-semibold text-sm">{link.label}</span>
+                    <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                  </a>
+                ))}
               </div>
-              <div className="mt-8 text-slate-700 dark:text-slate-300 font-medium text-sm">
-                {mode}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Render Age Limit
-  const renderAgeLimit = (ageData) => {
-    if (!ageData || typeof ageData !== 'object') return null;
-
-    return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-rose-500" />
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Age Limit</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {ageData.minAge && (
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg">
-              <div className="text-sm text-green-700 dark:text-green-300 font-medium mb-1">Minimum Age</div>
-              <div className="text-2xl font-bold text-green-800 dark:text-green-200">{ageData.minAge}</div>
             </div>
           )}
-          
-          {ageData.maxAge && (
-            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30 rounded-lg">
-              <div className="text-sm text-orange-700 dark:text-orange-300 font-medium mb-1">Maximum Age</div>
-              {typeof ageData.maxAge === 'object' ? (
-                <div className="space-y-1">
-                  {Object.entries(ageData.maxAge).map(([key, value]) => (
-                    <div key={key} className="text-sm">
-                      <span className="font-semibold text-orange-800 dark:text-orange-200">
-                        {formatLabel(key)}:
-                      </span>{' '}
-                      <span className="text-orange-700 dark:text-orange-300">{value}</span>
+
+          {downloadLinks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase mb-3 flex items-center gap-2">
+                <div className="w-1 h-4 bg-blue-500 rounded"></div>
+                Download Documents
+              </h3>
+              <div className="space-y-2">
+                {downloadLinks.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-200 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Download size={16} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {link.label}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-2xl font-bold text-orange-800 dark:text-orange-200">{ageData.maxAge}</div>
-              )}
+                    <ExternalLink size={14} className="text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otherLinks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase mb-3 flex items-center gap-2">
+                <div className="w-1 h-4 bg-gray-500 rounded"></div>
+                Other Resources
+              </h3>
+              <div className="space-y-2">
+                {otherLinks.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-all duration-200 group"
+                  >
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {link.label}
+                    </span>
+                    <ExternalLink size={14} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
             </div>
           )}
         </div>
-
-        {ageData.asOnDate && (
-          <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
-            <span className="text-sm text-blue-700 dark:text-blue-300">
-              <span className="font-semibold">Age as on:</span> {ageData.asOnDate}
-            </span>
-          </div>
-        )}
-
-        {ageData.details && (
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{ageData.details}</p>
-          </div>
-        )}
       </div>
     );
   };
 
-  // Render Info Card
-  const renderInfoCard = (title, content, icon = null) => {
-    if (!content) return null;
-
-    return (
-      <div className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          {icon || <Info className="w-5 h-5 text-rose-500" />}
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-        </div>
-        <div className="text-slate-700 dark:text-slate-300 leading-relaxed">
-          {content}
-        </div>
-      </div>
-    );
-  };
-
-  // -------------------------
+  // ============================
   // LOADING & ERROR STATES
-  // -------------------------
-  if (loading)
+  // ============================
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-800 border-t-rose-500 dark:border-t-rose-400 rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-800 border-t-red-500 dark:border-t-red-400 rounded-full animate-spin"></div>
         </div>
-        <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 font-medium">Loading details...</p>
+        <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 font-medium">Loading details...</p>
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
         <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-2">
           <AlertCircle size={24} />
           <span className="text-xl font-semibold">Error Loading Post</span>
         </div>
-        <p className="text-slate-600 dark:text-slate-400">{error}</p>
+        <p className="text-gray-600 dark:text-gray-400">{error}</p>
         <button
           onClick={() => window.history.back()}
-          className="mt-6 px-6 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
+          className="mt-6 px-6 py-2.5 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg font-medium transition-colors"
         >
           Go Back
         </button>
       </div>
     );
+  }
 
   if (!post) return null;
 
-  // ----------------------------------------------------------
-  // UI STARTS HERE
-  // ----------------------------------------------------------
+  const jobData = post.data || post;
+
   return (
-    <div className={`min-h-screen ${isDarkMode ? "dark bg-slate-950" : "bg-slate-50"}`}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div
             className="flex items-center gap-3 cursor-pointer group"
             onClick={() => (window.location.href = "/")}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 via-rose-600 to-orange-500 text-white flex items-center justify-center font-bold shadow-lg shadow-rose-500/30 text-lg group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white flex items-center justify-center font-bold shadow-lg text-lg group-hover:scale-105 transition-transform">
               JA
             </div>
             <div>
-              <div className="font-extrabold text-lg tracking-tight">JobAddah</div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-medium">
+              <div className="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">
+                JobAddah
+              </div>
+              <div className="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 font-medium">
                 Smart Sarkari Updates
               </div>
             </div>
@@ -483,14 +519,14 @@ export default function PostDetail({ idFromProp }) {
           <div className="flex gap-2 items-center">
             <button
               onClick={() => window.history.back()}
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-all duration-200"
             >
               <ChevronLeft size={16} /> Back
             </button>
 
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
+              className="p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-all duration-200"
               aria-label="Toggle theme"
             >
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
@@ -502,79 +538,98 @@ export default function PostDetail({ idFromProp }) {
       {/* CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 rounded-2xl p-8 text-white shadow-xl">
+        <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-xl p-8 text-white shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-3">
             <div className="flex-1">
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                {post.postName || post.organization || "Job Notification"}
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold mb-3">
+                <Hash size={14} />
+                {jobData.notificationNumber || 'Official Notification'}
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">
+                {post.postName || jobData.organization || "Job Notification"}
               </h1>
-              {post.organization && post.postName && (
-                <p className="text-rose-100 text-lg font-medium">{post.organization}</p>
-              )}
-              {post.notificationNumber && (
-                <p className="text-white/80 text-sm mt-1">{post.notificationNumber}</p>
+              {jobData.organization && post.postName && (
+                <div className="flex items-center gap-2 text-white/90 text-lg font-medium">
+                  <Building2 size={18} />
+                  {jobData.organization}
+                </div>
               )}
             </div>
-            {post.totalPosts && (
-              <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-6 py-4 text-center">
-                <div className="text-4xl font-bold">{post.totalPosts}</div>
-                <div className="text-sm text-white/90 font-medium mt-1">Total Posts</div>
+            {jobData.totalPosts && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl px-6 py-4 text-center shadow-lg border-4 border-white/20">
+                <div className="text-4xl font-bold text-gray-900 dark:text-white">
+                  {jobData.totalPosts}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mt-1">
+                  Total Posts
+                </div>
               </div>
             )}
           </div>
-          {post.shortInfo && (
-            <p className="mt-4 text-white/95 leading-relaxed text-base">{post.shortInfo}</p>
+          {jobData.shortInfo && (
+            <div className="mt-6 p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+              <p className="text-white leading-relaxed">{jobData.shortInfo}</p>
+            </div>
           )}
         </div>
 
-        {/* Vacancy Details (1) */}
-        {post.vacancyDetails && renderVacancyDetails(post.vacancyDetails)}
+        {/* 🎯 SIDE BY SIDE: Important Dates (Left) + Age Limit (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT: Important Dates */}
+          <div>
+            {jobData.importantDates && renderImportantDates(jobData.importantDates)}
+          </div>
 
-        {/* Age Limit (2) */}
-        {post.ageLimit && renderAgeLimit(post.ageLimit)}
+          {/* RIGHT: Age Limit */}
+          <div>
+            {jobData.ageLimit && renderAgeLimit(jobData.ageLimit)}
+          </div>
+        </div>
 
-        {/* Application Fee (3) */}
-        {post.applicationFee && renderApplicationFee(post.applicationFee)}
+        {/* Application Fee (Below Important Dates & Age Limit) */}
+        {jobData.applicationFee && renderApplicationFee(jobData.applicationFee)}
 
-        {/* Educational Qualification (4) */}
-        {post.educationalQualification && renderInfoCard(
-          "Educational Qualification",
-          post.educationalQualification,
-          <GraduationCap className="w-5 h-5 text-rose-500" />
-        )}
+        {/* Vacancy Details */}
+        {jobData.vacancyDetails && renderVacancyDetails(jobData.vacancyDetails)}
 
-        {/* Important Dates (rest) */}
-        {post.importantDates && renderImportantDates(post.importantDates)}
+        {/* Educational Qualification */}
+        {jobData.educationalQualification && renderQualification(jobData.educationalQualification)}
 
-        {/* Mode of Selection */}
-        {post.modeOfSelection && renderModeOfSelection(post.modeOfSelection)}
+        {/* Selection Process */}
+        {jobData.modeOfSelection && renderModeOfSelection(jobData.modeOfSelection)}
 
         {/* Important Links */}
-        {post.importantLinks && renderImportantLinks(post.importantLinks)}
+        {jobData.importantLinks && renderImportantLinks(jobData.importantLinks)}
 
-        {/* Official Website */}
-        {(post.officialWebsite || post.applyOnlineLink) && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-6">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Quick Links</h3>
+        {/* Quick Links */}
+        {(jobData.officialWebsite || jobData.applyOnlineLink) && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4 text-lg">
+              Official Links
+            </h3>
             <div className="flex flex-wrap gap-3">
-              {post.officialWebsite && (
+              {jobData.officialWebsite && (
                 <a
-                  href={post.officialWebsite}
+                  href={jobData.officialWebsite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                 >
-                  Official Website <ExternalLink size={16} />
+                  <Building2 size={18} />
+                  Official Website
+                  <ExternalLink size={16} />
                 </a>
               )}
-              {post.applyOnlineLink && post.applyOnlineLink !== post.officialWebsite && (
+              {jobData.applyOnlineLink && jobData.applyOnlineLink !== jobData.officialWebsite && (
                 <a
-                  href={post.applyOnlineLink}
+                  href={jobData.applyOnlineLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                 >
-                  Apply Online <ExternalLink size={16} />
+                  <FileText size={18} />
+                  Apply Online
+                  <ExternalLink size={16} />
                 </a>
               )}
             </div>
@@ -582,12 +637,14 @@ export default function PostDetail({ idFromProp }) {
         )}
 
         {/* Disclaimer */}
-        <div className="mt-12 p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-6">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">Important Disclaimer</h3>
-              <p className="text-sm text-amber-800 dark:text-amber-200/80 leading-relaxed">
+              <h3 className="font-bold text-amber-900 dark:text-amber-100 mb-2 text-lg">
+                Important Disclaimer
+              </h3>
+              <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
                 Please verify all information on the official website before applying. JobAddah is not responsible for any discrepancies or changes made by the recruiting organization. Always check the official notification for accurate and updated details.
               </p>
             </div>
@@ -596,9 +653,11 @@ export default function PostDetail({ idFromProp }) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          <p>© 2025 JobAddah. All rights reserved. | Stay updated with latest sarkari job notifications.</p>
+      <footer className="border-t border-gray-200 dark:border-gray-800 mt-12 bg-white dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p className="font-medium">
+            © 2025 JobAddah. All rights reserved. | Stay updated with latest sarkari job notifications.
+          </p>
         </div>
       </footer>
     </div>
