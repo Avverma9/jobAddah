@@ -1,125 +1,87 @@
 const express = require("express");
 const router = express.Router();
-const Job = require("../models/jobs");
 const { verifyToken, authorizeRoles } = require("../middleware/auth");
+
+// Import the NEW Optimized Controller
 const {
-  createJob,
-  getJobs,
-  updateJob,
-  getJobById,
-  deleteJob,
-  getAdmitCard,
-  getResult,
-  getAdmitCardById,
-  getResultById,
-  getExams,
-  getStats,
+  createPost,
+  updatePost,
+  deletePost,
+  deleteAllPosts,
+  getPostDetails, // Single Post (Get by ID or Slug)
+  getJobs,        // Filtered: Online Forms
+  getAdmitCards,  // Filtered: Admit Cards
+  getResults,     // Filtered: Results
+  getExams,       // Filtered: Upcoming Exams
+  getAnswerKeys,  // Filtered: Answer Keys
+  getStats,        // Dashboard Stats
+  insertBulkPosts,
+  getallPost
 } = require("../controller/jobs");
 
-//user routes for job management
+// ==================================================================
+// 🟢 PUBLIC ROUTES (Accessible by Everyone - No Login Required)
+// ==================================================================
 
-router.get("/get-jobs", getJobs);
+// 1. Get Lists (Categorized)
+router.get("/get-jobs", getJobs);               // Fetch Latest Jobs
+router.get("/admit-cards", getAdmitCards);      // Fetch Admit Cards
+router.get("/results", getResults);             // Fetch Results
+router.get("/exams", getExams);                 // Fetch Upcoming Exams
+router.get("/answer-keys", getAnswerKeys);      // Fetch Answer Keys
+router.get("/get-all",getallPost)
+// 2. Get Single Post Details
+// Note: This handles ID or Slug (e.g., /posts/6741d8... OR /posts/rrb-group-d-2025)
+router.get("/posts/:id", getPostDetails);
+
+
+// ==================================================================
+// 🔴 PROTECTED ADMIN ROUTES (Requires Login & Admin Role)
+// ==================================================================
+
+// 1. Dashboard Statistics
 router.get(
-  "/jobs/stats",
+  "/admin/stats",
   verifyToken,
   authorizeRoles("admin", "super_admin"),
   getStats
 );
 
-router.get(
-  "/jobs/:id",
-  getJobById
-);
-
-// ✅ Existing Admin Routes (Protected)
+// 2. Create New Post (Job/Admit Card/Result etc.)
 router.post(
-  "/add-jobs",
+  "/add-job", // You can rename this to /add-post if you prefer
   verifyToken,
   authorizeRoles("admin", "super_admin"),
-  createJob
+  createPost
 );
-
-router.get(
-  "/jobs",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
-  getJobs
+router.post(
+  "/bulk-insert",
+  verifyToken, 
+  authorizeRoles("admin", "super_admin"), // Security zaroori hai
+  insertBulkPosts
 );
-
+// 3. Update Existing Post
 router.put(
   "/jobs/:id",
   verifyToken,
   authorizeRoles("admin", "super_admin"),
-  updateJob
+  updatePost
 );
 
+// 4. Delete Single Post
 router.delete(
   "/jobs/:id",
   verifyToken,
   authorizeRoles("admin", "super_admin"),
-  deleteJob
+  deletePost
 );
 
-// ✅ Public Routes for Admit Cards & Results (No Auth Required)
-// Users can access these without login
-
-// Get all jobs with admit cards available
-router.get(
-  "/admit-cards",
+// 5. Delete ALL Posts (Dangerous!)
+router.delete(
+  "/delete-all",
   verifyToken,
   authorizeRoles("admin", "super_admin"),
-  getAdmitCard
+  deleteAllPosts
 );
-
-// Get all jobs with results available
-router.get(
-  "/results",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
-  getResult
-);
-router.get(
-  "/exams",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
-  getExams
-);
-
-// Get admit card for specific job
-router.get("/jobs/:id/admit-card", getAdmitCardById);
-
-// Get result for specific job
-router.get("/jobs/:id/result", getResultById);
-
-// ✅ OPTIONAL: Protected versions if you want admin-only access
-// Uncomment if needed
-
-// router.get(
-//   "/admit-cards",
-//   verifyToken,
-//   authorizeRoles("admin", "super_admin"),
-//   getAdmitCard
-// );
-
-// router.get(
-//   "/results",
-//   verifyToken,
-//   authorizeRoles("admin", "super_admin"),
-//   getResult
-// );
-
-// router.get(
-//   "/jobs/:id/admit-card",
-//   verifyToken,
-//   authorizeRoles("admin", "super_admin"),
-//   getAdmitCardById
-// );
-
-// router.get(
-//   "/jobs/:id/result",
-//   verifyToken,
-//   authorizeRoles("admin", "super_admin"),
-//   getResultById
-// );
 
 module.exports = router;
