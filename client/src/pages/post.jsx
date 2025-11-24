@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { baseUrl } from "../../util/baseUrl";
+import Header from "../components/Header";
 import {
-  Moon, Sun, ChevronLeft, ExternalLink, Calendar, Briefcase,
+  ChevronLeft, ExternalLink, Calendar, Briefcase,
   GraduationCap, IndianRupee, Users, FileText, AlertCircle,
   Clock, Download, Link as LinkIcon, CheckCircle, Info, MapPin,
   Building2, Hash
@@ -11,25 +12,8 @@ export default function PostDetail({ idFromProp }) {
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState(null);
   const [error, setError] = useState(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const id = idFromProp || new URLSearchParams(window.location.search).get("_id");
-
-  // Theme loader
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const finalTheme = savedTheme || (prefersDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", finalTheme === "dark");
-    setIsDarkMode(finalTheme === "dark");
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode ? "dark" : "light";
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-    setIsDarkMode(!isDarkMode);
-  };
 
   // Fetch post data
   useEffect(() => {
@@ -388,7 +372,7 @@ export default function PostDetail({ idFromProp }) {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group"
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group"
                   >
                     <span className="font-semibold text-sm">{link.label}</span>
                     <ExternalLink size={16} className="group-hover:translate-x-1 transition-transform flex-shrink-0" />
@@ -496,44 +480,7 @@ export default function PostDetail({ idFromProp }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => (window.location.href = "/")}
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 text-white flex items-center justify-center font-bold shadow-lg text-lg group-hover:scale-105 transition-transform">
-              JA
-            </div>
-            <div>
-              <div className="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">
-                JobAddah
-              </div>
-              <div className="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 font-medium">
-                Smart Sarkari Updates
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={() => window.history.back()}
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-all duration-200"
-            >
-              <ChevronLeft size={16} /> Back
-            </button>
-
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-all duration-200"
-              aria-label="Toggle theme"
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
