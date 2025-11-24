@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomeScreen from "./pages/homescreen";
 import PostDetail from "./pages/post";
+import ViewAll from "./pages/view-all";
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/post" element={<PostDetail />} />
+        <Route path="/view-all" element={<ViewAll />} />
         <Route path="/home" element={<HomeScreen />} />
         <Route path="/result" element={<HomeScreen />} />
         <Route path="/admit-card" element={<HomeScreen />} />

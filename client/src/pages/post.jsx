@@ -15,7 +15,6 @@ export default function PostDetail({ idFromProp }) {
 
   const id = idFromProp || new URLSearchParams(window.location.search).get("_id");
 
-  // Fetch post data
   useEffect(() => {
     if (!id) {
       setError("Post ID missing");
@@ -23,13 +22,13 @@ export default function PostDetail({ idFromProp }) {
       return;
     }
 
-    fetch(`${baseUrl}/jobs/${id}`)
+    fetch(`${baseUrl}/posts/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load post");
         return r.json();
       })
       .then((data) => {
-        setPost(data);
+        setPost(data.data);
         setLoading(false);
       })
       .catch((err) => {
@@ -38,7 +37,6 @@ export default function PostDetail({ idFromProp }) {
       });
   }, [id]);
 
-  // Helper functions
   const formatLabel = (key) => {
     return key
       .replace(/_/g, " ")
@@ -47,11 +45,7 @@ export default function PostDetail({ idFromProp }) {
       .trim();
   };
 
-  // ============================
-  // RENDER FUNCTIONS
-  // ============================
-
-  // Render Important Dates - Compact Table
+  // Render Important Dates
   const renderImportantDates = (dates) => {
     if (!Array.isArray(dates) || dates.length === 0) return null;
 
@@ -82,10 +76,10 @@ export default function PostDetail({ idFromProp }) {
                   className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {item.label || item.event || '—'}
+                    {item.label || '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400 font-semibold">
-                    {item.value || item.date || '—'}
+                    {item.value || '—'}
                   </td>
                 </tr>
               ))}
@@ -96,7 +90,7 @@ export default function PostDetail({ idFromProp }) {
     );
   };
 
-  // Render Age Limit - Compact Box
+  // Render Age Limit
   const renderAgeLimit = (ageData) => {
     if (!ageData || typeof ageData !== 'object') return null;
 
@@ -126,20 +120,9 @@ export default function PostDetail({ idFromProp }) {
                 <div className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase mb-1">
                   Maximum Age
                 </div>
-                {typeof ageData.maxAge === 'object' ? (
-                  <div className="space-y-1">
-                    {Object.entries(ageData.maxAge).map(([key, value]) => (
-                      <div key={key} className="text-sm text-gray-700 dark:text-gray-300">
-                        <span className="font-semibold">{formatLabel(key)}:</span>{' '}
-                        <span className="text-orange-600 dark:text-orange-400 font-bold">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {ageData.maxAge}
-                  </div>
-                )}
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  {ageData.maxAge}
+                </div>
               </div>
             )}
           </div>
@@ -199,7 +182,7 @@ export default function PostDetail({ idFromProp }) {
                     {item.category || '—'}
                   </td>
                   <td className="px-6 py-4 text-sm font-bold text-green-600 dark:text-green-400">
-                    {item.amount || item.fee || '—'}
+                    ₹{item.amount || 0}
                   </td>
                 </tr>
               ))}
@@ -228,22 +211,22 @@ export default function PostDetail({ idFromProp }) {
               <div className="bg-gray-50 dark:bg-gray-900 px-6 py-3 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
-                    {item.postName || item.post || 'Position'}
+                    {item.postName || 'Position'}
                   </h3>
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold w-fit">
                     <Briefcase size={16} />
-                    {item.totalPost || item.vacancies || '0'} Posts
+                    {item.totalPost || '0'} Posts
                   </span>
                 </div>
               </div>
               
-              {item.categoryBreakup && (
+              {item.categoryBreakdown && (
                 <div className="p-6">
                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase mb-3">
                     Category-wise Breakup
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {Object.entries(item.categoryBreakup).map(([category, count]) => (
+                    {Object.entries(item.categoryBreakdown).map(([category, count]) => (
                       <div
                         key={category}
                         className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg text-center"
@@ -440,10 +423,81 @@ export default function PostDetail({ idFromProp }) {
       </div>
     );
   };
+  const renderOtherDetails = (post) => {
+    const handledKeys = [
+      'slug', 'postTitle', 'organization', 'totalVacancyCount', 'shortInfo',
+      'importantDates', 'ageLimit', 'applicationFee', 'vacancyDetails',
+      'educationalQualification', 'modeOfSelection', 'importantLinks',
+      // Fields that shouldn't be rendered
+      '_id', '__v', 'isLive', 'postType', 'createdAt', 'updatedAt','districtWiseData'
+    ];
+    
+    const otherDetails = Object.entries(post).filter(([key, value]) => {
+      if (handledKeys.includes(key)) return false;
+      if (value === null || value === undefined) return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return false;
+      return true;
+    });
 
-  // ============================
-  // LOADING & ERROR STATES
-  // ============================
+    if (otherDetails.length === 0) return null;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-500 to-gray-600 px-6 py-4">
+          <div className="flex items-center gap-2 text-white">
+            <Info className="w-5 h-5" />
+            <h2 className="text-lg font-bold">Other Information</h2>
+          </div>
+        </div>
+        <div className="p-6">
+          <table className="w-full">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {otherDetails.map(([key, value]) => (
+                <tr key={key} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 w-1/3">
+                    {formatLabel(key)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    {renderValue(value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderValue = (value) => {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value.toString();
+    }
+    if (Array.isArray(value)) {
+      return (
+        <ul className="list-disc list-inside space-y-1">
+          {value.map((item, index) => (
+            <li key={index}>{renderValue(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof value === 'object' && value !== null) {
+      return (
+        <div className="space-y-2">
+          {Object.entries(value).map(([key, val]) => (
+            <div key={key} className="flex">
+              <span className="font-semibold text-gray-600 dark:text-gray-400 mr-2">{formatLabel(key)}:</span>
+              <span>{renderValue(val)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return '—';
+  };
+
 
   if (loading) {
     return (
@@ -476,13 +530,10 @@ export default function PostDetail({ idFromProp }) {
 
   if (!post) return null;
 
-  const jobData = post.data || post;
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
 
-      {/* CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-xl p-8 text-white shadow-xl">
@@ -490,22 +541,22 @@ export default function PostDetail({ idFromProp }) {
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold mb-3">
                 <Hash size={14} />
-                {jobData.notificationNumber || 'Official Notification'}
+                {post.slug || 'Official Notification'}
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">
-                {post.postName || jobData.organization || "Job Notification"}
+                {post.postTitle || "Job Notification"}
               </h1>
-              {jobData.organization && post.postName && (
+              {post.organization && (
                 <div className="flex items-center gap-2 text-white/90 text-lg font-medium">
                   <Building2 size={18} />
-                  {jobData.organization}
+                  {post.organization}
                 </div>
               )}
             </div>
-            {jobData.totalPosts && (
+            {post.totalVacancyCount && (
               <div className="bg-white dark:bg-gray-800 rounded-xl px-6 py-4 text-center shadow-lg border-4 border-white/20">
                 <div className="text-4xl font-bold text-gray-900 dark:text-white">
-                  {jobData.totalPosts}
+                  {post.totalVacancyCount}
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mt-1">
                   Total Posts
@@ -513,75 +564,40 @@ export default function PostDetail({ idFromProp }) {
               </div>
             )}
           </div>
-          {jobData.shortInfo && (
+          {post.shortInfo && (
             <div className="mt-6 p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-              <p className="text-white leading-relaxed">{jobData.shortInfo}</p>
+              <p className="text-white leading-relaxed">{post.shortInfo}</p>
             </div>
           )}
         </div>
 
-        {/* 🎯 SIDE BY SIDE: Important Dates (Left) + Age Limit (Right) */}
+        {/* Side by Side: Important Dates + Age Limit */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Important Dates */}
           <div>
-            {jobData.importantDates && renderImportantDates(jobData.importantDates)}
+            {post.importantDates && renderImportantDates(post.importantDates)}
           </div>
-
-          {/* RIGHT: Age Limit */}
           <div>
-            {jobData.ageLimit && renderAgeLimit(jobData.ageLimit)}
+            {post.ageLimit && renderAgeLimit(post.ageLimit)}
           </div>
         </div>
 
-        {/* Application Fee (Below Important Dates & Age Limit) */}
-        {jobData.applicationFee && renderApplicationFee(jobData.applicationFee)}
+        {/* Application Fee */}
+        {post.applicationFee && renderApplicationFee(post.applicationFee)}
 
         {/* Vacancy Details */}
-        {jobData.vacancyDetails && renderVacancyDetails(jobData.vacancyDetails)}
+        {post.vacancyDetails && renderVacancyDetails(post.vacancyDetails)}
 
         {/* Educational Qualification */}
-        {jobData.educationalQualification && renderQualification(jobData.educationalQualification)}
+        {post.educationalQualification && renderQualification(post.educationalQualification)}
 
         {/* Selection Process */}
-        {jobData.modeOfSelection && renderModeOfSelection(jobData.modeOfSelection)}
+        {post.modeOfSelection && renderModeOfSelection(post.modeOfSelection)}
 
         {/* Important Links */}
-        {jobData.importantLinks && renderImportantLinks(jobData.importantLinks)}
+        {post.importantLinks && renderImportantLinks(post.importantLinks)}
 
-        {/* Quick Links */}
-        {(jobData.officialWebsite || jobData.applyOnlineLink) && (
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-4 text-lg">
-              Official Links
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {jobData.officialWebsite && (
-                <a
-                  href={jobData.officialWebsite}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
-                >
-                  <Building2 size={18} />
-                  Official Website
-                  <ExternalLink size={16} />
-                </a>
-              )}
-              {jobData.applyOnlineLink && jobData.applyOnlineLink !== jobData.officialWebsite && (
-                <a
-                  href={jobData.applyOnlineLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
-                >
-                  <FileText size={18} />
-                  Apply Online
-                  <ExternalLink size={16} />
-                </a>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Other Details */}
+        {renderOtherDetails(post)}
 
         {/* Disclaimer */}
         <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-6">
@@ -599,7 +615,6 @@ export default function PostDetail({ idFromProp }) {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-gray-200 dark:border-gray-800 mt-12 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <p className="font-medium">

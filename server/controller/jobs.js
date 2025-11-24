@@ -1,451 +1,329 @@
-const Job = require('../models/jobs');
+const Post = require('../models/jobs');
 
-const isActualDate = (value) => {
-    if (!value || typeof value !== 'string') return false;
+// --- Helper: Standard Response Formatter ---
+const formatResponse = (data, page, limit, total) => ({
+  success: true,
+  count: data.length,
+  totalDocuments: total,
+  totalPages: Math.ceil(total / limit),
+  currentPage: parseInt(page),
+  data: data
+});
 
-    const trimmedValue = value.trim().toLowerCase();
-    if (trimmedValue === '') return false;
+// ==========================================
+// A. CRUD OPERATIONS (Create, Update, Delete)
+// ==========================================
 
-    const placeholderKeywords = [
-        'before exam', 'not available', 'n/a', 'na', 'awaited', 'will be announced',
-        'to be announced', 'tba', 'coming soon', 'not released', 'not yet',
-        'soon', 'shortly', 'later', 'after', 'update'
-    ];
-
-    if (placeholderKeywords.some(keyword => trimmedValue.includes(keyword))) return false;
-
-    const datePatterns = [
-        /\d{1,2}[-\/\s](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
-        /\d{1,2}[-\/\s]\d{1,2}[-\/\s]\d{2,4}/,
-        /\d{4}[-\/\s]\d{1,2}[-\/\s]\d{1,2}/,
-        /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}/i,
-        /\d{1,2}(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i,
-        /\d{1,2}\s+(january|february|march|april|may|june|july|august|september|october|november|december)/i
-    ];
-
-    return datePatterns.some(pattern => pattern.test(trimmedValue));
+// 1. Create a New Post
+const createPost = async (req, res) => {
+  try {
+    
+    const newPost = new Post(req.body);
+    const savedPost = await newPost.save();
+    res.status(201).json({ success: true, data: savedPost });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message }); // 400 for Bad Request (Duplicate slug etc)
+  }
 };
 
-const hasAdmitCard = (job) => {
-    if (!job.data?.importantDates) return false;
+const insertBulkPosts = async (req, res) => {
+  try {
+    const posts = req.body; // Expecting an Array of Objects
 
-    const match = job.data.importantDates.find(d => {
-        const label = d.label?.toLowerCase() || '';
-        return (
-            label.includes('admit card') ||
-            label.includes('hall ticket') ||
-            label.includes('call letter') ||
-            label.includes('e-admit')
-        );
+    if (!Array.isArray(posts)) {
+      return res.status(400).json({ success: false, message: "Input must be an array of posts" });
+    }
+
+    // 1. Auto-generate slugs if missing
+    posts.forEach(post => {
+      if (!post.slug && post.postTitle) {
+        post.slug = post.postTitle
+          .toLowerCase()
+          .replace(/ /g, '-')
+          .replace(/[^\w-]+/g, '');
+      }
     });
 
-    return match?.value ? isActualDate(match.value) : false;
-};
+    // 2. Insert Many (ordered: false ensures valid docs get inserted even if some fail)
+    const result = await Post.insertMany(posts, { ordered: false });
 
-const hasResult = (job) => {
-    if (!job.data?.importantDates) return false;
-
-    const match = job.data.importantDates.find(d => {
-        const label = d.label?.toLowerCase() || '';
-        return (
-            label.includes('result') ||
-            label.includes('score') ||
-            label.includes('merit list') ||
-            label.includes('final result') ||
-            label.includes('selection list')
-        );
+    res.status(201).json({
+      success: true,
+      message: `Successfully inserted ${result.length} posts`,
+      data: result
     });
 
-    return match?.value ? isActualDate(match.value) : false;
+  } catch (err) {
+    // Handle Duplicate Key Error (E11000) gracefully
+    if (err.code === 11000) {
+      return res.status(207).json({ // 207 = Multi-Status
+        success: true, 
+        message: "Bulk insert completed with some duplicates skipped.",
+        insertedCount: err.result ? err.result.nInserted : "Unknown",
+        error: "Duplicate slugs found and skipped"
+      });
+    }
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const getAdmitCardLink = (job) => {
-    if (!job.data?.importantLinks) return null;
+// 2. Update a Post by ID
+const updatePost = async (req, res) => {
+  try {
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true } // Return updated doc & validate
+    );
 
-    const link = job.data.importantLinks.find(l => {
-        const label = l.label?.toLowerCase() || '';
-        return (
-            (label.includes('admit card') ||
-                label.includes('hall ticket') ||
-                label.includes('call letter') ||
-                label.includes('download admit')) &&
-            !label.includes('notice') &&
-            !label.includes('instruction')
-        );
+    if (!updatedPost) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.json({ success: true, data: updatedPost });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// 3. Delete a Post by ID
+const deletePost = async (req, res) => {
+  try {
+    const post = await Post.findByIdAndDelete(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// 4. Delete ALL Posts (Dangerous!)
+const deleteAllPosts = async (req, res) => {
+  try {
+    const result = await Post.deleteMany({});
+    res.json({ 
+      success: true, 
+      message: 'All posts deleted successfully', 
+      deletedCount: result.deletedCount 
     });
-
-    return link?.url || null;
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const getResultLink = (job) => {
-    if (!job.data?.importantLinks) return null;
+// 5. Get Single Post (By Slug or ID)
+const getPostDetails = async (req, res) => {
+  try {
+    // Check if param is valid ObjectID, else treat as Slug
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
+    const query = isObjectId ? { _id: req.params.id } : { slug: req.params.id };
 
-    const link = job.data.importantLinks.find(l => {
-        const label = l.label?.toLowerCase() || '';
-        return (
-            (label.includes('result') ||
-                label.includes('download result') ||
-                label.includes('check result') ||
-                label.includes('merit list') ||
-                label.includes('final result')) &&
-            !label.includes('notice')
-        );
-    });
+    const post = await Post.findOne(query);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    return link?.url || null;
+    res.json({ success: true, data: post });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const getExamDate = (job) => {
-    if (!job.data?.importantDates) return null;
+// ==========================================
+// B. CATEGORIZED GETTERS (Filtering)
+// ==========================================
 
-    const match = job.data.importantDates.find(d => {
-        const label = d.label?.toLowerCase() || '';
-        return (
-            label.includes('exam date') ||
-            label.includes('examination date') ||
-            label.includes('test date') ||
-            label.includes('cbt date')
-        );
-    });
-
-    return match?.value || null;
-};
-
+// 6. Get Online Forms (Latest Jobs)
 const getJobs = async (req, res) => {
-    try {
-        const jobs = await Job.find().sort({ createdAt: -1 });
-        res.json(jobs);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const query = { postType: 'JOB' };
+
+    if (search) {
+      query.$or = [
+        { postTitle: { $regex: search, $options: 'i' } },
+        { organization: { $regex: search, $options: 'i' } }
+      ];
     }
+
+    const total = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .select('postTitle slug organization totalVacancyCount importantDates isLive')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    // Lightweight response for listing
+    const data = posts.map(post => ({
+      _id: post._id,
+      title: post.postTitle,
+      slug: post.slug,
+      org: post.organization,
+      vacancies: post.totalVacancyCount || "N/A",
+      lastDate: post.importantDates.find(d => d.label.toLowerCase().includes('last date'))?.value || "N/A"
+    }));
+
+    res.json(formatResponse(data, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const getJobById = async (req, res) => {
-    try {
-        const job = await Job.findById(req.params.id);
-        if (!job) return res.status(404).json({ message: 'Job not found' });
-        res.json(job);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+// 7. Get Admit Cards
+const getAdmitCards = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const query = { postType: 'ADMIT_CARD' };
+
+    if (search) query.postTitle = { $regex: search, $options: 'i' };
+
+    const total = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .select('postTitle slug organization importantDates importantLinks')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const data = posts.map(post => ({
+      _id: post._id,
+      title: post.postTitle,
+      slug: post.slug,
+      examDate: post.importantDates.find(d => d.label.toLowerCase().includes('exam'))?.value || "Soon",
+      downloadLink: post.importantLinks.find(l => l.label.toLowerCase().includes('admit') || l.label.toLowerCase().includes('download'))?.url
+    }));
+
+    res.json(formatResponse(data, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const createJob = async (req, res) => {
-    try {
-        const job = new Job(req.body);
-        const saved = await job.save();
-        res.status(201).json(saved);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
+// 8. Get Results
+const getResults = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const query = { postType: 'RESULT' };
+
+    if (search) query.postTitle = { $regex: search, $options: 'i' };
+
+    const total = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .select('postTitle slug organization importantDates importantLinks')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const data = posts.map(post => ({
+      _id: post._id,
+      title: post.postTitle,
+      slug: post.slug,
+      resultDate: post.importantDates.find(d => d.label.toLowerCase().includes('result'))?.value || "Declared",
+      checkLink: post.importantLinks.find(l => l.label.toLowerCase().includes('result'))?.url
+    }));
+
+    res.json(formatResponse(data, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const deleteJob = async (req, res) => {
-    try {
-        const job = await Job.findByIdAndDelete(req.params.id);
-        if (!job) return res.status(404).json({ message: 'Job not found' });
-        res.json({ message: 'Job deleted' });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-const updateJob = async (req, res) => {
-    try {
-        const job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!job) return res.status(404).json({ message: 'Job not found' });
-        res.json(job);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-};
-
-const getAdmitCard = async (req, res) => {
-    try {
-        const { page = 1, limit = 10, tag, organization } = req.query;
-        const jobs = await Job.find().sort({ createdAt: -1 });
-
-        let filtered = jobs.filter(hasAdmitCard);
-
-        if (tag) {
-            filtered = filtered.filter(j =>
-                j.data?.tag?.toLowerCase() === tag.toLowerCase()
-            );
-        }
-
-        if (organization) {
-            filtered = filtered.filter(j =>
-                j.data?.organization?.toLowerCase().includes(organization.toLowerCase())
-            );
-        }
-
-        const start = (page - 1) * limit;
-        const paginated = filtered.slice(start, start + parseInt(limit));
-
-        const formatted = paginated.map(job => ({
-            _id: job._id,
-            postName: job.postName,
-            organization: job.data?.organization,
-            tag: job.data?.tag,
-            shortInfo: job.data?.shortInfo,
-            admitCard: {
-                available: true,
-                date: job.data.importantDates.find(d =>
-                    d.label.toLowerCase().includes("admit card")
-                )?.value,
-                link: getAdmitCardLink(job)
-            },
-            examDate: getExamDate(job),
-            createdAt: job.createdAt
-        }));
-
-        res.json({
-            success: true,
-            count: filtered.length,
-            page: parseInt(page),
-            totalPages: Math.ceil(filtered.length / limit),
-            data: formatted
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-
-const getResult = async (req, res) => {
-    try {
-        const { page = 1, limit = 10, tag, organization } = req.query;
-        const jobs = await Job.find().sort({ createdAt: -1 });
-
-        let filtered = jobs.filter(hasResult);
-
-        if (tag) {
-            filtered = filtered.filter(j =>
-                j.data?.tag?.toLowerCase() === tag.toLowerCase()
-            );
-        }
-
-        if (organization) {
-            filtered = filtered.filter(j =>
-                j.data?.organization?.toLowerCase().includes(organization.toLowerCase())
-            );
-        }
-
-        const start = (page - 1) * limit;
-        const paginated = filtered.slice(start, start + parseInt(limit));
-
-        const formatted = paginated.map(job => ({
-            _id: job._id,
-            postName: job.postName,
-            organization: job.data?.organization,
-            tag: job.data?.tag,
-            shortInfo: job.data?.shortInfo,
-            result: {
-                available: true,
-                date: job.data.importantDates.find(d =>
-                    d.label.toLowerCase().includes("result")
-                )?.value,
-                link: getResultLink(job)
-            },
-            examDate: getExamDate(job),
-            createdAt: job.createdAt
-        }));
-
-        res.json({
-            success: true,
-            count: filtered.length,
-            page: parseInt(page),
-            totalPages: Math.ceil(filtered.length / limit),
-            data: formatted
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-
-const getAdmitCardById = async (req, res) => {
-    try {
-        const job = await Job.findById(req.params.id);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-
-        if (!hasAdmitCard(job))
-            return res.status(404).json({ success: false, message: 'Admit card not available' });
-
-        const date = job.data?.importantDates.find(d =>
-            d.label.toLowerCase().includes("admit card")
-        );
-
-        const links = job.data?.importantLinks?.filter(l => {
-            const label = l.label.toLowerCase();
-            return label.includes("admit") || label.includes("hall ticket");
-        });
-
-        res.json({
-            success: true,
-            data: {
-                jobId: job._id,
-                postName: job.postName,
-                organization: job.data?.organization,
-                admitCard: {
-                    available: true,
-                    date: date?.value,
-                    link: getAdmitCardLink(job)
-                },
-                examDate: getExamDate(job),
-                relatedLinks: links
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-
-const getResultById = async (req, res) => {
-    try {
-        const job = await Job.findById(req.params.id);
-        if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
-
-        if (!hasResult(job))
-            return res.status(404).json({ success: false, message: 'Result not available' });
-
-        const date = job.data?.importantDates.find(d =>
-            d.label.toLowerCase().includes("result")
-        );
-
-        const links = job.data?.importantLinks?.filter(l => {
-            const label = l.label.toLowerCase();
-            return (
-                label.includes("result") ||
-                label.includes("answer key") ||
-                label.includes("merit") ||
-                label.includes("cutoff")
-            );
-        });
-
-        res.json({
-            success: true,
-            data: {
-                jobId: job._id,
-                postName: job.postName,
-                organization: job.data?.organization,
-                result: {
-                    available: true,
-                    date: date?.value,
-                    link: getResultLink(job)
-                },
-                examDate: getExamDate(job),
-                relatedLinks: links
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-
-const isExamJob = (job) => {
-    const tag = job.data?.tag?.toLowerCase() || '';
-    const post = job.postName?.toLowerCase() || '';
-
-    if (
-        tag.includes("exam") ||
-        tag.includes("cbt") ||
-        tag.includes("test") ||
-        post.includes("exam") ||
-        post.includes("test")
-    ) return true;
-
-    return job.data?.importantDates?.some(d => {
-        const label = d.label?.toLowerCase() || '';
-        return (
-            label.includes("exam") ||
-            label.includes("test") ||
-            label.includes("cbt") ||
-            label.includes("main") ||
-            label.includes("pre")
-        );
-    });
-};
-
+// 9. Get Upcoming Exams
+// Logic: Finds posts where `importantDates` contains "Exam Date" or "Test Date"
 const getExams = async (req, res) => {
-    try {
-        const { page = 1, limit = 10, tag, organization } = req.query;
-        const jobs = await Job.find().sort({ createdAt: -1 });
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    
+    const query = {
+      "importantDates.label": { $regex: /Exam Date|Test Date|CBT Date/i }
+    };
 
-        let filtered = jobs.filter(isExamJob);
+    const total = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .select('postTitle slug organization importantDates')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
 
-        if (tag) {
-            filtered = filtered.filter(j =>
-                j.data?.tag?.toLowerCase()?.includes(tag.toLowerCase())
-            );
-        }
+    const data = posts.map(post => ({
+      _id: post._id,
+      title: post.postTitle,
+      slug: post.slug,
+      examDate: post.importantDates.find(d => /Exam Date|Test Date/i.test(d.label))?.value
+    }));
 
-        if (organization) {
-            filtered = filtered.filter(j =>
-                j.data?.organization?.toLowerCase()?.includes(organization.toLowerCase())
-            );
-        }
-
-        const start = (page - 1) * limit;
-        const paginated = filtered.slice(start, start + parseInt(limit));
-
-        const formatted = paginated.map(job => ({
-            _id: job._id,
-            postName: job.postName,
-            organization: job.data?.organization,
-            tag: job.data?.tag,
-            shortInfo: job.data?.shortInfo,
-            examDates:
-                job.data?.importantDates
-                    ?.filter(d => {
-                        const label = d.label.toLowerCase();
-                        return (
-                            label.includes("exam") ||
-                            label.includes("test") ||
-                            label.includes("cbt")
-                        );
-                    })
-                    .map(d => ({ label: d.label, value: d.value })) || [],
-            createdAt: job.createdAt
-        }));
-
-        res.json({
-            success: true,
-            count: filtered.length,
-            page: parseInt(page),
-            totalPages: Math.ceil(filtered.length / limit),
-            data: formatted
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
+    res.json(formatResponse(data, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
+
+// 10. Get Answer Keys (Bonus)
+const getAnswerKeys = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const query = { postType: 'ANSWER_KEY' };
+    
+    const total = await Post.countDocuments(query);
+    const posts = await Post.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit));
+    
+    res.json(formatResponse(posts, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ==========================================
+// C. STATS & DASHBOARD
+// ==========================================
+
+// 11. Get Dashboard Stats
 const getStats = async (req, res) => {
-    try {
-        const jobs = await Job.find();
-        const totalJobs = jobs.length;
-        const admitCardJobs = jobs.filter(hasAdmitCard).length;
-        const resultJobs = jobs.filter(hasResult).length;
-        const examJobs = jobs.filter(isExamJob).length;
-        res.json({
-            totalJobs,
-            admitCardJobs,
-            resultJobs,
-            examJobs
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
+  try {
+    const stats = await Promise.all([
+      Post.countDocuments({}), // Total Posts
+      Post.countDocuments({ postType: 'JOB' }),
+      Post.countDocuments({ postType: 'ADMIT_CARD' }),
+      Post.countDocuments({ postType: 'RESULT' }),
+      Post.countDocuments({ postType: 'ANSWER_KEY' })
+    ]);
 
+    res.json({
+      success: true,
+      stats: {
+        total: stats[0],
+        jobs: stats[1],
+        admitCards: stats[2],
+        results: stats[3],
+        answerKeys: stats[4]
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+const getallPost = async(req,res)=>{
+    try {
+    const response = await Post.find();
+    res.json(response)
+    } catch (err) {
+        console.error(err);
+
+    }
+
+
+}
 module.exports = {
-    getJobs,
-    getJobById,
-    createJob,
-    deleteJob,
-    updateJob,
-    getAdmitCard,
-    getResult,
-    getAdmitCardById,
-    getResultById,
-    getExams,
-    getStats
+  createPost,
+  updatePost,
+  deletePost,
+  deleteAllPosts,
+  getPostDetails,
+  getJobs,
+  getAdmitCards,
+  getResults,
+  getExams,
+  getAnswerKeys,
+  getStats,
+  insertBulkPosts,
+  getallPost
 };
