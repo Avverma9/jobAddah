@@ -20,6 +20,13 @@ const {
 
 router.get("/get-jobs", getJobs);
 router.get(
+  "/jobs/stats",
+  verifyToken,
+  authorizeRoles("admin", "super_admin"),
+  getStats
+);
+
+router.get(
   "/jobs/:id",
   getJobById
 );
@@ -51,13 +58,6 @@ router.delete(
   verifyToken,
   authorizeRoles("admin", "super_admin"),
   deleteJob
-);
-
-router.get(
-  "/jobs/stats",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
-  getStats
 );
 
 // ✅ Public Routes for Admit Cards & Results (No Auth Required)

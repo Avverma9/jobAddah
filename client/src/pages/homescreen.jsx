@@ -102,22 +102,22 @@ const ListItem = ({ item, colorTheme }) => {
     switch (colorTheme) {
       case 'red': return {
         hover: 'group-hover:text-rose-600 dark:group-hover:text-rose-400',
-        icon: 'text-rose-500',
+        icon: 'text-rose-500 dark:text-rose-400',
         button: 'bg-rose-600 hover:bg-rose-700'
       };
       case 'blue': return {
         hover: 'group-hover:text-blue-600 dark:group-hover:text-blue-400',
-        icon: 'text-blue-500',
+        icon: 'text-blue-500 dark:text-blue-400',
         button: 'bg-blue-600 hover:bg-blue-700'
       };
       case 'green': return {
         hover: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-400',
-        icon: 'text-emerald-500',
+        icon: 'text-emerald-500 dark:text-emerald-400',
         button: 'bg-emerald-600 hover:bg-emerald-700'
       };
       default: return {
-        hover: 'group-hover:text-gray-600',
-        icon: 'text-gray-500',
+        hover: 'group-hover:text-gray-600 dark:group-hover:text-gray-300',
+        icon: 'text-gray-500 dark:text-gray-400',
         button: 'bg-gray-600 hover:bg-gray-700'
       };
     }
@@ -126,23 +126,20 @@ const ListItem = ({ item, colorTheme }) => {
   const colors = getThemeColors();
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-700 last:border-0">
-      <div className="group p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-        <div 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-start gap-3"
-        >
-          <div className={`mt-1 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>
-            <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+    <div className="group" onClick={() => setIsExpanded(!isExpanded)}>
+      <div className="p-4 cursor-pointer bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50 transition-colors duration-200">
+        <div className="flex items-start gap-4">
+          <div className={`mt-1.5 shrink-0 transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-90' : ''}`}>
+            <ChevronRight size={16} className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2 mb-1">
-              <h3 className={`text-sm font-semibold text-gray-900 dark:text-gray-100 ${colors.hover} leading-snug line-clamp-2 flex-1`}>
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className={`text-sm font-semibold text-gray-800 dark:text-gray-100 ${colors.hover} leading-snug line-clamp-2 flex-1 transition-colors`}>
                 {item.title}
               </h3>
               {item.isNew && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse shrink-0">
+                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full shrink-0">
                   NEW
                 </span>
               )}
@@ -154,101 +151,87 @@ const ListItem = ({ item, colorTheme }) => {
               </p>
             )}
 
-            <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
               {item.details.lastDate && (
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   <Clock size={12} className={colors.icon} />
-                  <span className="font-medium text-red-600 dark:text-red-400">
+                  <span>Last Date:</span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">
                     {item.details.lastDate}
                   </span>
                 </span>
               )}
               {item.details.totalPost && (
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   <Briefcase size={12} className={colors.icon} />
-                  {item.details.totalPost}
+                  <span>Posts:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{item.details.totalPost}</span>
                 </span>
               )}
             </div>
           </div>
-
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="mt-1 shrink-0 p-1"
-          >
-            {isExpanded ? 
-              <ChevronUp size={16} className="text-gray-400 dark:text-gray-500" /> : 
-              <ChevronDown size={16} className="text-gray-400 dark:text-gray-500" />
-            }
-          </button>
         </div>
+      </div>
 
-        {/* Expandable Details */}
-        {isExpanded && (
-          <div className="mt-4 ml-7 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 animate-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      {/* Expandable Details */}
+      {isExpanded && (
+        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 animate-in slide-in-from-top-2 duration-200">
+          <div className="ml-8 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               {item.details.postDate && (
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <Calendar size={14} className={colors.icon} />
-                  <span>Post: <span className="font-semibold text-gray-900 dark:text-gray-100">{item.details.postDate}</span></span>
-                </div>
-              )}
-              {item.details.lastDate && (
-                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                  <Clock size={14} className={colors.icon} />
-                  <span>Last: <span className="font-semibold text-red-600 dark:text-red-400">{item.details.lastDate}</span></span>
+                  <span>Post Date:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{item.details.postDate}</span>
                 </div>
               )}
               {item.details.examDate && (
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <Calendar size={14} className={colors.icon} />
-                  <span>Exam: <span className="font-semibold text-gray-900 dark:text-gray-100">{item.details.examDate}</span></span>
+                  <span>Exam Date:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{item.details.examDate}</span>
                 </div>
               )}
               {item.details.fee && (
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <DollarSign size={14} className={colors.icon} />
-                  <span>Fee: <span className="font-semibold text-gray-900 dark:text-gray-100">{item.details.fee}</span></span>
+                  <span>Fee:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{item.details.fee}</span>
                 </div>
               )}
               {item.details.ageLimit && (
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <User size={14} className={colors.icon} />
-                  <span>Age: <span className="font-semibold text-gray-900 dark:text-gray-100">{item.details.ageLimit}</span></span>
-                </div>
-              )}
-              {item.details.totalPost && (
-                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                  <Briefcase size={14} className={colors.icon} />
-                  <span>Posts: <span className="font-semibold text-gray-900 dark:text-gray-100">{item.details.totalPost}</span></span>
+                  <span>Age Limit:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{item.details.ageLimit}</span>
                 </div>
               )}
             </div>
 
             {item.details.eligibility && (
-              <div className="mb-4 p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-2">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-600 dark:text-gray-300 flex items-start gap-2">
                   <BookOpen size={14} className={`mt-0.5 ${colors.icon} shrink-0`} />
-                  <span><span className="font-semibold text-gray-900 dark:text-gray-100">Eligibility:</span> {item.details.eligibility}</span>
+                  <div>
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">Eligibility:</span>
+                    <span className="ml-1">{item.details.eligibility}</span>
+                  </div>
                 </p>
               </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <a
                 href={`/post?_id=${item.id}`}
-                className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg text-white ${colors.button} shadow-sm hover:shadow transition-all`}
+                className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg text-white ${colors.button} shadow-md hover:shadow-lg transition-all transform hover:scale-105`}
               >
                 View Full Details
                 <ExternalLink size={14} />
               </a>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -270,41 +253,44 @@ const SectionColumn = ({ title, icon: Icon, data, colorTheme, searchQuery }) => 
 
   const getHeaderColors = () => {
     switch (colorTheme) {
-      case 'red': return 'bg-gradient-to-r from-rose-600 to-red-600';
-      case 'blue': return 'bg-gradient-to-r from-blue-600 to-indigo-600';
-      case 'green': return 'bg-gradient-to-r from-emerald-600 to-green-600';
-      default: return 'bg-gradient-to-r from-gray-600 to-gray-700';
+      case 'red': return 'bg-gradient-to-r from-rose-500 to-red-500';
+      case 'blue': return 'bg-gradient-to-r from-blue-500 to-indigo-500';
+      case 'green': return 'bg-gradient-to-r from-emerald-500 to-green-500';
+      default: return 'bg-gradient-to-r from-gray-500 to-gray-600';
     }
   };
 
   return (
-    <div className="flex flex-col rounded-xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-full">
-      <div className={`${getHeaderColors()} p-5 flex items-center justify-between text-white shadow-md`}>
+    <div className="flex flex-col rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-full transform hover:-translate-y-1 transition-transform duration-300">
+      <div className={`${getHeaderColors()} p-5 flex items-center justify-between text-white`}>
         <div className="flex items-center gap-3">
-          <Icon size={22} />
+          <div className="p-2 bg-white/20 rounded-lg">
+            <Icon size={20} />
+          </div>
           <h2 className="font-bold text-lg">{title}</h2>
         </div>
-        <span className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+        <span className="text-sm font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
           {filteredData.length}
         </span>
       </div>
       
-      <div className="flex-1 overflow-y-auto max-h-[600px]">
+      <div className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-gray-100 dark:divide-gray-700">
         {filteredData.length > 0 ? (
           filteredData.map((item) => (
             <ListItem key={item.id} item={item} colorTheme={colorTheme} />
           ))
         ) : (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            <Icon size={48} className="mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No updates available</p>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center h-full">
+            <Icon size={48} className="mx-auto mb-4 opacity-10" />
+            <p className="text-sm font-semibold">No updates available</p>
+            <p className="text-xs">Please check back later.</p>
           </div>
         )}
       </div>
 
       <a 
         href={`/${title.toLowerCase().replace(' ', '-')}`}
-        className="p-4 text-center text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 transition-colors"
+        className="p-4 text-center text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white uppercase tracking-wider bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       >
         View All {title}
       </a>
@@ -316,31 +302,12 @@ const SectionColumn = ({ title, icon: Icon, data, colorTheme, searchQuery }) => 
 // MAIN HOME COMPONENT
 // ============================
 
+import Header from '../components/Header';
+
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rawJobs, setRawJobs] = useState([]);
-
-  // Theme management
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const finalTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    
-    document.documentElement.classList.toggle('dark', finalTheme === 'dark');
-    setIsDarkMode(finalTheme === 'dark');
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => {
-      const next = !prev;
-      document.documentElement.classList.toggle('dark', next);
-      localStorage.setItem('theme', next ? 'dark' : 'light');
-      return next;
-    });
-  };
 
   // Fetch jobs data
   useEffect(() => {
@@ -421,79 +388,7 @@ export default function HomeScreen() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-md border-b border-gray-200 dark:border-gray-800">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <a href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:scale-105 transition-transform">
-                JA
-              </div>
-              <div className="leading-tight">
-                <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 dark:from-rose-400 dark:to-orange-400">
-                  JobAddah
-                </h1>
-                <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 tracking-widest uppercase">
-                  The No.1 Job Portal
-                </p>
-              </div>
-            </a>
-
-            {/* Desktop Nav */}
-            <div className="hidden md:flex items-center space-x-6">
-              <nav className="flex space-x-1">
-                {['Home', 'Latest Jobs', 'Results', 'Admit Card', 'Answer Key'].map((nav) => (
-                  <a
-                    key={nav}
-                    href={`/${nav.toLowerCase().replace(' ', '-')}`}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-rose-50 dark:hover:bg-gray-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
-                  >
-                    {nav}
-                  </a>
-                ))}
-              </nav>
-              <div className="h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-yellow-400 transition-colors"
-              >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="flex items-center gap-3 md:hidden">
-              <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-yellow-400">
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 text-gray-700 dark:text-white"
-              >
-                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden bg-white dark:bg-gray-900 border-t dark:border-gray-800 animate-in slide-in-from-top-5">
-            <div className="px-4 pt-2 pb-4 space-y-1">
-              {['Home', 'Latest Jobs', 'Results', 'Admit Card', 'Answer Key'].map((nav) => (
-                <a
-                  key={nav}
-                  href={`/${nav.toLowerCase().replace(' ', '-')}`}
-                  className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-gray-800 hover:text-rose-600 dark:hover:text-rose-400"
-                >
-                  {nav}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </header>
+      <Header />
 
       {/* Breaking News Ticker */}
       <div className="bg-rose-600 text-white text-sm py-2 overflow-hidden relative shadow-inner">
@@ -511,34 +406,38 @@ export default function HomeScreen() {
       {/* MAIN CONTENT */}
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+        <div className="max-w-3xl mx-auto p-2 bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-900/20 dark:to-orange-900/20 rounded-2xl">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <Search className="h-6 w-6 text-rose-500 dark:text-rose-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-14 pr-4 py-5 border-2 border-transparent rounded-xl bg-white/80 dark:bg-gray-800/80 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-rose-500 text-base shadow-sm transition-all"
+              placeholder="Search for any exam, result, or job..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-sm shadow-sm transition-all"
-            placeholder="Search for exams, results, or jobs (e.g., SSC, UPSC, Railway)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
         </div>
 
         {/* Quick Links */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { title: 'Scholarship', color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400', icon: Award },
-            { title: 'Admission', color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400', icon: BookOpen },
-            { title: 'Syllabus', color: 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400', icon: FileText },
-            { title: 'Answer Key', color: 'bg-pink-100 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400', icon: Download },
+            { title: 'Scholarship', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800', icon: Award },
+            { title: 'Admission', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800', icon: BookOpen },
+            { title: 'Syllabus', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800', icon: FileText },
+            { title: 'Answer Key', color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800', icon: Download },
           ].map((item) => (
             <a
               key={item.title}
               href={`/${item.title.toLowerCase().replace(' ', '-')}`}
-              className={`${item.color} border border-transparent hover:border-current p-5 rounded-xl flex flex-col items-center justify-center text-center gap-2 transition-all hover:shadow-lg hover:-translate-y-1 group`}
+              className={`${item.color} border-2 p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-xl group`}
             >
-              <item.icon size={24} className="opacity-70 group-hover:opacity-100" />
-              <span className="font-bold text-sm">{item.title}</span>
+              <div className="p-3 bg-white/50 dark:bg-gray-900/30 rounded-full">
+                <item.icon size={28} />
+              </div>
+              <span className="font-bold text-sm tracking-wide">{item.title}</span>
             </a>
           ))}
         </div>
@@ -577,53 +476,72 @@ export default function HomeScreen() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-gray-900 text-white pt-12 pb-6 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 border-b border-gray-800 pb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-orange-500 rounded flex items-center justify-center font-bold">JA</div>
-                <span className="text-xl font-bold">JobAddah</span>
+      <footer className="bg-gray-800 dark:bg-gray-900 text-white mt-16">
+        <div className="container mx-auto px-4 pt-16 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-8">
+            {/* Column 1: Brand & Social */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-lg flex items-center justify-center font-bold text-lg shadow-lg">
+                  JA
+                </div>
+                <span className="text-2xl font-bold">JobAddah</span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                India's #1 Education Portal for Sarkari Result, Sarkari Naukri, Admit Cards, and Competitive Exams.
+              <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                Your one-stop portal for the latest government job alerts, results, and exam resources in India.
               </p>
             </div>
+
+            {/* Column 2: Quick Links */}
             <div>
-              <h4 className="font-bold text-lg mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="/latest-jobs" className="hover:text-rose-400 transition-colors">Latest Jobs</a></li>
-                <li><a href="/results" className="hover:text-rose-400 transition-colors">Results</a></li>
-                <li><a href="/admit-card" className="hover:text-rose-400 transition-colors">Admit Card</a></li>
-                <li><a href="/answer-key" className="hover:text-rose-400 transition-colors">Answer Key</a></li>
+              <h4 className="font-bold text-lg mb-4 tracking-wide text-gray-200">Quick Links</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li><a href="/latest-jobs" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Latest Jobs</a></li>
+                <li><a href="/results" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Results</a></li>
+                <li><a href="/admit-card" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Admit Cards</a></li>
+                <li><a href="/answer-key" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Answer Keys</a></li>
+                <li><a href="/syllabus" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Syllabus</a></li>
               </ul>
             </div>
+
+            {/* Column 3: Resources */}
             <div>
-              <h4 className="font-bold text-lg mb-4">Apps</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2"><Home size={14} /> Android App</li>
-                <li className="flex items-center gap-2"><Home size={14} /> iOS App</li>
-                <li className="flex items-center gap-2"><ExternalLink size={14} /> Windows App</li>
+              <h4 className="font-bold text-lg mb-4 tracking-wide text-gray-200">Resources</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li><a href="/admission" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Admission</a></li>
+                <li><a href="/scholarship" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Scholarship</a></li>
               </ul>
             </div>
+            
+            {/* Column 4: Legal */}
             <div>
-              <h4 className="font-bold text-lg mb-4">Contact</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center gap-2"><Info size={14} /> About Us</li>
-                <li className="flex items-center gap-2"><Phone size={14} /> Contact Support</li>
-                <li className="flex items-center gap-2"><FileText size={14} /> Privacy Policy</li>
+              <h4 className="font-bold text-lg mb-4 tracking-wide text-gray-200">Legal</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li><a href="#" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> About Us</a></li>
+                <li><a href="#" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Contact Us</a></li>
+                <li><a href="#" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-rose-400 transition-colors flex items-center gap-2"><ChevronRight size={14} /> Terms of Service</a></li>
               </ul>
             </div>
           </div>
-          <div className="text-center text-gray-500 text-sm">
-            <p>&copy; 2025 Design and Developed by Avverma, All Rights Reserved.</p>
-            <p className="mt-2 text-xs opacity-60">Disclaimer: This is a concept for educational purposes.</p>
+
+          {/* Bottom Bar */}
+          <div className="border-t border-gray-700 pt-8 mt-8 text-center text-gray-500 text-sm">
+            <p className="font-semibold text-gray-300">
+              © 2025 JobAddah — All Rights Reserved.
+            </p>
+            <p className="mt-3 text-xs max-w-2xl mx-auto">
+              <span className="font-bold">Disclaimer:</span> The information provided on JobAddah is for general informational purposes only. While we strive to keep the information up-to-date and correct, we make no representations or warranties of any kind, express or implied, about the completeness, accuracy, reliability, suitability or availability with respect to the website or the information, products, services, or related graphics contained on the website for any purpose. Any reliance you place on such information is therefore strictly at your own risk.
+            </p>
+            <p className="mt-4 text-xs">
+              Developed by <a href="https://github.com/avverma" target="_blank" rel="noopener noreferrer" className="font-semibold text-rose-400 hover:underline">Avverma</a>
+            </p>
           </div>
         </div>
       </footer>
 
       {/* Animations */}
-      <style jsx global>{`
+      <style>{`
         @keyframes marquee {
           0% { transform: translateX(100%); }
           100% { transform: translateX(-100%); }

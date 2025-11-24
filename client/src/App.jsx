@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./admin/login";
-import HomeScreen from "./pages/homescreen"
-import PostDetail from "./pages/post"
+import HomeScreen from "./pages/homescreen";
+import PostDetail from "./pages/post";
 
 function App() {
   return (
@@ -9,7 +8,10 @@ function App() {
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/post" element={<PostDetail />} />
-        <Route path="/admin-section-jobaddah" element={<Login />} />
+        <Route path="/home" element={<HomeScreen />} />
+        <Route path="/result" element={<HomeScreen />} />
+        <Route path="/admit-card" element={<HomeScreen />} />
+        <Route path="/latest-jobs" element={<HomeScreen />} />
         {/* Fallback to home for unknown routes */}
         <Route path="*" element={<HomeScreen />} />
       </Routes>
@@ -17,4 +19,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
