@@ -17,7 +17,7 @@ const formatResponse = (data, page, limit, total) => ({
 // 1. Create a New Post
 const createPost = async (req, res) => {
   try {
-    
+
     const newPost = new Post(req.body);
     const savedPost = await newPost.save();
     res.status(201).json({ success: true, data: savedPost });
@@ -57,7 +57,7 @@ const insertBulkPosts = async (req, res) => {
     // Handle Duplicate Key Error (E11000) gracefully
     if (err.code === 11000) {
       return res.status(207).json({ // 207 = Multi-Status
-        success: true, 
+        success: true,
         message: "Bulk insert completed with some duplicates skipped.",
         insertedCount: err.result ? err.result.nInserted : "Unknown",
         error: "Duplicate slugs found and skipped"
@@ -103,10 +103,10 @@ const deletePost = async (req, res) => {
 const deleteAllPosts = async (req, res) => {
   try {
     const result = await Post.deleteMany({});
-    res.json({ 
-      success: true, 
-      message: 'All posts deleted successfully', 
-      deletedCount: result.deletedCount 
+    res.json({
+      success: true,
+      message: 'All posts deleted successfully',
+      deletedCount: result.deletedCount
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -146,11 +146,13 @@ const getJobs = async (req, res) => {
       ];
     }
 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const total = await Post.countDocuments(query);
+
     const posts = await Post.find(query)
-      .select('postTitle slug organization totalVacancyCount importantDates isLive')
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
+      .skip(skip)
       .limit(parseInt(limit));
 
     // Lightweight response for listing
@@ -160,7 +162,8 @@ const getJobs = async (req, res) => {
       slug: post.slug,
       org: post.organization,
       vacancies: post.totalVacancyCount || "N/A",
-      lastDate: post.importantDates.find(d => d.label.toLowerCase().includes('last date'))?.value || "N/A"
+      lastDate: post.importantDates?.find(d => d.label?.toLowerCase().includes('last'))?.value || "N/A", // "last" label more flexible for various formats
+      createdAt: post.createdAt, // Optionally send createdAt for debugging or frontend sorting
     }));
 
     res.json(formatResponse(data, page, limit, total));
@@ -168,6 +171,7 @@ const getJobs = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // 7. Get Admit Cards
 const getAdmitCards = async (req, res) => {
@@ -232,7 +236,7 @@ const getResults = async (req, res) => {
 const getExams = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    
+
     const query = {
       "importantDates.label": { $regex: /Exam Date|Test Date|CBT Date/i }
     };
@@ -262,10 +266,10 @@ const getAnswerKeys = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const query = { postType: 'ANSWER_KEY' };
-    
+
     const total = await Post.countDocuments(query);
     const posts = await Post.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit));
-    
+
     res.json(formatResponse(posts, page, limit, total));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -301,14 +305,14 @@ const getStats = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-const getallPost = async(req,res)=>{
-    try {
-    const response = await Post.find();
+const getallPost = async (req, res) => {
+  try {
+    const response = await Post.find().sort({ createdAt: -1 });
     res.json(response)
-    } catch (err) {
-        console.error(err);
+  } catch (err) {
+    console.error(err);
 
-    }
+  }
 
 
 }
