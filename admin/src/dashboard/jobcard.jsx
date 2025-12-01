@@ -89,7 +89,7 @@ export default function JobCard() {
                 <JobRow
                   key={job._id || job.id}
                   id={job._id || job.id}
-                  title={job.postName || job.name || "Untitled"}
+                  title={job.postTitle || job.name || "Untitled"}
                   category={job.tag || job.category || "-"}
                   date={
                     job.createdAt

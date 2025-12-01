@@ -5,8 +5,8 @@ export const getJobs = createAsyncThunk(
   "job/getJobs",
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/jobs");
-      return data;
+      const { data } = await api.get("/get-jobs");
+      return data?.data || data;
     } catch (error) {
       return rejectWithValue(error?.response?.data?.message || error.message || "Failed to fetch jobs");
     }
@@ -183,7 +183,7 @@ const jobSlice = createSlice({
       .addCase(getJobs.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(getJobs.fulfilled, (state, action) => {
         state.loading = false;
-        state.jobs = action.payload?.jobs || action.payload || [];
+        state.jobs = action.payload?.response || action.payload?.jobs || action.payload || [];
       })
       .addCase(getJobs.rejected, (state, action) => {
         state.loading = false;
