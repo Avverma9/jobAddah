@@ -89,8 +89,8 @@ export default function JobCard() {
                 <JobRow
                   key={job._id || job.id}
                   id={job._id || job.id}
-                  title={job.postTitle || job.name || "Untitled"}
-                  category={job.tag || job.category || "-"}
+                  title={job.title || job.name || "Untitled"}
+                  category={job.org || job.category || "-"}
                   date={
                     job.createdAt
                       ? new Date(job.createdAt).toLocaleDateString("en-IN", {
