@@ -332,7 +332,7 @@ export default function AllJobs() {
                     Organization
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Last Date
+                    Upload Date
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
@@ -374,7 +374,7 @@ export default function AllJobs() {
                       id={job._id}
                       title={job.title || "Untitled"}
                       category={job.org || "-"}
-                      date={formatDate(job.lastDate || job.createdAt)}
+                      date={formatDate( job.createdAt)}
                       status={job.status || "Active"}
                     />
                   ))
