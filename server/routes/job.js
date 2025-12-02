@@ -25,7 +25,7 @@ const {
 // ==================================================================
 
 // 1. Get Lists (Categorized)
-router.get("/get-jobs", getJobs);               // Fetch Latest Jobs
+router.get("/get-jobs", verifyToken,authorizeRoles("admin", "super_admin"),getJobs);               // Fetch Latest Jobs
 router.get("/admit-cards", getAdmitCards);      // Fetch Admit Cards
 router.get("/results", getResults);             // Fetch Results
 router.get("/exams", getExams);                 // Fetch Upcoming Exams
