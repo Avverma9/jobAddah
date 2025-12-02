@@ -16,10 +16,14 @@ import {
   ArrowUpDown
 } from "lucide-react";
 
+
 export default function AllJobs() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { jobs: jobData, loading, error } = useSelector((state) => state.job);
+
+  // Ensure jobs is always an array to prevent downstream errors.
+  const { jobs, loading, error } = useSelector((state) => state.job);
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
@@ -29,8 +33,10 @@ export default function AllJobs() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    dispatch(getJobs());
-  }, [dispatch]);
+    if (jobs.length === 0) {
+      dispatch(getJobs());
+    }
+  }, [dispatch, jobs.length]);
 
   const handleEditClick = (id) => {
     navigate(`/dashboard/job-edit/${id}`);
@@ -43,6 +49,11 @@ export default function AllJobs() {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     try {
+      // Check if it's a human-readable date (like "19 Dec 2025")
+      if (dateString.includes("Dec") || dateString.includes("Jan") || dateString.includes("Nov")) {
+        return dateString;
+      }
+      // Otherwise parse ISO format
       return new Date(dateString).toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -58,18 +69,23 @@ export default function AllJobs() {
   };
 
   const filteredAndSortedJobs = useMemo(() => {
-    if (!Array.isArray(jobData)) return [];
+ 
+    if (jobs.length === 0) return [];
     
-    let filtered = jobData.filter((job) => {
-      const matchesSearch = (job.postName || job.name || "")
+    let filtered = jobs.filter((job) => {
+      // Fixed: Use job.title instead of job.postName || job.name
+      const matchesSearch = (job.title || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
+      // Fixed: Use job.org directly
       const matchesCategory = filterCategory === "All" || 
-        (job?.data?.tag || job?.data?.category) === filterCategory;
+        (job.org || "") === filterCategory;
       
+      // Status filter (default to "Active" if not provided)
+      const jobStatus = job.status || "Active";
       const matchesStatus = filterStatus === "All" || 
-        (job.status || "Active") === filterStatus;
+        jobStatus === filterStatus;
       
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -81,7 +97,8 @@ export default function AllJobs() {
     });
 
     return filtered;
-  }, [jobData, searchTerm, filterCategory, filterStatus, sortOrder]);
+  
+  }, [jobs, searchTerm, filterCategory, filterStatus, sortOrder]); // jobs is now guaranteed to be an array
 
   const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
   
@@ -101,7 +118,7 @@ export default function AllJobs() {
       </td>
       <td className="px-6 py-4">
         <span className="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
-          {category}
+          {category || "-"}
         </span>
       </td>
       <td className="px-6 py-4 text-gray-700 font-medium">{date}</td>
@@ -210,7 +227,7 @@ export default function AllJobs() {
             Export Data
           </button>
         </div>
-
+ 
         {/* Search & Filters */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           <div className="flex flex-col lg:flex-row gap-3">
@@ -231,21 +248,20 @@ export default function AllJobs() {
 
             {/* Filters */}
             <div className="flex flex-wrap sm:flex-nowrap gap-3">
-              {/* Category */}
+              {/* Category - Updated with actual organizations from API */}
               <div className="relative w-full sm:w-48">
                 <select 
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
                   className="w-full appearance-none bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 pl-3 pr-10 py-2.5 outline-none cursor-pointer transition-all"
                 >
-                  <option value="All">All Categories</option>
-                  <option value="Post Graduate Job">Post Graduate Job</option>
-                  <option value="Graduate Job">Graduate Job</option>
-                  <option value="10th Pass Job">10th Pass Job</option>
-                  <option value="12th Pass Job">12th Pass Job</option>
-                  <option value="SSC">SSC</option>
-                  <option value="Bank">Bank</option>
-                  <option value="Railway">Railway</option>
+                  <option value="All">All Organizations</option>
+                  <option value="BSSC">BSSC</option>
+                  <option value="BTSC Bihar">BTSC Bihar</option>
+                  <option value="RRB">RRB</option>
+                  <option value="Bank of Baroda">Bank of Baroda</option>
+                  <option value="RSSB Rajasthan">RSSB Rajasthan</option>
+                  <option value="West Bengal SSC">West Bengal SSC</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
                   <Filter size={14} />
@@ -313,10 +329,10 @@ export default function AllJobs() {
                     Post Name
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Category
+                    Organization
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Date
+                    Last Date
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
@@ -354,11 +370,11 @@ export default function AllJobs() {
                 ) : (
                   paginatedJobs.map((job) => (
                     <JobRow
-                      key={job._id || job.id}
-                      id={job._id || job.id}
-                      title={job.postName || job.name || "Untitled"}
-                      category={job?.data?.tag || job?.data?.category || "-"}
-                      date={formatDate(job.createdAt)}
+                      key={job._id}
+                      id={job._id}
+                      title={job.title || "Untitled"}
+                      category={job.org || "-"}
+                      date={formatDate(job.lastDate || job.createdAt)}
                       status={job.status || "Active"}
                     />
                   ))
