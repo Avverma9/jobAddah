@@ -32,7 +32,7 @@ const incrementVisitCount = (jobId) => {
 const getTopVisitedIds = (limit = 10) => {
   const counts = getVisitCounts();
   return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1]) // Sort by visit count descending
+    .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
     .map(([id]) => id);
 };
@@ -68,7 +68,7 @@ const isNewJob = (createdAt) => {
   if (!createdAt) return false;
   const created = new Date(createdAt).getTime();
   const now = Date.now();
-  return (now - created) <= 3 * 24 * 60 * 60 * 1000; // 3 days
+  return (now - created) <= 3 * 24 * 60 * 60 * 1000;
 };
 
 const ListItem = ({ item, colorTheme, showTrending = false }) => {
@@ -80,6 +80,8 @@ const ListItem = ({ item, colorTheme, showTrending = false }) => {
       case 'blue': return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', btn: 'bg-blue-600 hover:bg-blue-700' };
       case 'green': return { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', btn: 'bg-emerald-600 hover:bg-emerald-700' };
       case 'orange': return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', btn: 'bg-orange-600 hover:bg-orange-700' };
+      case 'pink': return { text: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-100', btn: 'bg-pink-600 hover:bg-pink-700' };
+      case 'purple': return { text: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100', btn: 'bg-purple-600 hover:bg-purple-700' };
       default: return { text: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-100', btn: 'bg-gray-600 hover:bg-gray-700' };
     }
   };
@@ -167,6 +169,8 @@ const SectionColumn = ({ title, icon: Icon, data, colorTheme, showTrending = fal
       case 'blue': return 'bg-gradient-to-r from-blue-600 to-indigo-500 shadow-blue-200';
       case 'green': return 'bg-gradient-to-r from-emerald-600 to-green-500 shadow-emerald-200';
       case 'orange': return 'bg-gradient-to-r from-orange-600 to-amber-500 shadow-orange-200';
+      case 'pink': return 'bg-gradient-to-r from-pink-600 to-rose-500 shadow-pink-200';
+      case 'purple': return 'bg-gradient-to-r from-purple-600 to-violet-500 shadow-purple-200';
       default: return 'bg-gray-600';
     }
   };
@@ -238,6 +242,9 @@ export default function HomeScreen() {
     const results = [];
     const admitCards = [];
     const latestJobs = [];
+    const answerKeys = [];
+    const admissions = [];
+    const scholarships = [];
     const topVisited = [];
 
     // Top 10 most visited job IDs
@@ -257,9 +264,17 @@ export default function HomeScreen() {
 
       // Categorize by postType field
       if (job.postType === 'RESULT' || job.postType === 'ANSWER_KEY') {
-        results.push(job);
+        if (job.postType === 'ANSWER_KEY') {
+          answerKeys.push(job);
+        } else {
+          results.push(job);
+        }
       } else if (job.postType === 'ADMIT_CARD') {
         admitCards.push(job);
+      } else if (job.postType === 'ADMISSION') {
+        admissions.push(job);
+      } else if (job.postType === 'SCHOLARSHIP') {
+        scholarships.push(job);
       } else {
         latestJobs.push(job);
       }
@@ -269,7 +284,7 @@ export default function HomeScreen() {
     const visitCounts = getVisitCounts();
     topVisited.sort((a, b) => (visitCounts[b.id] || 0) - (visitCounts[a.id] || 0));
 
-    return { results, admitCards, latestJobs, topVisited };
+    return { results, admitCards, latestJobs, answerKeys, admissions, scholarships, topVisited };
   }, [apiData, searchQuery]);
 
   return (
@@ -280,12 +295,12 @@ export default function HomeScreen() {
         <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-blue-700 to-transparent z-10"></div>
         <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-blue-600 to-transparent z-10"></div>
         <div className="animate-marquee whitespace-nowrap flex gap-10 items-center px-4">
-           {categorized.latestJobs.slice(0, 5).map((job, i) => (
-             <span key={i} className="flex items-center gap-2 font-medium">
-               <Bell size={14} className="fill-yellow-400 text-yellow-400 animate-pulse" /> {job.title}
-             </span>
-           ))}
-           {categorized.latestJobs.length === 0 && <span>Welcome to JobAddah - India's No.1 Job Portal</span>}
+          {categorized.latestJobs.slice(0, 5).map((job, i) => (
+            <span key={i} className="flex items-center gap-2 font-medium">
+              <Bell size={14} className="fill-yellow-400 text-yellow-400 animate-pulse" /> {job.title}
+            </span>
+          ))}
+          {categorized.latestJobs.length === 0 && <span>Welcome to JobAddah - India's No.1 Job Portal</span>}
         </div>
       </div>
 
@@ -306,10 +321,10 @@ export default function HomeScreen() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-             <QuickCard icon={BookOpen} title="Syllabus" color="orange" />
-             <QuickCard icon={FileText} title="Answer Key" color="pink" />
-             <QuickCard icon={Award} title="Scholarship" color="purple" />
-             <QuickCard icon={ExternalLink} title="Admission" color="blue" />
+            <QuickCard icon={BookOpen} title="Syllabus" color="orange" />
+            <QuickCard icon={FileText} title="Answer Key" color="pink" />
+            <QuickCard icon={Award} title="Scholarship" color="purple" />
+            <QuickCard icon={ExternalLink} title="Admission" color="blue" />
           </div>
         </div>
 
@@ -324,7 +339,7 @@ export default function HomeScreen() {
             {categorized.topVisited.length > 0 && (
               <div className="grid grid-cols-1 gap-6">
                 <SectionColumn 
-                  title="Most Viewed" 
+                  title="Recent visits" 
                   icon={TrendingUp} 
                   data={categorized.topVisited} 
                   colorTheme="orange"
@@ -334,7 +349,7 @@ export default function HomeScreen() {
               </div>
             )}
 
-            {/* Original 3 columns */}
+            {/* First Row - 3 Columns: Result, Admit Card, Latest Jobs */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <SectionColumn 
                 title="Result" 
@@ -356,6 +371,31 @@ export default function HomeScreen() {
                 data={categorized.latestJobs} 
                 colorTheme="green" 
                 postType="JOB"
+              />
+            </div>
+
+            {/* Second Row - 3 Columns: Answer Keys, Admission, Scholarships */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <SectionColumn 
+                title="Answer Keys" 
+                icon={FileText} 
+                data={categorized.answerKeys} 
+                colorTheme="pink" 
+                postType="ANSWER_KEY"
+              />
+              <SectionColumn 
+                title="Admission" 
+                icon={BookOpen} 
+                data={categorized.admissions} 
+                colorTheme="purple" 
+                postType="ADMISSION"
+              />
+              <SectionColumn 
+                title="Scholarships" 
+                icon={Award} 
+                data={categorized.scholarships} 
+                colorTheme="blue" 
+                postType="SCHOLARSHIP"
               />
             </div>
           </div>
