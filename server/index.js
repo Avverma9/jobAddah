@@ -11,7 +11,7 @@ connectDB();
 
 // Allow all origins and allow credentials so frontends on any origin can use the HttpOnly cookie.
 // We set origin: true to echo the request origin (can't set '*' when credentials=true).
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: "*", credentials: false }));
 app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 
