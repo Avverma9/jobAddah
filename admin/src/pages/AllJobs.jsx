@@ -13,23 +13,26 @@ import {
   ChevronRight,
   Edit2,
   MoreVertical,
-  ArrowUpDown
+  ArrowUpDown,
+  X,
+  Eye,
+  Trash2
 } from "lucide-react";
-
 
 export default function AllJobs() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Ensure jobs is always an array to prevent downstream errors.
   const { jobs, loading, error } = useSelector((state) => state.job);
-
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -40,6 +43,13 @@ export default function AllJobs() {
 
   const handleEditClick = (id) => {
     navigate(`/dashboard/job-edit/${id}`);
+    setOpenMenuId(null);
+  };
+
+  const handleViewClick = (job) => {
+    setSelectedJob(job);
+    setIsModalOpen(true);
+    setOpenMenuId(null);
   };
 
   const handleGoBack = () => {
@@ -49,11 +59,9 @@ export default function AllJobs() {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     try {
-      // Check if it's a human-readable date (like "19 Dec 2025")
       if (dateString.includes("Dec") || dateString.includes("Jan") || dateString.includes("Nov")) {
         return dateString;
       }
-      // Otherwise parse ISO format
       return new Date(dateString).toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -69,20 +77,16 @@ export default function AllJobs() {
   };
 
   const filteredAndSortedJobs = useMemo(() => {
- 
     if (jobs.length === 0) return [];
     
     let filtered = jobs.filter((job) => {
-      // Fixed: Use job.title instead of job.postName || job.name
       const matchesSearch = (job.title || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
-      // Fixed: Use job.org directly
       const matchesCategory = filterCategory === "All" || 
         (job.org || "") === filterCategory;
       
-      // Status filter (default to "Active" if not provided)
       const jobStatus = job.status || "Active";
       const matchesStatus = filterStatus === "All" || 
         jobStatus === filterStatus;
@@ -97,8 +101,7 @@ export default function AllJobs() {
     });
 
     return filtered;
-  
-  }, [jobs, searchTerm, filterCategory, filterStatus, sortOrder]); // jobs is now guaranteed to be an array
+  }, [jobs, searchTerm, filterCategory, filterStatus, sortOrder]);
 
   const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
   
@@ -111,7 +114,174 @@ export default function AllJobs() {
     setCurrentPage(1);
   }, [searchTerm, filterCategory, filterStatus, sortOrder]);
 
-  const JobRow = ({ id, title, category, date, status }) => (
+  // Modal Component
+  const JobDetailsModal = ({ job, isOpen, onClose }) => {
+    if (!isOpen || !job) return null;
+
+    const getFieldLabel = (key) => {
+      const labels = {
+        _id: "Job ID",
+        title: "Job Title",
+        org: "Organization",
+        status: "Status",
+        createdAt: "Created Date",
+        updatedAt: "Updated Date",
+        description: "Description",
+        salary: "Salary",
+        location: "Location",
+        experience: "Experience",
+        qualifications: "Qualifications",
+        category: "Category",
+        deadline: "Application Deadline",
+        applicants: "Applicants",
+        vacancies: "Vacancies"
+      };
+      return labels[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+    };
+
+    const isValidValue = (value) => {
+      return value !== null && value !== undefined && value !== '';
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          {/* Modal Header */}
+          <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between border-b border-blue-500">
+            <h2 className="text-xl font-bold text-white">{job.title || "Job Details"}</h2>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-blue-500/30 p-2 rounded-lg transition-colors"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div className="p-6 space-y-6">
+            {/* Status Badge */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-600">Status:</span>
+              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${
+                (job.status || 'Active').toLowerCase() === 'active' 
+                  ? 'bg-emerald-100 text-emerald-700' 
+                  : (job.status || '').toLowerCase() === 'draft'
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
+                  (job.status || 'Active').toLowerCase() === 'active' 
+                    ? 'bg-emerald-500' 
+                    : (job.status || '').toLowerCase() === 'draft'
+                    ? 'bg-amber-500'
+                    : 'bg-red-500'
+                }`}></span>
+                {job.status || "Active"}
+              </span>
+            </div>
+
+            {/* Dynamic Fields Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {Object.entries(job).map(([key, value]) => {
+                if (!isValidValue(value) || key === '_id') return null;
+                if (typeof value === 'object') return null;
+
+                return (
+                  <div key={key} className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                      {getFieldLabel(key)}
+                    </label>
+                    <p className="text-sm font-medium text-gray-900 break-words">
+                      {key === 'createdAt' || key === 'updatedAt' 
+                        ? formatDate(value) 
+                        : String(value)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Job ID Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                  Job ID
+                </label>
+                <p className="text-sm font-mono text-gray-900 break-all">{job._id || "-"}</p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 pt-4 flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handleEditClick(job._id);
+                  onClose();
+                }}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Edit2 size={16} />
+                Edit Job
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Action Menu Component
+  const ActionMenu = ({ jobId, job }) => {
+    return (
+      <div className="relative group">
+        <button 
+          onClick={() => setOpenMenuId(openMenuId === jobId ? null : jobId)}
+          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+          aria-label="More options"
+        >
+          <MoreVertical size={18} />
+        </button>
+
+        {openMenuId === jobId && (
+          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-40 py-1">
+            <button
+              onClick={() => handleViewClick(job)}
+              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+            >
+              <Eye size={16} className="text-blue-600" />
+              <span>View Details</span>
+            </button>
+            <button
+              onClick={() => handleEditClick(job._id)}
+              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors border-b border-gray-100"
+            >
+              <Edit2 size={16} className="text-blue-600" />
+              <span>Edit</span>
+            </button>
+            <button
+              onClick={() => {
+                console.log("Delete job:", job._id);
+                setOpenMenuId(null);
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+            >
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const JobRow = ({ id, title, category, date, status, fullJob }) => (
     <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
       <td className="px-6 py-4">
         <div className="font-medium text-gray-900">{title}</div>
@@ -130,20 +300,7 @@ export default function AllJobs() {
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEditClick(id)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
-            aria-label={`Edit ${title}`}
-          >
-            <Edit2 size={14} />
-            Edit
-          </button>
-          <button 
-            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            aria-label="More options"
-          >
-            <MoreVertical size={18} />
-          </button>
+          <ActionMenu jobId={id} job={fullJob} />
         </div>
       </td>
     </tr>
@@ -248,7 +405,7 @@ export default function AllJobs() {
 
             {/* Filters */}
             <div className="flex flex-wrap sm:flex-nowrap gap-3">
-              {/* Category - Updated with actual organizations from API */}
+              {/* Category */}
               <div className="relative w-full sm:w-48">
                 <select 
                   value={filterCategory}
@@ -374,8 +531,9 @@ export default function AllJobs() {
                       id={job._id}
                       title={job.title || "Untitled"}
                       category={job.org || "-"}
-                      date={formatDate( job.createdAt)}
+                      date={formatDate(job.createdAt)}
                       status={job.status || "Active"}
+                      fullJob={job}
                     />
                   ))
                 )}
@@ -424,6 +582,16 @@ export default function AllJobs() {
         </div>
 
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal 
+        job={selectedJob} 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJob(null);
+        }} 
+      />
     </div>
   );
 }

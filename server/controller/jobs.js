@@ -292,6 +292,7 @@ const getStats = async (req, res) => {
       Post.countDocuments({ postType: 'JOB' }),
       Post.countDocuments({ postType: 'ADMIT_CARD' }),
       Post.countDocuments({ postType: 'RESULT' }),
+      Post.countDocuments({ postType: 'ADMISSION' }),
       Post.countDocuments({ postType: 'ANSWER_KEY' })
     ]);
 
@@ -302,7 +303,8 @@ const getStats = async (req, res) => {
         jobs: stats[1],
         admitCards: stats[2],
         results: stats[3],
-        answerKeys: stats[4]
+        admissions: stats[4],
+        answerKeys: stats[5]
       }
     });
   } catch (err) {
