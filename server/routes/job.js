@@ -16,7 +16,8 @@ const {
   getAnswerKeys,  // Filtered: Answer Keys
   getStats,        // Dashboard Stats
   insertBulkPosts,
-  getallPost
+  getallPost,
+  getDocsById
 } = require("../controller/jobs");
 
 // ==================================================================
@@ -30,6 +31,7 @@ router.get("/results", getResults);             // Fetch Results
 router.get("/exams", getExams);                 // Fetch Upcoming Exams
 router.get("/answer-keys", getAnswerKeys);      // Fetch Answer Keys
 router.get("/get-all",getallPost)
+router.get("/jobs/:id",getDocsById)
 // 2. Get Single Post Details
 // Note: This handles ID or Slug (e.g., /posts/6741d8... OR /posts/rrb-group-d-2025)
 router.get("/posts/:id", getPostDetails);
