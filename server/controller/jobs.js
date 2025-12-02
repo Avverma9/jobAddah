@@ -172,7 +172,11 @@ const getJobs = async (req, res) => {
   }
 };
 
-
+const getDocsById = async (req, res) => {
+  const { id } = req.params
+  const post = await Post.findById(id);
+  return res.status(200).json(post)
+}
 // 7. Get Admit Cards
 const getAdmitCards = async (req, res) => {
   try {
@@ -329,5 +333,6 @@ module.exports = {
   getAnswerKeys,
   getStats,
   insertBulkPosts,
-  getallPost
+  getallPost,
+  getDocsById
 };
