@@ -6,7 +6,7 @@ import { setLoading } from "../redux/slices/ui"; // Import the setLoading action
 // Base axios instance
 const api = axios.create({
   baseURL: baseUrl,
-  withCredentials: true, // if you use httpOnly cookies; safe to keep
+  withCredentials: false, // if you use httpOnly cookies; safe to keep
 });
 
 // Simple authHeader helper
