@@ -3,6 +3,8 @@ import userReducer from "./slices/user";
 import sidebarReducer from "./slices/sidebar";
 import jobReducer from "./slices/job";
 import uiReducer from "./slices/ui";
+import resourceReducer from "./slices/resources";
+
 
 const rootReducer = combineReducers({
   // Add your slice reducers here
@@ -10,6 +12,7 @@ const rootReducer = combineReducers({
   sidebar: sidebarReducer,
   job: jobReducer,
   ui: uiReducer,
+  resource: resourceReducer,
 });
 
 export default rootReducer;
