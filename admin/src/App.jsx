@@ -6,6 +6,10 @@ import CreateJob from './pages/CreateJob';
 import JobEdit from './component/JobEdit';
 import Layout from './dashboard/Layout';
 import AllJobs from './pages/AllJobs';
+import AllAdmitCards from './pages/AllAdmitCards';
+import AllResults from './pages/AllResults';
+import AllExams from './pages/AllExams';
+import AllAnswerKeys from './pages/AllAnswerKeys';
 
 const ProtectedRoute = () => {
   const { isAuthenticated } = useSelector((state) => state.user);
@@ -25,6 +29,10 @@ function App() {
           <Route path="/create-job" element={<CreateJob />} />
           <Route path="/dashboard/job-edit/:id" element={<JobEdit />} />
           <Route path="/dashboard/all-jobs" element={<AllJobs />} />
+          <Route path="/dashboard/admit-cards" element={<AllAdmitCards />} />
+          <Route path="/dashboard/results" element={<AllResults />} />
+          <Route path="/dashboard/exams" element={<AllExams />} />
+          <Route path="/dashboard/answer-keys" element={<AllAnswerKeys />} />
         </Route>
       </Route>
     </Routes>

@@ -6,6 +6,7 @@ import {
   BookOpen,
   GraduationCap,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import JobCard from "./jobcard";
 
@@ -87,9 +88,12 @@ export default function JobAddahAdmin() {
               <h3 className="text-lg font-semibold text-slate-800">
                 Latest Results
               </h3>
-              <button className="text-sm font-medium text-blue-600 hover:underline">
+              <Link
+                to="/dashboard/results"
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
                 View All
-              </button>
+              </Link>
             </div>
 
             <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
@@ -143,9 +147,12 @@ export default function JobAddahAdmin() {
               )}
             </ul>
 
-            <button className="mt-4 w-full rounded border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-              Manage Admit Cards
-            </button>
+            <Link
+              to="/dashboard/admit-cards"
+              className="mt-4 block w-full rounded border border-slate-200 py-2 text-center text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              View All
+            </Link>
           </WidgetCard>
 
           {/* Exams Widget */}
@@ -168,6 +175,12 @@ export default function JobAddahAdmin() {
                 </p>
               )}
             </ul>
+            <Link
+              to="/dashboard/exams"
+              className="mt-4 block w-full rounded border border-slate-200 py-2 text-center text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              View All
+            </Link>
           </WidgetCard>
 
           {/* Answer Keys Widget */}
@@ -190,6 +203,12 @@ export default function JobAddahAdmin() {
                 </p>
               )}
             </ul>
+            <Link
+              to="/dashboard/answer-keys"
+              className="mt-4 block w-full rounded border border-slate-200 py-2 text-center text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              View All
+            </Link>
           </WidgetCard>
         </div>
       </div>

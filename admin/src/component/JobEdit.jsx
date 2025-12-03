@@ -319,20 +319,7 @@ export default function JobEditPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mb-6 shadow-2xl">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-white rounded-full animate-spin"></div>
-          </div>
-          <p className="text-white font-bold text-lg">Loading Job Details</p>
-          <p className="text-blue-200 text-sm mt-2">Please wait while we fetch the information...</p>
-        </div>
-      </div>
-    );
-  }
-
+  
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center p-4">
