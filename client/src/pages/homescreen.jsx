@@ -161,13 +161,13 @@ const ListItem = ({ item, colorTheme, showTrending = false }) => {
     <Link
       to={`/post?_id=${item.id}`}
       onClick={handleViewDetails}
-      className="group block border-b border-gray-100 last:border-0 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+      className="group block border-b border-gray-100 dark:border-gray-700 last:border-0 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
     >
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <div className="flex justify-between items-start gap-2">
             <h3
-              className={`text-sm font-semibold text-gray-800 group-hover:${theme.text} leading-snug`}
+              className={`text-sm font-semibold text-gray-800 dark:text-gray-100 group-hover:${theme.text} leading-snug`}
             >
               {item.title}
             </h3>
@@ -247,7 +247,7 @@ const SectionColumn = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
       <div
         className={`${getHeaderStyle()} p-4 text-white flex justify-between items-center shadow-md z-10`}
       >
@@ -319,15 +319,15 @@ const PrivateJobCard = ({ job }) => {
     <Link
       to={`/post?_id=${job.id}`}
       onClick={() => incrementVisitCount(job.id)}
-      className="block bg-white rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-4"
+      className="block bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow p-4"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
             {job.title}
           </h3>
           {job.organization && (
-            <p className="text-xs text-gray-500 mt-1">{job.organization}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">{job.organization}</p>
           )}
           <div className="mt-3 text-[12px] text-gray-600 flex items-center gap-3">
             <Calendar size={14} />
@@ -340,7 +340,7 @@ const PrivateJobCard = ({ job }) => {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300">
             {job.postType || "Job"}
           </span>
           <button className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium">
@@ -438,7 +438,7 @@ export default function HomeScreen() {
   }, [apiData, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
       <Header />
 
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white text-sm py-2 shadow-md overflow-hidden relative">
@@ -474,7 +474,7 @@ export default function HomeScreen() {
               placeholder="Search for jobs, admit cards, results..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white"
+              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
             />
           </div>
 
@@ -556,7 +556,7 @@ export default function HomeScreen() {
 
             <div
               id="private-jobs"
-              className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-900 text-white p-6 gap-4">
                 <div>
@@ -575,7 +575,7 @@ export default function HomeScreen() {
                   </Link>
               </div>
 
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 bg-gradient-to-b from-slate-50 to-white">
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-gray-900 dark:to-gray-800">
                 {categorized.privateJobs.length > 0 ? (
                   categorized.privateJobs.map((job) => (
                     <PrivateJobCard key={job.id} job={job} />
@@ -590,8 +590,6 @@ export default function HomeScreen() {
           </div>
         )}
       </main>
-
-    
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(100%); }

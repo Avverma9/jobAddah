@@ -561,12 +561,6 @@ export default function PostDetail({ idFromProp }) {
           </div>
         </div>
       </main>
-
-      <footer className="border-t border-gray-200 dark:border-gray-800 mt-8 bg-white dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto px-3 py-4 text-center text-xs text-gray-600 dark:text-gray-400 font-medium">
-          © 2025 JobAddah. All rights reserved. | Stay updated with latest sarkari job notifications.
-        </div>
-      </footer>
     </div>
   );
 }

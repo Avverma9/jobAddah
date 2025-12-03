@@ -4,10 +4,12 @@ import PostDetail from "./pages/post";
 import ViewAll from "./pages/view-all";
 import PrivateJobs from "./pages/private-jobs";
 import Footer from "./components/footer";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/post" element={<PostDetail />} />

@@ -49,10 +49,23 @@ export default function Header() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Prefer directly setting scrollTop on the scrollable container to avoid
+      // causing a global document scroll (some browsers may scroll viewport
+      // when using scrollIntoView on fixed-position elements).
+      try {
+        const el = messagesContainerRef.current;
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        } else {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: 'nearest' });
+        }
+      } catch (e) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: 'nearest' });
+      }
     };
 
     useEffect(() => {
@@ -124,7 +137,7 @@ export default function Header() {
             </div>
 
             {/* Body */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 dark:bg-gray-950/50 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+            <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 dark:bg-gray-950/50 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
               {messages.map((msg, index) => (
                 <div key={index} className={`flex gap-3 ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
                   
