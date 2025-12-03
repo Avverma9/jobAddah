@@ -215,7 +215,7 @@ export default function Header() {
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center space-x-6">
               <nav className="flex space-x-1">
-                {['Home', "Result", "Admit Card", "Latest Jobs"].map((nav) => (
+                {['Home', "Result", "Admit Card", "Govt Jobs", "Private Jobs"].map((nav) => (
                   <a
                     key={nav}
                     href={`/${nav.toLowerCase().replace(' ', '-')}`}
