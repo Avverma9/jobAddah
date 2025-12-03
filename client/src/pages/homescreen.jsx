@@ -72,7 +72,6 @@ const isNewJob = (createdAt) => {
 };
 
 const ListItem = ({ item, colorTheme, showTrending = false }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const getThemeColors = () => {
     switch (colorTheme) {
@@ -88,77 +87,50 @@ const ListItem = ({ item, colorTheme, showTrending = false }) => {
 
   const theme = getThemeColors();
 
-  const handleViewDetails = (e) => {
+  const handleViewDetails = () => {
     incrementVisitCount(item.id);
   };
 
   return (
-    <div className="group border-b border-gray-100 dark:border-gray-700 last:border-0">
-      <div 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-      >
-        <div className="flex gap-3">
-          <ChevronRight size={18} className={`mt-0.5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-          
-          <div className="flex-1">
-            <div className="flex justify-between items-start gap-2">
-              <h3 className={`text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:${theme.text} leading-snug`}>
-                {item.title}
-              </h3>
-              <div className="flex items-center gap-1">
-                {showTrending && (
-                  <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <TrendingUp size={10} /> HOT
-                  </span>
-                )}
-                {item.isNew && <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">NEW</span>}
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-              {item.lastDate && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Calendar size={12} />
-                  <span>Last Date: <span className="font-medium text-red-500">{item.lastDate}</span></span>
-                </div>
+    <Link
+      to={`/post?_id=${item.id}`}
+      onClick={handleViewDetails}
+      className="group block border-b border-gray-100 dark:border-gray-700 last:border-0 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <div className="flex justify-between items-start gap-2">
+            <h3 className={`text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:${theme.text} leading-snug`}>
+              {item.title}
+            </h3>
+            <div className="flex items-center gap-1 shrink-0">
+              {showTrending && (
+                <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <TrendingUp size={10} /> HOT
+                </span>
               )}
-              {item.totalPosts > 0 && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Briefcase size={12} />
-                  <span>Posts: <span className="font-medium text-gray-700 dark:text-gray-300">{item.totalPosts}</span></span>
-                </div>
-              )}
+              {item.isNew && <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">NEW</span>}
             </div>
           </div>
+          
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+            {item.lastDate && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Calendar size={12} />
+                <span>Last Date: <span className="font-medium text-red-500">{item.lastDate}</span></span>
+              </div>
+            )}
+            {item.totalPosts > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Briefcase size={12} />
+                <span>Posts: <span className="font-medium text-gray-700 dark:text-gray-300">{item.totalPosts}</span></span>
+              </div>
+            )}
+          </div>
         </div>
+        <ChevronRight size={18} className="mt-0.5 text-gray-400 group-hover:text-gray-600 transition-transform group-hover:translate-x-0.5" />
       </div>
-
-      {isExpanded && (
-        <div className="px-4 pb-4 pl-10 bg-gray-50/50 dark:bg-gray-800/30">
-          {item.organization && (
-            <p className="text-xs text-gray-500 mb-2 font-medium">{item.organization}</p>
-          )}
-          
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {item.allFields.map((field, i) => (
-              <div key={i} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
-                <span className="text-gray-400 block">{field.label}</span>
-                <span className="text-gray-700 dark:text-gray-200 font-medium">{field.value}</span>
-              </div>
-            ))}
-          </div>
-
-          <a 
-            href={`/post?_id=${item.id}`}
-            onClick={handleViewDetails}
-            className={`inline-flex items-center gap-1.5 text-xs font-bold text-white px-4 py-2 rounded-lg shadow-sm transition-transform active:scale-95 ${theme.btn}`}
-          >
-            View Details <ExternalLink size={12} />
-          </a>
-        </div>
-      )}
-    </div>
+    </Link>
   );
 };
 
