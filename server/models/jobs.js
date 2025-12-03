@@ -18,7 +18,7 @@ const PostSchema = new mongoose.Schema({
   postType: {
     type: String,
     required: true,
-    enum: ['JOB', 'ADMIT_CARD', 'RESULT', 'ANSWER_KEY', 'SYLLABUS', 'ADMISSION','SCHOLARSHIP'],
+    enum: ['JOB', 'ADMIT_CARD', 'RESULT', 'ANSWER_KEY', 'SYLLABUS', 'ADMISSION','SCHOLARSHIP','PRIVATE_JOB'],
     default: 'JOB',
     index: true
   },
