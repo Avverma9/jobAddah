@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { pageview } from '../util/gtag';
 
 export default function ScrollToTop() {
   const location = useLocation();
@@ -13,6 +14,13 @@ export default function ScrollToTop() {
       window.scrollTo(0, 0);
     }
   // include pathname and search explicitly to catch query changes
+    try {
+      const consent = typeof window !== 'undefined' ? window.localStorage.getItem('jobaddah_consent') : null;
+      const autostart = import.meta.env.VITE_ANALYTICS_AUTOSTART === 'true';
+      if (consent === 'accepted' || autostart) {
+        pageview(location.pathname + location.search);
+      }
+    } catch (e) {}
   }, [location.pathname, location.search]);
 
   return null;

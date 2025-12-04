@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
+import AdSlot from "../components/AdSlot";
 import {
   ChevronLeft, ExternalLink, Calendar, Briefcase,
   GraduationCap, IndianRupee, Users, FileText, AlertCircle,
@@ -538,6 +539,16 @@ export default function PostDetail({ idFromProp }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>{post.importantDates && render_important_dates(post.importantDates)}</div>
           <div>{post.ageLimit && render_age_limit(post.ageLimit)}</div>
+        </div>
+
+        {/* Ad Slot (consent gated) */}
+        <div className="mx-auto max-w-6xl px-3">
+          <AdSlot
+            client={import.meta.env.VITE_ADSENSE_CLIENT || 'ca-pub-XXXXXXXXXXXX'}
+            slot={import.meta.env.VITE_ADSENSE_SLOT || '1234567890'}
+            style={{ display: 'block', width: '100%', height: '90px' }}
+            className="my-4"
+          />
         </div>
 
         {/* Single Column Sections */}
