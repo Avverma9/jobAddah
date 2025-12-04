@@ -18,6 +18,18 @@ export const getJobs = createAsyncThunk(
   }
 );
 
+
+export const getPrivateJob = createAsyncThunk(
+  "job/getPrivateJob",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/get-private-jobs");
+      return Array.isArray(data?.data) ? data.data : [];
+    } catch (error) {
+      return rejectWithValue(error?.response?.data?.message || "Failed to fetch jobs");
+    }
+  }
+);
 // Create Single Job
 export const createJob = createAsyncThunk(
   "job/createJob",
@@ -143,7 +155,18 @@ const jobSlice = createSlice({
         state.error = action.payload;
         state.jobs = [];
       });
-
+ /* --- Get Private Jobs --- */
+    builder
+      .addCase(getPrivateJob.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(getPrivateJob.fulfilled, (state, action) => {
+        state.loading = false;
+        state.jobs = action.payload;
+      })
+      .addCase(getPrivateJob.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.jobs = [];
+      });
     /* --- Create Job --- */
     builder
       .addCase(createJob.pending, (state) => { state.loading = true; })

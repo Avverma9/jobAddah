@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Code, X, Copy, AlertCircle, CheckCircle, ChevronDown, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Code,
+  X,
+  Copy,
+  AlertCircle,
+  CheckCircle,
+  ChevronDown,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { getJobById, updateJob } from "../../redux/slices/job";
 
 export default function JobEditPage() {
@@ -35,7 +46,12 @@ export default function JobEditPage() {
   }, [currentJob]);
 
   const eval_path = (obj, path_value) => {
-    return path_value.split(".").reduce((accumulator, key) => (accumulator ? accumulator[key] : undefined), obj);
+    return path_value
+      .split(".")
+      .reduce(
+        (accumulator, key) => (accumulator ? accumulator[key] : undefined),
+        obj
+      );
   };
 
   const update_field = (path_value, value) => {
@@ -70,7 +86,14 @@ export default function JobEditPage() {
   const create_empty_object_based_on = (obj) => {
     const new_obj = {};
     for (const key in obj) {
-      new_obj[key] = typeof obj[key] === "string" ? "" : typeof obj[key] === "number" ? 0 : typeof obj[key] === "boolean" ? false : "";
+      new_obj[key] =
+        typeof obj[key] === "string"
+          ? ""
+          : typeof obj[key] === "number"
+          ? 0
+          : typeof obj[key] === "boolean"
+          ? false
+          : "";
     }
     return new_obj;
   };
@@ -106,7 +129,10 @@ export default function JobEditPage() {
       errors.title = "Job title is required";
     }
 
-    if (!form_data.description || form_data.description.toString().trim() === "") {
+    if (
+      !form_data.description ||
+      form_data.description.toString().trim() === ""
+    ) {
       errors.description = "Job description is required";
     }
 
@@ -137,10 +163,6 @@ export default function JobEditPage() {
   };
 
   const handle_update = async () => {
-    if (!validate_form()) {
-      return;
-    }
-
     set_is_saving(true);
     try {
       const cleaned_data = clean_data(form_data);
@@ -151,7 +173,9 @@ export default function JobEditPage() {
       }, 1500);
     } catch (err) {
       console.error("Update error:", err);
-      set_validation_errors({ general: "Failed to update job. Please try again." });
+      set_validation_errors({
+        general: "Failed to update job. Please try again.",
+      });
     } finally {
       set_is_saving(false);
     }
@@ -183,9 +207,16 @@ export default function JobEditPage() {
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></div>
               <span className="capitalize tracking-wide">{label_text}</span>
-              <span className="ml-2 text-xs bg-blue-500 px-2.5 py-1 rounded-full font-bold">{value.length} items</span>
+              <span className="ml-2 text-xs bg-blue-500 px-2.5 py-1 rounded-full font-bold">
+                {value.length} items
+              </span>
             </div>
-            <ChevronDown size={20} className={`transition-transform duration-300 ${is_expanded ? "rotate-180" : ""}`} />
+            <ChevronDown
+              size={20}
+              className={`transition-transform duration-300 ${
+                is_expanded ? "rotate-180" : ""
+              }`}
+            />
           </button>
 
           {is_expanded && (
@@ -193,16 +224,25 @@ export default function JobEditPage() {
               {value.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 transition-colors">
                   <div className="text-slate-400 text-4xl mb-3">📋</div>
-                  <p className="text-slate-500 font-medium">No items added yet</p>
-                  <p className="text-slate-400 text-sm mt-1">Click add button to create new entry</p>
+                  <p className="text-slate-500 font-medium">
+                    No items added yet
+                  </p>
+                  <p className="text-slate-400 text-sm mt-1">
+                    Click add button to create new entry
+                  </p>
                 </div>
               ) : (
                 value.map((item, index) => (
-                  <div key={index} className="group relative border-2 border-slate-200 rounded-2xl p-6 bg-gradient-to-br from-white via-slate-50 to-white hover:from-slate-50 hover:via-blue-50 hover:to-white transition-all duration-300 shadow-sm hover:shadow-xl hover:border-blue-300 transform hover:scale-[1.02]">
+                  <div
+                    key={index}
+                    className="group relative border-2 border-slate-200 rounded-2xl p-6 bg-gradient-to-br from-white via-slate-50 to-white hover:from-slate-50 hover:via-blue-50 hover:to-white transition-all duration-300 shadow-sm hover:shadow-xl hover:border-blue-300 transform hover:scale-[1.02]"
+                  >
                     <div className="absolute top-0 right-0 w-1 h-12 bg-gradient-to-b from-blue-500 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                     <div className="flex items-start justify-between mb-5">
-                      <span className="inline-block px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold tracking-wider">Item {index + 1}</span>
+                      <span className="inline-block px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold tracking-wider">
+                        Item {index + 1}
+                      </span>
                       <button
                         onClick={() => remove_array_item(full_path, index)}
                         className="inline-flex items-center justify-center w-9 h-9 text-red-600 bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-red-100 hover:scale-110 active:scale-95"
@@ -215,7 +255,11 @@ export default function JobEditPage() {
                     <div className="space-y-4">
                       {typeof item === "object" && item !== null
                         ? Object.keys(item).map((sub_key) =>
-                            render_field(sub_key, item[sub_key], `${full_path}.${index}`)
+                            render_field(
+                              sub_key,
+                              item[sub_key],
+                              `${full_path}.${index}`
+                            )
                           )
                         : render_field(index, item, full_path)}
                     </div>
@@ -227,7 +271,10 @@ export default function JobEditPage() {
                 onClick={() => add_array_item(full_path)}
                 className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 group mt-6"
               >
-                <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                <Plus
+                  size={20}
+                  className="group-hover:rotate-90 transition-transform duration-300"
+                />
                 Add New Item
               </button>
             </div>
@@ -249,7 +296,12 @@ export default function JobEditPage() {
               <div className="w-2.5 h-2.5 rounded-full bg-indigo-300 animate-pulse"></div>
               <span className="capitalize tracking-wide">{label_text}</span>
             </div>
-            <ChevronDown size={20} className={`transition-transform duration-300 ${is_expanded ? "rotate-180" : ""}`} />
+            <ChevronDown
+              size={20}
+              className={`transition-transform duration-300 ${
+                is_expanded ? "rotate-180" : ""
+              }`}
+            />
           </button>
 
           {is_expanded && (
@@ -271,11 +323,15 @@ export default function JobEditPage() {
               <input
                 type="checkbox"
                 checked={value}
-                onChange={(event) => update_field(full_path, event.target.checked)}
+                onChange={(event) =>
+                  update_field(full_path, event.target.checked)
+                }
                 className="w-6 h-6 cursor-pointer accent-blue-600 rounded-lg border-2 border-slate-300 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
               />
             </div>
-            <span className="font-medium text-slate-700 capitalize group-hover:text-slate-900 transition-colors duration-200 select-none">{label_text}</span>
+            <span className="font-medium text-slate-700 capitalize group-hover:text-slate-900 transition-colors duration-200 select-none">
+              {label_text}
+            </span>
           </label>
         </div>
       );
@@ -306,7 +362,9 @@ export default function JobEditPage() {
             placeholder={`Enter ${label_text.toLowerCase()}`}
           />
           {input_type === "date" && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none">📅</div>
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none">
+              📅
+            </div>
           )}
         </div>
         {has_error && (
@@ -319,7 +377,6 @@ export default function JobEditPage() {
     );
   };
 
-  
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center p-4">
@@ -328,9 +385,13 @@ export default function JobEditPage() {
             <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center shadow-lg">
               <AlertCircle className="text-red-600" size={24} />
             </div>
-            <h3 className="text-xl font-bold text-red-900">Error Loading Job</h3>
+            <h3 className="text-xl font-bold text-red-900">
+              Error Loading Job
+            </h3>
           </div>
-          <p className="text-red-700 text-sm mb-8 leading-relaxed">{error || "Failed to load job details. Please try again."}</p>
+          <p className="text-red-700 text-sm mb-8 leading-relaxed">
+            {error || "Failed to load job details. Please try again."}
+          </p>
           <button
             onClick={() => navigate(-1)}
             className="w-full px-6 py-3 text-red-700 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-300 rounded-lg font-bold hover:from-red-100 hover:to-red-200 hover:border-red-400 transition-all duration-200 active:scale-95 shadow-md"
@@ -350,27 +411,38 @@ export default function JobEditPage() {
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-bold transition-all duration-200 mb-8 group text-sm tracking-wide"
           >
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform duration-200" />
+            <ArrowLeft
+              size={20}
+              className="group-hover:-translate-x-1 transition-transform duration-200"
+            />
             BACK TO JOBS
           </button>
 
           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-8 rounded-2xl shadow-2xl">
-            <h1 className="text-5xl font-black tracking-tighter mb-3">Edit Job Posting</h1>
-            <p className="text-slate-300 font-medium">Update job details and save your changes</p>
+            <h1 className="text-5xl font-black tracking-tighter mb-3">
+              Edit Job Posting
+            </h1>
+            <p className="text-slate-300 font-medium">
+              Update job details and save your changes
+            </p>
           </div>
         </div>
 
         {success_message && (
           <div className="mb-8 flex items-center gap-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-600 rounded-xl shadow-lg animate-fade-in">
             <CheckCircle className="text-green-600 flex-shrink-0" size={24} />
-            <p className="text-green-800 font-bold text-lg">{success_message}</p>
+            <p className="text-green-800 font-bold text-lg">
+              {success_message}
+            </p>
           </div>
         )}
 
         {validation_errors.general && (
           <div className="mb-8 flex items-center gap-4 p-6 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-600 rounded-xl shadow-lg">
             <AlertCircle className="text-red-600 flex-shrink-0" size={24} />
-            <p className="text-red-800 font-bold text-lg">{validation_errors.general}</p>
+            <p className="text-red-800 font-bold text-lg">
+              {validation_errors.general}
+            </p>
           </div>
         )}
 
@@ -400,7 +472,9 @@ export default function JobEditPage() {
         <div className="space-y-6">
           {Object.keys(form_data).length === 0 ? (
             <div className="text-center py-16 bg-white border-2 border-dashed border-slate-300 rounded-2xl shadow-sm">
-              <p className="text-slate-500 font-bold text-lg">No form data available</p>
+              <p className="text-slate-500 font-bold text-lg">
+                No form data available
+              </p>
             </div>
           ) : (
             Object.keys(form_data).map((key) =>
@@ -414,7 +488,9 @@ export default function JobEditPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-gradient-to-br from-white to-slate-50 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-fade-in border border-slate-200">
             <div className="flex items-center justify-between p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 flex-shrink-0 border-b border-slate-700">
-              <h2 className="text-2xl font-black text-white tracking-tight">Job Data Export</h2>
+              <h2 className="text-2xl font-black text-white tracking-tight">
+                Job Data Export
+              </h2>
               <button
                 onClick={() => set_show_json_modal(false)}
                 className="text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-all duration-200 active:scale-95 shadow-lg"
