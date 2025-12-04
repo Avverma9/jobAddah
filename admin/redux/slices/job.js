@@ -119,6 +119,7 @@ const initialState = {
   loading: false,
   error: null,
   message: null,
+  privateJobs: { loading: false, error: null, data: [] },
 
   admitCards: { loading: false, error: null, data: [], pagination: {} },
   admitCardDetail: { loading: false, error: null, data: null },
@@ -138,6 +139,16 @@ const jobSlice = createSlice({
     clearError: (state) => { state.error = null; },
     clearMessage: (state) => { state.message = null; },
     clearCurrentJob: (state) => { state.currentJob = null; },
+    // Optimistic local removal (UI only) for undo support
+    removeLocalJobs: (state, action) => {
+      const ids = Array.isArray(action.payload) ? action.payload : [action.payload];
+      state.jobs = (state.jobs || []).filter((j) => !ids.includes(j._id || j.id));
+    },
+    restoreJobs: (state, action) => {
+      const items = Array.isArray(action.payload) ? action.payload : [action.payload];
+      // Prepend restored items to jobs list
+      state.jobs = [...items, ...(state.jobs || [])];
+    },
     resetJobState: () => initialState
   },
 
@@ -157,15 +168,16 @@ const jobSlice = createSlice({
       });
  /* --- Get Private Jobs --- */
     builder
-      .addCase(getPrivateJob.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(getPrivateJob.pending, (state) => { state.privateJobs.loading = true; state.privateJobs.error = null; })
       .addCase(getPrivateJob.fulfilled, (state, action) => {
-        state.loading = false;
-        state.jobs = action.payload;
+        state.privateJobs.loading = false;
+        // payload may be an array or an object with .data
+        state.privateJobs.data = Array.isArray(action.payload) ? action.payload : (action.payload?.data || []);
       })
       .addCase(getPrivateJob.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        state.jobs = [];
+        state.privateJobs.loading = false;
+        state.privateJobs.error = action.payload;
+        state.privateJobs.data = [];
       });
     /* --- Create Job --- */
     builder
@@ -258,7 +270,9 @@ export const {
   clearError,
   clearMessage,
   clearCurrentJob,
-  resetJobState
+  resetJobState,
+  removeLocalJobs,
+  restoreJobs
 } = jobSlice.actions;
 
 export default jobSlice.reducer;

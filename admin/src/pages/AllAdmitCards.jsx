@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAdmitCards } from "../../redux/slices/resources";
+import { getAdmitCards, deleteAdmitCard } from "../../redux/slices/resources";
+import toast from 'react-hot-toast';
 import { Link } from "react-router-dom";
 import { FileText } from "lucide-react";
 
@@ -16,6 +17,8 @@ export default function AllAdmitCards() {
   const items = (admitCards?.data || []).filter((it) =>
     (it.postTitle || it.title || "").toLowerCase().includes(query.toLowerCase())
   );
+
+  
 
   return (
     <div className="space-y-6">
@@ -87,6 +90,22 @@ export default function AllAdmitCards() {
                       >
                         Edit
                       </Link>
+                      <button
+                        onClick={async () => {
+                          const ok = window.confirm("Delete this admit card?");
+                          if (!ok) return;
+                          try {
+                            await dispatch(deleteAdmitCard(id)).unwrap();
+                            toast.success('Admit card deleted');
+                          } catch (err) {
+                            console.error('Delete failed', err);
+                            toast.error('Failed to delete admit card');
+                          }
+                        }}
+                        className="inline-block rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );

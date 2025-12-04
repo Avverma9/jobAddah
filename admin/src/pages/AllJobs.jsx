@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getJobs } from "../../redux/slices/job";
+import { getJobs, deleteJob } from "../../redux/slices/job";
+import toast from 'react-hot-toast';
 import { 
   ArrowLeft, 
   Briefcase, 
@@ -239,6 +240,7 @@ export default function AllJobs() {
 
   // Action Menu Component
   const ActionMenu = ({ jobId, job }) => {
+    
     return (
       <div className="relative group">
         <button 
@@ -266,9 +268,17 @@ export default function AllJobs() {
               <span>Edit</span>
             </button>
             <button
-              onClick={() => {
-                console.log("Delete job:", job._id);
+              onClick={async () => {
                 setOpenMenuId(null);
+                const ok = window.confirm("Are you sure you want to delete this job?");
+                if (!ok) return;
+                try {
+                  await dispatch(deleteJob(job._id)).unwrap();
+                  toast.success('Job deleted');
+                } catch (err) {
+                  console.error('Delete failed:', err);
+                  toast.error('Failed to delete job');
+                }
               }}
               className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
             >
