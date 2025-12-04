@@ -200,6 +200,47 @@ const getJobs = async (req, res) => {
   }
 };
 
+
+const getPrivateJob = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const query = { postType: "PRIVATE_JOB" };
+
+    if (search) {
+      query.$or = [
+        { postTitle: { $regex: search, $options: "i" } },
+        { organization: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const total = await Post.countDocuments(query);
+
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Lightweight response for listing
+    const data = posts.map((post) => ({
+      _id: post._id,
+      title: post.postTitle,
+      slug: post.slug,
+      org: post.organization,
+      vacancies: post.totalVacancyCount || "N/A",
+      lastDate:
+        post.importantDates?.find((d) =>
+          d.label?.toLowerCase().includes("last")
+        )?.value || "N/A", // "last" label more flexible for various formats
+      createdAt: post.createdAt, // Optionally send createdAt for debugging or frontend sorting
+    }));
+
+    res.json(formatResponse(data, page, limit, total));
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 const getDocsById = async (req, res) => {
   const { id } = req.params;
   const post = await Post.findById(id);
@@ -378,4 +419,5 @@ module.exports = {
   insertBulkPosts,
   getallPost,
   getDocsById,
+  getPrivateJob
 };

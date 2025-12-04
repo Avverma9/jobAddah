@@ -9,15 +9,16 @@ const {
   deletePost,
   deleteAllPosts,
   getPostDetails, // Single Post (Get by ID or Slug)
-  getJobs,        // Filtered: Online Forms
-  getAdmitCards,  // Filtered: Admit Cards
-  getResults,     // Filtered: Results
-  getExams,       // Filtered: Upcoming Exams
-  getAnswerKeys,  // Filtered: Answer Keys
-  getStats,        // Dashboard Stats
+  getJobs, // Filtered: Online Forms
+  getAdmitCards, // Filtered: Admit Cards
+  getResults, // Filtered: Results
+  getExams, // Filtered: Upcoming Exams
+  getAnswerKeys, // Filtered: Answer Keys
+  getStats, // Dashboard Stats
   insertBulkPosts,
   getallPost,
-  getDocsById
+  getDocsById,
+  getPrivateJob,
 } = require("../controller/jobs");
 
 // ==================================================================
@@ -25,17 +26,23 @@ const {
 // ==================================================================
 
 // 1. Get Lists (Categorized)
-router.get("/get-jobs", verifyToken,authorizeRoles("admin", "super_admin"),getJobs);               // Fetch Latest Jobs
-router.get("/admit-cards", getAdmitCards);      // Fetch Admit Cards
-router.get("/results", getResults);             // Fetch Results
-router.get("/exams", getExams);                 // Fetch Upcoming Exams
-router.get("/answer-keys", getAnswerKeys);      // Fetch Answer Keys
-router.get("/get-all",getallPost)
-router.get("/jobs/:id",getDocsById)
+router.get(
+  "/get-jobs",
+  verifyToken,
+  authorizeRoles("admin", "super_admin"),
+  getJobs
+);
+router.get("/get-private-jobs", getPrivateJob); // Fetch Latest Jobs
+// Fetch Latest Jobs
+router.get("/admit-cards", getAdmitCards); // Fetch Admit Cards
+router.get("/results", getResults); // Fetch Results
+router.get("/exams", getExams); // Fetch Upcoming Exams
+router.get("/answer-keys", getAnswerKeys); // Fetch Answer Keys
+router.get("/get-all", getallPost);
+router.get("/jobs/:id", getDocsById);
 // 2. Get Single Post Details
 // Note: This handles ID or Slug (e.g., /posts/6741d8... OR /posts/rrb-group-d-2025)
 router.get("/posts/:id", getPostDetails);
-
 
 // ==================================================================
 // 🔴 PROTECTED ADMIN ROUTES (Requires Login & Admin Role)
@@ -58,7 +65,7 @@ router.post(
 );
 router.post(
   "/bulk-insert",
-  verifyToken, 
+  verifyToken,
   authorizeRoles("admin", "super_admin"), // Security zaroori hai
   insertBulkPosts
 );
