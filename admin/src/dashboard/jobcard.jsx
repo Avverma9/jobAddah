@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getJobs } from "../../redux/slices/job";
+import { getJobs, deleteJob } from "../../redux/slices/job";
 
 export default function JobCard() {
   const dispatch = useDispatch();
@@ -43,12 +43,30 @@ export default function JobCard() {
         </span>
       </td>
       <td className="px-6 py-4">
-        <button
-          onClick={() => handleEditClick(id)}
-          className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          Edit
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleEditClick(id)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={async () => {
+              const ok = window.confirm("Delete this job?");
+              if (!ok) return;
+              try {
+                await dispatch(deleteJob(id)).unwrap();
+                alert("Job deleted");
+              } catch (err) {
+                console.error("Delete failed:", err);
+                alert("Failed to delete: " + (err?.message || "Unknown"));
+              }
+            }}
+            className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
       </td>
     </tr>
   );

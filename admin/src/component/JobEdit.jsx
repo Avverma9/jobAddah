@@ -13,7 +13,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { getJobById, updateJob } from "../../redux/slices/job";
+import { getJobById, updateJob, deleteJob } from "../../redux/slices/job";
 
 export default function JobEditPage() {
   const { id } = useParams();
@@ -453,6 +453,27 @@ export default function JobEditPage() {
           >
             <Code size={20} />
             Export JSON
+          </button>
+          <button
+            onClick={async () => {
+              const ok = window.confirm("Are you sure you want to delete this job?");
+              if (!ok) return;
+              set_is_saving(true);
+              try {
+                await dispatch(deleteJob(id)).unwrap();
+                set_success_message("✓ Job deleted");
+                setTimeout(() => navigate('/dashboard/all-jobs'), 800);
+              } catch (err) {
+                console.error('Delete failed', err);
+                set_validation_errors({ general: 'Failed to delete job. Please try again.' });
+              } finally {
+                set_is_saving(false);
+              }
+            }}
+            className="inline-flex items-center gap-3 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm tracking-wide uppercase"
+          >
+            <Trash2 size={20} />
+            Delete Job
           </button>
 
           <button

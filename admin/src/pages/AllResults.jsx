@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getResults } from "../../redux/slices/resources";
+import { getResults, deleteResult } from "../../redux/slices/resources";
 import { Link } from "react-router-dom";
 import { Award } from "lucide-react";
 
@@ -85,6 +85,22 @@ export default function AllResults() {
                       >
                         Edit
                       </Link>
+                      <button
+                        onClick={async () => {
+                          const ok = window.confirm("Delete this result?");
+                          if (!ok) return;
+                          try {
+                            await dispatch(deleteResult(id)).unwrap();
+                            alert("Result deleted");
+                          } catch (err) {
+                            console.error('Delete failed', err);
+                            alert('Failed to delete result: ' + (err?.message || err));
+                          }
+                        }}
+                        className="inline-block rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );

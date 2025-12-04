@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getExams } from "../../redux/slices/resources";
+import { getExams, deleteExam } from "../../redux/slices/resources";
 import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 
@@ -87,6 +87,22 @@ export default function AllExams() {
                       >
                         Edit
                       </Link>
+                      <button
+                        onClick={async () => {
+                          const ok = window.confirm("Delete this exam?");
+                          if (!ok) return;
+                          try {
+                            await dispatch(deleteExam(id)).unwrap();
+                            alert("Exam deleted");
+                          } catch (err) {
+                            console.error('Delete failed', err);
+                            alert('Failed to delete exam: ' + (err?.message || err));
+                          }
+                        }}
+                        className="inline-block rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );
