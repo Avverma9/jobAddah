@@ -5,11 +5,13 @@ import ViewAll from "./pages/view-all";
 import PrivateJobs from "./pages/private-jobs";
 import Footer from "./components/footer";
 import ScrollToTop from "./components/ScrollToTop";
+import ConsentBanner from './components/ConsentBanner';
 
 function App() {
   return (
     <Router>
       <ScrollToTop />
+        <ConsentBanner />
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/post" element={<PostDetail />} />

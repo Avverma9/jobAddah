@@ -48,13 +48,16 @@
       ]
     }
     </script>
-    <!-- Google Analytics (replace G-XXXXXXX with your ID) -->
+    <!-- Google Analytics (replace G-XXXXXXXXXX with your Measurement ID) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);} 
       gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX');
+      /* For SPA routing we disable automatic page_view here and
+         send page views manually from client code to get accurate
+         single-page-app route tracking and conversion attribution. */
+      gtag('config', 'G-XXXXXXXXXX', { 'send_page_view': false });
     </script>
   </head>
   <body>
