@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FileText,
@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import JobCard from "./jobcard";
 
 // JOB SLICE
+import { getStats, getPrivateJob } from "../../redux/slices/job";
 
 // RESOURCE SLICE
 import {
@@ -21,13 +22,15 @@ import {
 } from "../../redux/slices/resources";
 
 import { WidgetCard, WidgetLink } from "../pages/WidgetCard";
-import { getStats } from "../../redux/slices/job";
 
 export default function JobAddahAdmin() {
   const dispatch = useDispatch();
+  const [activeJobTab, setActiveJobTab] = useState("public"); // Tab state
 
   // ===== JOB SLICE DATA =====
-  const { stats, loading: statsLoading } = useSelector((state) => state.job);
+  const { stats, loading: statsLoading, privateJobs } = useSelector(
+    (state) => state.job
+  );
 
   // ===== RESOURCE SLICE DATA =====
   const admitCards = useSelector((state) => state.resource.admitCards);
@@ -38,27 +41,28 @@ export default function JobAddahAdmin() {
   // FETCH ALL DATA ON LOAD
   useEffect(() => {
     dispatch(getStats());
+    dispatch(getPrivateJob());
     dispatch(getAdmitCards());
     dispatch(getResults());
     dispatch(getExams());
     dispatch(getAnswerKeys());
   }, [dispatch]);
 
+  // Count total jobs
+  const totalJobs = (stats?.jobs || 0) + (privateJobs?.data?.length || 0);
 
   return (
     <>
-      {/* STATS CARDS */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* ===== STATS CARDS ===== */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          key="live-results"
-          title="Live Results"
-          value={stats?.jobs || 0}
+          title="Total Jobs"
+          value={totalJobs}
           color="bg-green-500"
           icon={<Award />}
           statsLoading={statsLoading}
         />
         <StatCard
-          key="admit-cards"
           title="Admit Cards"
           value={stats?.admitCards || 0}
           color="bg-purple-500"
@@ -66,23 +70,73 @@ export default function JobAddahAdmin() {
           statsLoading={statsLoading}
         />
         <StatCard
-          key="admissions"
           title="Admissions"
           value={stats?.admissions || 0}
           color="bg-orange-500"
           icon={<GraduationCap />}
           statsLoading={statsLoading}
         />
+        <StatCard
+          title="Private Jobs"
+          value={privateJobs?.data?.length || 0}
+          color="bg-blue-500"
+          icon={<Award />}
+          statsLoading={statsLoading}
+        />
       </div>
 
-      {/* MAIN GRID */}
+      {/* ===== MAIN GRID ===== */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ===== LEFT SIDE (JOBS + RESULTS) ===== */}
+        {/* ===== LEFT SIDE (JOBS WITH TABS + RESULTS) ===== */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Jobs Table */}
-          <JobCard />
+          {/* ===== JOBS SECTION WITH TABS ===== */}
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
+            {/* TAB HEADER */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setActiveJobTab("public")}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                    activeJobTab === "public"
+                      ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  Public Jobs
+                </button>
+                <button
+                  onClick={() => setActiveJobTab("private")}
+                  className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                    activeJobTab === "private"
+                      ? "bg-blue-100 text-blue-700 border-b-2 border-blue-600"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  Private Jobs
+                </button>
+              </div>
 
-          {/* Latest Results (LIVE FROM API) */}
+              <Link
+                to={activeJobTab === "public" ? "/dashboard/jobs" : "/dashboard/private-jobs"}
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                View All
+              </Link>
+            </div>
+
+            {/* TAB CONTENT */}
+            <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {activeJobTab === "public" ? (
+                // PUBLIC JOBS TAB
+                <PublicJobsTab />
+              ) : (
+                // PRIVATE JOBS TAB
+                <PrivateJobsTab privateJobs={privateJobs} />
+              )}
+            </div>
+          </div>
+
+          {/* ===== LATEST RESULTS SECTION ===== */}
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h3 className="text-lg font-semibold text-slate-800">
@@ -217,9 +271,52 @@ export default function JobAddahAdmin() {
 }
 
 /* =============================
-   SMALL COMPONENTS
+   COMPONENTS
 ============================= */
 
+// PUBLIC JOBS TAB CONTENT
+const PublicJobsTab = () => {
+  return <JobCard type="public" />;
+};
+
+// PRIVATE JOBS TAB CONTENT
+const PrivateJobsTab = ({ privateJobs }) => {
+  if (!privateJobs?.data || privateJobs.data.length === 0) {
+    return (
+      <p className="p-4 text-center text-slate-400">
+        No private jobs available.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      {privateJobs.data.map((item, idx) => (
+        <div
+          key={idx}
+          className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors duration-200 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-blue-500 group-hover:scale-125 transition-transform"></div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors cursor-pointer">
+                {item.postTitle || item.title || item.slug}
+              </span>
+              {item.company && (
+                <span className="text-xs text-slate-500">{item.company}</span>
+              )}
+            </div>
+          </div>
+          <span className="text-xs text-slate-400 whitespace-nowrap ml-4">
+            {item.date || "Today"}
+          </span>
+        </div>
+      ))}
+    </>
+  );
+};
+
+// STAT CARD COMPONENT
 const StatCard = ({ title, value, color, icon, statsLoading }) => (
   <div className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
     <div
