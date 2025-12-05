@@ -6,7 +6,9 @@ const SIDEBAR = Object.freeze({
   JOBS_VIEW: 'menu.jobs.view',
   JOBS_CREATE: 'menu.jobs.create',
   JOBS_EDIT: 'menu.jobs.edit',
-  USERS_MANAGE: 'menu.users.manage',
+  USERS_MANAGE: 'menu.adminFeatures.manageUsers',
+  ADMIN_FEATURES: 'menu.adminFeatures',
+  MENU_ITEMS_MANAGE: 'menu.adminFeatures.addMenuItems',
   SETTINGS: 'menu.settings'
 });
 
