@@ -106,18 +106,37 @@ router.get('/sidebar/items', async (req, res) => {
 // Create menu item (super_admin only)
 router.post('/sidebar/items', verifyToken, authorizeRoles('super_admin'), async (req, res) => {
   try {
-    const { key, label, route, parent, order, isPublic, permission, icon, iconType, badge, meta } = req.body;
+    const { key, label, route, parent, isPublic, permission, icon, iconType, badge, meta } = req.body;
     if (!key || !label) return res.status(400).json({ message: 'key and label required' });
 
     const exists = await MenuItem.findOne({ key });
     if (exists) return res.status(400).json({ message: 'Menu item with this key already exists' });
+
+    let nextOrder;
+
+    // ✅ PARENT KE ANDAR AUTOMATIC LAST ORDER
+    if (parent) {
+      // Same parent ke children me max order find karo
+      const maxChildOrder = await MenuItem.findOne(
+        { parent }, 
+        { order: 1 }
+      ).sort({ order: -1 });
+      nextOrder = (maxChildOrder?.order || 0) + 1;
+    } else {
+      // Root level ke liye max order
+      const maxRootOrder = await MenuItem.findOne(
+        { parent: null }, 
+        { order: 1 }
+      ).sort({ order: -1 }) || { order: 0 };
+      nextOrder = maxRootOrder.order + 1;
+    }
 
     const mi = new MenuItem({
       key,
       label,
       route: route || '',
       parent: parent || null,
-      order: order || 0,
+      order: nextOrder, // ✅ Automatic position (parent ya root)
       isPublic: !!isPublic,
       permission: permission || null,
       icon: icon || null,
