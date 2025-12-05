@@ -5,40 +5,39 @@ import {
   Award,
   BookOpen,
   GraduationCap,
+  Edit2,
+  Trash2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import JobCard from "./jobcard";
 
-// JOB SLICE
-import { getStats, getPrivateJob } from "../../redux/slices/job";
-
-// RESOURCE SLICE
+import { getStats, getPrivateJob, deleteJob } from "../../redux/slices/job";
 import {
   getAdmitCards,
   getResults,
   getExams,
-  getAnswerKeys
+  getAnswerKeys,
+ 
 } from "../../redux/slices/resources";
 
 import { WidgetCard, WidgetLink } from "../pages/WidgetCard";
 
 export default function JobAddahAdmin() {
   const dispatch = useDispatch();
-  const [activeJobTab, setActiveJobTab] = useState("public"); // Tab state
+  const navigate = useNavigate();
+  const [activeJobTab, setActiveJobTab] = useState("public");
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  // ===== JOB SLICE DATA =====
   const { stats, loading: statsLoading, privateJobs } = useSelector(
     (state) => state.job
   );
 
-  // ===== RESOURCE SLICE DATA =====
   const admitCards = useSelector((state) => state.resource.admitCards);
   const results = useSelector((state) => state.resource.results);
   const exams = useSelector((state) => state.resource.exams);
   const answerKeys = useSelector((state) => state.resource.answerKeys);
 
-  // FETCH ALL DATA ON LOAD
   useEffect(() => {
     dispatch(getStats());
     dispatch(getPrivateJob());
@@ -48,12 +47,55 @@ export default function JobAddahAdmin() {
     dispatch(getAnswerKeys());
   }, [dispatch]);
 
-  // Count total jobs
   const totalJobs = (stats?.jobs || 0) + (privateJobs?.data?.length || 0);
+
+  const handleDeletePrivateJob = (id) => {
+    dispatch(deleteJob(id));
+    setConfirmDelete(null);
+  };
+
+  const handleEditPrivateJob = (item) => {
+    navigate(`/dashboard/job-edit/${item._id}`, { state: { job: item } });
+  };
+
+  const handleDeleteResult = (id) => {
+    dispatch(deleteJob({ id, type: "results" }));
+    setConfirmDelete(null);
+  };
+
+  const handleEditResult = (item) => {
+    navigate(`/dashboard/results/edit/${item._id}`, { state: { result: item } });
+  };
+
+  const handleDeleteAdmitCard = (id) => {
+    dispatch(deleteJob({ id, type: "admitCards" }));
+    setConfirmDelete(null);
+  };
+
+  const handleEditAdmitCard = (item) => {
+    navigate(`/dashboard/admit-cards/edit/${item._id}`, { state: { admitCard: item } });
+  };
+
+  const handleDeleteExam = (id) => {
+    dispatch(deleteJob({ id, type: "exams" }));
+    setConfirmDelete(null);
+  };
+
+  const handleEditExam = (item) => {
+    navigate(`/dashboard/exams/edit/${item._id}`, { state: { exam: item } });
+  };
+
+  const handleDeleteAnswerKey = (id) => {
+    dispatch(deleteJob({ id, type: "answerKeys" }));
+    setConfirmDelete(null);
+  };
+
+  const handleEditAnswerKey = (item) => {
+    navigate(`/dashboard/answer-keys/edit/${item._id}`, { state: { answerKey: item } });
+  };
 
   return (
     <>
-      {/* ===== STATS CARDS ===== */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Jobs"
@@ -85,13 +127,9 @@ export default function JobAddahAdmin() {
         />
       </div>
 
-      {/* ===== MAIN GRID ===== */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* ===== LEFT SIDE (JOBS WITH TABS + RESULTS) ===== */}
         <div className="lg:col-span-2 space-y-6">
-          {/* ===== JOBS SECTION WITH TABS ===== */}
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
-            {/* TAB HEADER */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex gap-4">
                 <button
@@ -115,28 +153,21 @@ export default function JobAddahAdmin() {
                   Private Jobs
                 </button>
               </div>
-
-              <Link
-                to={activeJobTab === "public" ? "/dashboard/jobs" : "/dashboard/private-jobs"}
-                className="text-sm font-medium text-blue-600 hover:underline"
-              >
-                View All
-              </Link>
             </div>
 
-            {/* TAB CONTENT */}
             <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
               {activeJobTab === "public" ? (
-                // PUBLIC JOBS TAB
                 <PublicJobsTab />
               ) : (
-                // PRIVATE JOBS TAB
-                <PrivateJobsTab privateJobs={privateJobs} />
+                <PrivateJobsTab
+                  privateJobs={privateJobs}
+                  onEdit={handleEditPrivateJob}
+                  onDelete={(id) => setConfirmDelete({ id, type: "privateJob" })}
+                />
               )}
             </div>
           </div>
 
-          {/* ===== LATEST RESULTS SECTION ===== */}
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <h3 className="text-lg font-semibold text-slate-800">
@@ -163,9 +194,25 @@ export default function JobAddahAdmin() {
                         {item.postTitle || item.title || item.slug}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">
-                      {item.date || "Today"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">
+                        {item.date || "Today"}
+                      </span>
+                      <button
+                        onClick={() => handleEditResult(item)}
+                        className="p-1 text-slate-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: item._id, type: "result" })}
+                        className="p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -177,9 +224,7 @@ export default function JobAddahAdmin() {
           </div>
         </div>
 
-        {/* ===== RIGHT SIDE WIDGETS ===== */}
         <div className="flex flex-col gap-6">
-          {/* Admit Card Widget */}
           <WidgetCard
             title="Admit Cards"
             icon={<FileText size={18} />}
@@ -188,11 +233,35 @@ export default function JobAddahAdmin() {
             <ul className="space-y-3 max-h-48 overflow-y-auto">
               {admitCards?.data?.length > 0 ? (
                 admitCards.data.map((item, idx) => (
-                  <WidgetLink
+                  <li
                     key={idx}
-                    text={item.postTitle || item.title || item.slug}
-                    isNew={idx < 2}
-                  />
+                    className="flex items-center justify-between group hover:bg-slate-50 p-2 rounded transition-colors"
+                  >
+                    <span className="text-xs font-medium text-slate-700 flex-1 group-hover:text-blue-600">
+                      {item.postTitle || item.title || item.slug}
+                    </span>
+                    {idx < 2 && (
+                      <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                        New
+                      </span>
+                    )}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                      <button
+                        onClick={() => handleEditAdmitCard(item)}
+                        className="p-1 text-slate-400 hover:text-blue-600"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: item._id, type: "admitCard" })}
+                        className="p-1 text-slate-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
                 ))
               ) : (
                 <p className="text-xs text-slate-400 text-center py-3">
@@ -209,7 +278,6 @@ export default function JobAddahAdmin() {
             </Link>
           </WidgetCard>
 
-          {/* Exams Widget */}
           <WidgetCard
             title="Upcoming Exams"
             icon={<BookOpen size={18} />}
@@ -218,10 +286,30 @@ export default function JobAddahAdmin() {
             <ul className="space-y-3 max-h-48 overflow-y-auto">
               {exams?.data?.length > 0 ? (
                 exams.data.map((item, idx) => (
-                  <WidgetLink
+                  <li
                     key={idx}
-                    text={item.postTitle || item.title || item.slug}
-                  />
+                    className="flex items-center justify-between group hover:bg-slate-50 p-2 rounded transition-colors"
+                  >
+                    <span className="text-xs font-medium text-slate-700 flex-1 group-hover:text-blue-600">
+                      {item.postTitle || item.title || item.slug}
+                    </span>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                      <button
+                        onClick={() => handleEditExam(item)}
+                        className="p-1 text-slate-400 hover:text-blue-600"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: item._id, type: "exam" })}
+                        className="p-1 text-slate-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
                 ))
               ) : (
                 <p className="text-xs text-slate-400 text-center py-3">
@@ -237,7 +325,6 @@ export default function JobAddahAdmin() {
             </Link>
           </WidgetCard>
 
-          {/* Answer Keys Widget */}
           <WidgetCard
             title="Answer Keys"
             icon={<FileText size={18} />}
@@ -246,10 +333,30 @@ export default function JobAddahAdmin() {
             <ul className="space-y-3 max-h-48 overflow-y-auto">
               {answerKeys?.data?.length > 0 ? (
                 answerKeys.data.map((item, idx) => (
-                  <WidgetLink
+                  <li
                     key={idx}
-                    text={item.postTitle || item.title || item.slug}
-                  />
+                    className="flex items-center justify-between group hover:bg-slate-50 p-2 rounded transition-colors"
+                  >
+                    <span className="text-xs font-medium text-slate-700 flex-1 group-hover:text-blue-600">
+                      {item.postTitle || item.title || item.slug}
+                    </span>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                      <button
+                        onClick={() => handleEditAnswerKey(item)}
+                        className="p-1 text-slate-400 hover:text-blue-600"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: item._id, type: "answerKey" })}
+                        className="p-1 text-slate-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
                 ))
               ) : (
                 <p className="text-xs text-slate-400 text-center py-3">
@@ -266,21 +373,34 @@ export default function JobAddahAdmin() {
           </WidgetCard>
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          onConfirm={() => {
+            if (confirmDelete.type === "privateJob") {
+              handleDeletePrivateJob(confirmDelete.id);
+            } else if (confirmDelete.type === "result") {
+              handleDeleteResult(confirmDelete.id);
+            } else if (confirmDelete.type === "admitCard") {
+              handleDeleteAdmitCard(confirmDelete.id);
+            } else if (confirmDelete.type === "exam") {
+              handleDeleteExam(confirmDelete.id);
+            } else if (confirmDelete.type === "answerKey") {
+              handleDeleteAnswerKey(confirmDelete.id);
+            }
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </>
   );
 }
 
-/* =============================
-   COMPONENTS
-============================= */
-
-// PUBLIC JOBS TAB CONTENT
 const PublicJobsTab = () => {
   return <JobCard type="public" />;
 };
 
-// PRIVATE JOBS TAB CONTENT
-const PrivateJobsTab = ({ privateJobs }) => {
+const PrivateJobsTab = ({ privateJobs, onEdit, onDelete }) => {
   if (!privateJobs?.data || privateJobs.data.length === 0) {
     return (
       <p className="p-4 text-center text-slate-400">
@@ -307,16 +427,31 @@ const PrivateJobsTab = ({ privateJobs }) => {
               )}
             </div>
           </div>
-          <span className="text-xs text-slate-400 whitespace-nowrap ml-4">
-            {item.date || "Today"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 whitespace-nowrap">
+              {item.date || "Today"}
+            </span>
+            <button
+              onClick={() => onEdit(item)}
+              className="p-1 text-slate-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+              title="Edit"
+            >
+              <Edit2 size={16} />
+            </button>
+            <button
+              onClick={() => onDelete(item._id)}
+              className="p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+              title="Delete"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
       ))}
     </>
   );
 };
 
-// STAT CARD COMPONENT
 const StatCard = ({ title, value, color, icon, statsLoading }) => (
   <div className="flex items-center gap-4 rounded-xl bg-white p-5 shadow-sm border border-slate-100 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
     <div
@@ -333,6 +468,33 @@ const StatCard = ({ title, value, color, icon, statsLoading }) => (
       ) : (
         <h4 className="text-2xl font-bold text-slate-800">{value}</h4>
       )}
+    </div>
+  </div>
+);
+
+const ConfirmDeleteModal = ({ onConfirm, onCancel }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 max-w-sm shadow-lg">
+      <h3 className="text-lg font-semibold text-slate-800 mb-2">
+        Confirm Delete
+      </h3>
+      <p className="text-sm text-slate-600 mb-6">
+        Are you sure you want to delete this item? This action cannot be undone.
+      </p>
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+        >
+          Delete
+        </button>
+      </div>
     </div>
   </div>
 );
