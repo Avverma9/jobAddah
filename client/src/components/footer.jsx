@@ -14,7 +14,7 @@ const Footer = () => {
           <div className="space-y-6">
             <h3 className="font-extrabold text-2xl tracking-tight flex items-center gap-2">
               <span className="bg-orange-500 w-1.5 h-6 rounded-full inline-block" />
-              <span className="text-slate-900 dark:text-white">JobAddah</span>
+              <span className="text-slate-900 dark:text-white">JobsAddah</span>
             </h3>
 
             <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">

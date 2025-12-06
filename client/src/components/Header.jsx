@@ -44,7 +44,7 @@ export default function Header() {
   // --- CHAT WIDGET COMPONENT ---
   const GeminiChatWidget = () => {
     const [messages, setMessages] = useState([
-      { text: "Hello! Main JobAddah AI Assistant hu. Jobs, Results ya Admit card se juda kuch bhi puchiye!", isUser: false }
+      { text: "Hello! Main JobsAddah AI Assistant hu. Jobs, Results ya Admit card se juda kuch bhi puchiye!", isUser: false }
     ]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +118,7 @@ export default function Header() {
                   <Bot size={20} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm leading-tight">JobAddah AI</h3>
+                  <h3 className="font-bold text-sm leading-tight">JobsAddah AI</h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
@@ -217,7 +217,7 @@ export default function Header() {
               </div>
               <div className="leading-tight">
                 <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-orange-600 dark:from-rose-400 dark:to-orange-400">
-                  JobAddah
+                  JobsAddah
                 </h1>
                 <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 tracking-widest uppercase">
                   The No.1 Job Portal

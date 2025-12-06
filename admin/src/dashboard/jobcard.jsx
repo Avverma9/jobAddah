@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect } from "react"; 
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { getJobs, deleteJob } from "../../redux/slices/job";
@@ -11,6 +11,55 @@ export default function JobCard() {
   useEffect(() => {
     dispatch(getJobs());
   }, [dispatch]);
+
+  // NEW: Same mapper as AllJobs - API response ko UI-friendly format me convert
+  const mapApiJobToUI = (job) => {
+    // Title: postTitle first, fallback to old title
+    const title = job.postTitle || job.title || job.name || "Untitled";
+
+    // Category/Organization: organization first, fallback to old org/category
+    const category = job.organization || job.org || job.category || "-";
+
+    // Date priority: createdAt -> Application Start dates -> Result dates
+    let displayDate = job.createdAt || "";
+    if (!displayDate && Array.isArray(job.importantDates)) {
+      const datePriority = [
+        "Application Start", "Online Apply Start Date", "Application Start Date",
+        "Batch Start", "Result Declared", "Result Date", "Merit List Released",
+        "Certificate Issued", "Exam Date"
+      ];
+      
+      for (const label of datePriority) {
+        const found = job.importantDates.find(d => 
+          (d.label || "").toLowerCase().includes(label.toLowerCase())
+        );
+        if (found?.value) {
+          displayDate = found.value;
+          break;
+        }
+      }
+    }
+
+    // Status logic based on new API structure
+    let status = "Active";
+    const postType = (job.postType || "").toUpperCase();
+    
+    if (postType === "RESULT") {
+      status = "Expired";
+    } else if (["JOB", "PRIVATEJOB"].includes(postType)) {
+      status = job.isLive === false ? "Expired" : "Active";
+    } else {
+      status = job.status || "Active";
+    }
+
+    return {
+      ...job,
+      title,
+      category,
+      date: displayDate,
+      status,
+    };
+  };
 
   const handleEditClick = (id) => {
     navigate(`/dashboard/job-edit/${id}`);
@@ -26,7 +75,16 @@ export default function JobCard() {
           {category}
         </span>
       </td>
-      <td className="px-6 py-4 text-slate-500">{date}</td>
+      <td className="px-6 py-4 text-slate-500">
+        {date 
+          ? new Date(date).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "-"
+        }
+      </td>
       <td className="px-6 py-4">
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
@@ -71,6 +129,9 @@ export default function JobCard() {
     </tr>
   );
 
+  // NEW: Normalize jobs data before rendering
+  const normalizedJobs = Array.isArray(jobData) ? jobData.map(mapApiJobToUI) : [];
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -102,23 +163,15 @@ export default function JobCard() {
                   Loading...
                 </td>
               </tr>
-            ) : Array.isArray(jobData) && jobData.length > 0 ? (
-              jobData.slice(0, 5).map((job) => (
+            ) : normalizedJobs.length > 0 ? (
+              normalizedJobs.slice(0, 5).map((job) => (
                 <JobRow
                   key={job._id || job.id}
                   id={job._id || job.id}
-                  title={job.title || job.name || "Untitled"}
-                  category={job.org || job.category || "-"}
-                  date={
-                    job.createdAt
-                      ? new Date(job.createdAt).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "-"
-                  }
-                  status={job.status || "Active"}
+                  title={job.title}
+                  category={job.category}
+                  date={job.date}
+                  status={job.status}
                 />
               ))
             ) : (

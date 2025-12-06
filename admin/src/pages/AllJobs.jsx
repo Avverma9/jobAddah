@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 export default function AllJobs() {
@@ -32,6 +33,55 @@ export default function AllJobs() {
       dispatch(getJobs());
     }
   }, [dispatch, jobs.length]);
+
+  // NEW: API response ko UI-friendly format me map karne wala helper
+  const mapApiJobToUI = (job) => {
+    // Title: postTitle first, fallback to old title
+    const title = job.postTitle || job.title || "Untitled";
+
+    // Organization: organization first, fallback to old org
+    const org = job.organization || job.org || "-";
+
+    // Date priority: createdAt -> Application Start dates -> Result dates
+    let displayDate = job.createdAt || "";
+    if (!displayDate && Array.isArray(job.importantDates)) {
+      const datePriority = [
+        "Application Start", "Online Apply Start Date", "Application Start Date",
+        "Batch Start", "Result Declared", "Result Date", "Merit List Released",
+        "Certificate Issued", "Exam Date"
+      ];
+      
+      for (const label of datePriority) {
+        const found = job.importantDates.find(d => 
+          (d.label || "").toLowerCase().includes(label.toLowerCase())
+        );
+        if (found?.value) {
+          displayDate = found.value;
+          break;
+        }
+      }
+    }
+
+    // Status logic based on new API structure
+    let status = "Active";
+    const postType = (job.postType || "").toUpperCase();
+    
+    if (postType === "RESULT") {
+      status = "Expired"; // Results ko expired treat kar rahe hain
+    } else if (["JOB", "PRIVATEJOB"].includes(postType)) {
+      status = job.isLive === false ? "Expired" : "Active";
+    } else {
+      status = job.status || "Active";
+    }
+
+    return {
+      ...job,
+      title,
+      org,
+      createdAt: displayDate,
+      status,
+    };
+  };
 
   const handleEditClick = (id) => {
     navigate(`/dashboard/job-edit/${id}`);
@@ -65,7 +115,7 @@ export default function AllJobs() {
         year: 'numeric'
       });
     } catch {
-      return "-";
+      return dateString || "-";
     }
   };
 
@@ -73,20 +123,24 @@ export default function AllJobs() {
     setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
+  // UPDATED: New API structure ke saath filtering + mapping
   const filteredAndSortedJobs = useMemo(() => {
-    if (jobs.length === 0) return [];
-    
-    let filtered = jobs.filter((job) => {
+    if (!Array.isArray(jobs) || jobs.length === 0) return [];
+
+    // Pehle saare jobs ko normalize karo
+    const normalizedJobs = jobs.map(mapApiJobToUI);
+
+    let filtered = normalizedJobs.filter((job) => {
       const matchesSearch = (job.title || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       
       const matchesCategory = filterCategory === "All" || 
-        (job.org || "") === filterCategory;
+        (job.org || "").toLowerCase() === filterCategory.toLowerCase();
       
       const jobStatus = job.status || "Active";
       const matchesStatus = filterStatus === "All" || 
-        jobStatus === filterStatus;
+        jobStatus.toLowerCase() === filterStatus.toLowerCase();
       
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -111,16 +165,36 @@ export default function AllJobs() {
     setCurrentPage(1);
   }, [searchTerm, filterCategory, filterStatus, sortOrder]);
 
+  // UPDATED: Stats calculation normalized jobs pe
   const statsData = useMemo(() => {
-    if (!Array.isArray(filteredAndSortedJobs)) return { total: 0, active: 0, draft: 0, expired: 0 };
+    if (!Array.isArray(filteredAndSortedJobs)) {
+      return { total: 0, active: 0, draft: 0, expired: 0 };
+    }
     
     return {
       total: filteredAndSortedJobs.length,
-      active: filteredAndSortedJobs.filter(j => (j.status || 'Active').toLowerCase() === 'active').length,
-      draft: filteredAndSortedJobs.filter(j => (j.status || '').toLowerCase() === 'draft').length,
-      expired: filteredAndSortedJobs.filter(j => (j.status || '').toLowerCase() === 'expired').length,
+      active: filteredAndSortedJobs.filter(j => 
+        (j.status || 'Active').toLowerCase() === 'active'
+      ).length,
+      draft: filteredAndSortedJobs.filter(j => 
+        (j.status || '').toLowerCase() === 'draft'
+      ).length,
+      expired: filteredAndSortedJobs.filter(j => 
+        (j.status || '').toLowerCase() === 'expired'
+      ).length,
     };
   }, [filteredAndSortedJobs]);
+
+  // NEW: Dynamic organization options
+  const orgOptions = useMemo(() => {
+    if (!Array.isArray(jobs)) return [];
+    const normalized = jobs.map(mapApiJobToUI);
+    const uniqueOrgs = new Set();
+    normalized.forEach(job => {
+      if (job.org && job.org !== '-') uniqueOrgs.add(job.org);
+    });
+    return Array.from(uniqueOrgs).sort();
+  }, [jobs]);
 
   const getStatusBadge = (status) => {
     const statusLower = (status || 'Active').toLowerCase();
@@ -185,12 +259,9 @@ export default function AllJobs() {
                 className="w-full rounded-lg border border-slate-200 bg-white pl-3 pr-10 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
               >
                 <option value="All">All Organizations</option>
-                <option value="BSSC">BSSC</option>
-                <option value="BTSC Bihar">BTSC Bihar</option>
-                <option value="RRB">RRB</option>
-                <option value="Bank of Baroda">Bank of Baroda</option>
-                <option value="RSSB Rajasthan">RSSB Rajasthan</option>
-                <option value="West Bengal SSC">West Bengal SSC</option>
+                {orgOptions.map((org) => (
+                  <option key={org} value={org}>{org}</option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
             </div>
@@ -306,7 +377,7 @@ export default function AllJobs() {
                   {currentPageJobs.map((job) => {
                     const status = getStatusBadge(job.status);
                     return (
-                      <tr key={job._id} className="transition-colors hover:bg-slate-50/60">
+                      <tr key={job._id || job.id} className="transition-colors hover:bg-slate-50/60">
                         <td className="px-4 py-3 align-middle">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
@@ -314,13 +385,13 @@ export default function AllJobs() {
                                 <Briefcase className="h-3.5 w-3.5" />
                               </span>
                               <span className="line-clamp-2 text-sm font-medium text-slate-900">
-                                {job.title || "Untitled"}
+                                {job.title}
                               </span>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 align-middle text-xs text-slate-600">
-                          {job.org || "-"}
+                          {job.org}
                         </td>
                         <td className="px-4 py-3 align-middle text-xs text-slate-600">
                           {formatDate(job.createdAt)}
@@ -333,14 +404,14 @@ export default function AllJobs() {
                         <td className="px-4 py-3 align-middle text-right">
                           <div className="inline-flex items-center gap-1.5">
                             <button
-                              onClick={() => handleEditClick(job._id)}
+                              onClick={() => handleEditClick(job._id || job.id)}
                               className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-indigo-700"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                               View & Edit
                             </button>
                             <button
-                              onClick={() => handleDelete(job._id)}
+                              onClick={() => handleDelete(job._id || job.id)}
                               className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
