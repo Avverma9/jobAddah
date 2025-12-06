@@ -19,6 +19,8 @@ const {
   getallPost,
   getDocsById,
   getPrivateJob,
+  getExpiringJobsReminder,
+  getJobsSmartByState,
 } = require("../controller/jobs");
 
 // ==================================================================
@@ -28,8 +30,7 @@ const {
 // 1. Get Lists (Categorized)
 router.get(
   "/get-jobs",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
+
   getJobs
 );
 router.get("/get-private-jobs", getPrivateJob); // Fetch Latest Jobs
@@ -39,6 +40,8 @@ router.get("/results", getResults); // Fetch Results
 router.get("/exams", getExams); // Fetch Upcoming Exams
 router.get("/answer-keys", getAnswerKeys); // Fetch Answer Keys
 router.get("/get-all", getallPost);
+router.get("/reminders/expiring-jobs", getExpiringJobsReminder);
+router.get("/smart-by-state", getJobsSmartByState); // General Jobs Listing
 router.get("/jobs/:id", getDocsById);
 // 2. Get Single Post Details
 // Note: This handles ID or Slug (e.g., /posts/6741d8... OR /posts/rrb-group-d-2025)

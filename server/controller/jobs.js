@@ -161,13 +161,21 @@ const getPostDetails = async (req, res) => {
 // 6. Get Online Forms (Latest Jobs)
 const getJobs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search } = req.query;
-    const query = { postType: "JOB" };
+    const { page = 1, limit = 20, search, postType } = req.query;
 
+    const query = {};
+
+    // Dynamic postType filter
+    if (postType && postType !== "ALL") {
+      query.postType = postType.toUpperCase();
+    }
+
+    // Search across multiple fields
     if (search) {
       query.$or = [
         { postTitle: { $regex: search, $options: "i" } },
         { organization: { $regex: search, $options: "i" } },
+        { slug: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -180,25 +188,14 @@ const getJobs = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    // Lightweight response for listing
-    const data = posts.map((post) => ({
-      _id: post._id,
-      title: post.postTitle,
-      slug: post.slug,
-      org: post.organization,
-      vacancies: post.totalVacancyCount || "N/A",
-      lastDate:
-        post.importantDates?.find((d) =>
-          d.label?.toLowerCase().includes("last")
-        )?.value || "N/A", // "last" label more flexible for various formats
-      createdAt: post.createdAt, // Optionally send createdAt for debugging or frontend sorting
-    }));
+   
 
-    res.json(formatResponse(data, page, limit, total));
+    res.json(formatResponse(posts, page, limit, total));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 const getPrivateJob = async (req, res) => {
@@ -472,36 +469,91 @@ const getExpiringJobsReminder = async (req, res) => {
 
 
 const STATE_KEYWORDS = {
+  // Full States
+  "andhra": "Andhra Pradesh",
+  "arunachal": "Arunachal Pradesh",
+  "assam": "Assam",
   "bihar": "Bihar",
   "bssc": "Bihar",
-
+  "chhattisgarh": "Chhattisgarh",
+  "goa": "Goa",
+  "gujarat": "Gujarat",
+  "haryana": "Haryana",
+  "himachal": "Himachal Pradesh",
+  "hp": "Himachal Pradesh",
+  "jharkhand": "Jharkhand",
+  "karnataka": "Karnataka",
+  "kerala": "Kerala",
+  "madhya pradesh": "Madhya Pradesh",
+  "mp": "Madhya Pradesh",
+  "maharashtra": "Maharashtra",
+  "mh": "Maharashtra",
+  "manipur": "Manipur",
+  "meghalaya": "Meghalaya",
+  "mizoram": "Mizoram",
+  "nagaland": "Nagaland",
+  "odisha": "Odisha",
+  "orissa": "Odisha",
+  "punjab": "Punjab",
   "rajasthan": "Rajasthan",
   "rssb": "Rajasthan",
   "rsmssb": "Rajasthan",
-
+  "sikkim": "Sikkim",
+  "tamil": "Tamil Nadu",
+  "tn": "Tamil Nadu",
+  "telangana": "Telangana",
+  "tripura": "Tripura",
+  "uttar pradesh": "Uttar Pradesh",
+  "up": "Uttar Pradesh",
+  "upsssc": "Uttar Pradesh",
+  "uppsc": "Uttar Pradesh",
+  "uttarakhand": "Uttarakhand",
+  "uk": "Uttarakhand",
   "west bengal": "West Bengal",
   "wb": "West Bengal",
   "wbssc": "West Bengal",
 
-  "uttar pradesh": "Uttar Pradesh",
-  "upsssc": "Uttar Pradesh",
-  "uppsc": "Uttar Pradesh",
-
+  // Union Territories
+  "andaman": "Andaman and Nicobar Islands",
+  "nicobar": "Andaman and Nicobar Islands",
+  "chandigarh": "Chandigarh",
+  "dd": "Dadra and Nagar Haveli and Daman and Diu",
+  "daman": "Dadra and Nagar Haveli and Daman and Diu",
+  "diu": "Dadra and Nagar Haveli and Daman and Diu",
   "delhi": "Delhi",
+  "new delhi": "Delhi",
   "dsssb": "Delhi",
+  "jammu": "Jammu and Kashmir",
+  "kashmir": "Jammu and Kashmir",
+  "ladakh": "Ladakh",
+  "lakshadweep": "Lakshadweep",
+  "puducherry": "Puducherry",
+  "pondicherry": "Puducherry",
 
-  "maharashtra": "Maharashtra",
-  "mh": "Maharashtra",
-
-  "kvs": "India",
-  "ssc": "India",
-  "drdo": "India",
-  "afcat": "India",
-  "af": "India",
-  "aiims": "India",
-  "sebi": "India",
-  "ecgc": "India",
-  "bank of baroda": "India"
+  // Central Govt (Return ALL)
+  "ssc": "ALL",
+  "sscsr": "ALL",
+  "sscnr": "ALL",
+  "drdo": "ALL",
+  "afcat": "ALL",
+  "af": "ALL",
+  "army": "ALL",
+  "navy": "ALL",
+  "air force": "ALL",
+  "aiims": "ALL",
+  "sebi": "ALL",
+  "ecgc": "ALL",
+  "rbi": "ALL",
+  "bank of baroda": "ALL",
+  "bob": "ALL",
+  "ibps": "ALL",
+  "railway": "ALL",
+  "rrb": "ALL",
+  "ntpc": "ALL",
+  "ongc": "ALL",
+  "gail": "ALL",
+  "bpsc central": "ALL",
+  "upsc": "ALL"
 };
 
 const detectStateSmart = (job) => {
@@ -517,20 +569,44 @@ const detectStateSmart = (job) => {
 const getJobsSmartByState = async (req, res) => {
   try {
     const { state } = req.query;
-    if (!state)
+
+    if (!state) {
       return res.status(400).json({
         success: false,
-        message: "Please provide ?state=Bihar"
+        message: "Please provide ?state=Bihar or ?state=ALL"
       });
+    }
 
-    const jobs = await Post.find({ postType: "JOB" }).lean();
+    // Build main query
+    const query = { postType: "JOB" };
 
-    const filtered = jobs.filter((job) => {
+    // Use cursor with sorting
+    const cursor = Post.find(query)
+      .sort({ createdAt: -1 })
+      .cursor();
+
+    const allJobs = [];
+    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
+      allJobs.push(doc.toObject());
+    }
+
+    // If state = ALL → return complete sorted list
+    if (state.toUpperCase() === "ALL") {
+      return res.json({
+        success: true,
+        count: allJobs.length,
+        state: "ALL",
+        data: allJobs
+      });
+    }
+
+    // Smart filtering
+    const filtered = allJobs.filter((job) => {
       const detected = detectStateSmart(job);
       return detected.toLowerCase() === state.toLowerCase();
     });
 
-    res.json({
+    return res.json({
       success: true,
       count: filtered.length,
       state,
@@ -538,9 +614,12 @@ const getJobsSmartByState = async (req, res) => {
     });
 
   } catch (err) {
+    console.error("getJobsSmartByState error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+
 
 module.exports = {
   createPost,
