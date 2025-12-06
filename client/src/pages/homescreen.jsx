@@ -824,7 +824,7 @@ export default function HomeScreen() {
           ))}
           {filteredData.stateJobs.length === 0 && (
             <span className="text-[11px] sm:text-sm">
-              Welcome to JobAddah - India's No.1 Job Portal
+              Welcome to JobsAddah - India's No.1 Job Portal
             </span>
           )}
         </div>

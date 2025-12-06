@@ -1,4 +1,4 @@
-# SEO Guide for JobAddah
+# SEO Guide for JobsAddah
 
 This file summarizes what was implemented and recommended next steps to get the site ranking for keywords like "govt job", "sarkari result", "naukri", etc.
 
@@ -56,7 +56,7 @@ I can implement automatic image conversion scripts and add a few helpers for laz
 
 ## Off-site SEO recommendations
 
-- Create profiles on high-authority sites (e.g., Naukri employer pages, government exam forums, education blogs) and list JobAddah.
+- Create profiles on high-authority sites (e.g., Naukri employer pages, government exam forums, education blogs) and list JobsAddah.
 - Outreach to exam-focused blogs and colleges for backlinks.
 - Post consistent content: exam analysis, application how-tos, and notification roundups.
 

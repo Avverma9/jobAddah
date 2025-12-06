@@ -364,7 +364,7 @@ export default function PostDetail({ idFromProp }) {
           </h2>
           <p className="text-lg lg:text-xl text-orange-800 dark:text-orange-300 max-w-4xl mx-auto leading-relaxed font-medium">
             Always verify details from the <strong>official notification</strong> before applying. 
-            JobAddah provides information for convenience and is not responsible for any changes made by recruiting organizations.
+            JobsAddah provides information for convenience and is not responsible for any changes made by recruiting organizations.
           </p>
         </div>
       </div>
