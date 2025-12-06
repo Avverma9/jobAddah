@@ -12,6 +12,8 @@ import {
   Calendar,
   TrendingUp,
   Building2,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
@@ -52,6 +54,52 @@ const isNewJob = (createdAt) => {
   const now = Date.now();
   const threeDays = 3 * 24 * 60 * 60 * 1000;
   return now - created <= threeDays;
+};
+
+// Helper function to parse date strings (DD-MM-YYYY format)
+const parseDate = (dateString) => {
+  if (!dateString || dateString.toLowerCase().includes("soon") || dateString.toLowerCase().includes("notify")) {
+    return null;
+  }
+  const parts = dateString.split("-");
+  if (parts.length === 3) {
+    return new Date(parts[2], parts[1] - 1, parts[0]);
+  }
+  return null;
+};
+
+// Helper function to detect if date is last date / deadline
+const isDeadlineDate = (label) => {
+  const lowerLabel = label?.toLowerCase() || "";
+  return (
+    lowerLabel.includes("last") ||
+    lowerLabel.includes("deadline") ||
+    lowerLabel.includes("end")
+  );
+};
+
+// Get days remaining until a date
+const getDaysRemaining = (dateString) => {
+  const date = parseDate(dateString);
+  if (!date) return null;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  const timeDiff = date - now;
+  const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+  return daysRemaining;
+};
+
+// Check if a job has urgent deadline (within 5 days or today)
+const isUrgentDeadline = (job) => {
+  const lastDateObj = job.importantDates?.find((d) => isDeadlineDate(d.label));
+  if (!lastDateObj) return false;
+
+  const daysRemaining = getDaysRemaining(lastDateObj.value);
+  return daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 5;
 };
 
 const extractJobData = (job) => {
@@ -96,7 +144,7 @@ const extractJobData = (job) => {
   };
 };
 
-const ListItem = ({ item, colorTheme, showTrending = false }) => {
+const ListItem = ({ item, colorTheme, showTrending = false, showUrgent = false }) => {
   const getThemeColors = () => {
     switch (colorTheme) {
       case "red":
@@ -172,6 +220,11 @@ const ListItem = ({ item, colorTheme, showTrending = false }) => {
               {item.title}
             </h3>
             <div className="flex items-center gap-1 shrink-0">
+              {showUrgent && (
+                <span className="text-[10px] font-bold bg-red-600 text-white px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                  <AlertCircle size={10} /> URGENT
+                </span>
+              )}
               {showTrending && (
                 <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
                   <TrendingUp size={10} /> HOT
@@ -352,6 +405,71 @@ const PrivateJobCard = ({ job }) => {
   );
 };
 
+// **NEW: Urgent Reminder Section Component**
+const UrgentReminderSection = ({ data }) => {
+  if (data.length === 0) return null;
+
+  return (
+    <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl border-2 border-red-200 dark:border-red-700 overflow-hidden shadow-md">
+      <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4 flex items-center gap-3">
+        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+          <AlertCircle size={24} />
+        </div>
+        <div>
+          <h2 className="font-bold text-lg tracking-wide">Urgent Reminders</h2>
+          <p className="text-xs text-red-100 mt-0.5">
+            Application deadline within 5 days - Don't miss out!
+          </p>
+        </div>
+        <span className="ml-auto text-xs font-bold bg-white/20 px-3 py-1 rounded-full">
+          {data.length}
+        </span>
+      </div>
+
+      <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+        {data.map((item) => {
+          const daysRemaining = getDaysRemaining(item.lastDate);
+          const urgencyColor =
+            daysRemaining <= 1
+              ? "border-l-4 border-l-red-600 bg-red-50 dark:bg-red-900/30"
+              : daysRemaining <= 3
+              ? "border-l-4 border-l-orange-600 bg-orange-50 dark:bg-orange-900/30"
+              : "border-l-4 border-l-yellow-600 bg-yellow-50 dark:bg-yellow-900/30";
+
+          return (
+            <Link
+              key={item.id}
+              to={`/post?_id=${item.id}`}
+              onClick={() => incrementVisitCount(item.id)}
+              className={`block p-3 rounded-lg transition-all hover:shadow-md ${urgencyColor}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 line-clamp-2">
+                    {item.title}
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                    {item.organization}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">
+                    <Clock size={10} /> {daysRemaining} days left
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-red-600">
+                <Calendar size={12} />
+                Last Date: {item.lastDate}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -379,6 +497,7 @@ export default function HomeScreen() {
     const scholarships = [];
     const topVisited = [];
     const privateJobs = [];
+    const urgentReminders = [];
 
     const topVisitedIds = getTopVisitedIds(10);
     const visitCounts = getVisitCounts();
@@ -391,6 +510,11 @@ export default function HomeScreen() {
         !job.title.toLowerCase().includes(searchQuery.toLowerCase())
       ) {
         return;
+      }
+
+      // **Check for urgent deadline**
+      if (isUrgentDeadline(raw)) {
+        urgentReminders.push(job);
       }
 
       if (topVisitedIds.includes(job.id)) {
@@ -434,6 +558,7 @@ export default function HomeScreen() {
       scholarships,
       topVisited,
       privateJobs,
+      urgentReminders,
     };
   }, [apiData, searchQuery]);
 
@@ -493,6 +618,11 @@ export default function HomeScreen() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* **NEW: Urgent Reminders Section** */}
+            {categorized.urgentReminders.length > 0 && (
+              <UrgentReminderSection data={categorized.urgentReminders} />
+            )}
+
             {categorized.topVisited.length > 0 && (
               <div className="grid grid-cols-1 gap-6">
                 <SectionColumn
@@ -570,9 +700,12 @@ export default function HomeScreen() {
                     Top private companies hiring now. Apply directly.
                   </p>
                 </div>
-                  <Link to="/private-jobs" className="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors border border-white/10 inline-block">
-                    View All Vacancies
-                  </Link>
+                <Link
+                  to="/private-jobs"
+                  className="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors border border-white/10 inline-block"
+                >
+                  View All Vacancies
+                </Link>
               </div>
 
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-gray-900 dark:to-gray-800">

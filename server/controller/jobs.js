@@ -404,6 +404,144 @@ const getallPost = async (req, res) => {
     console.error(err);
   }
 };
+
+const getExpiringJobsReminder = async (req, res) => {
+  try {
+    const today = new Date();
+    const fiveDaysLater = new Date();
+    fiveDaysLater.setDate(today.getDate() + 5);
+
+    const jobs = await Post.find({ postType: "JOB", isLive: true }).lean();
+
+    const extractLastDate = (job) => {
+      const lastObj = job.importantDates?.find((d) =>
+        d.label?.toLowerCase().includes("last")
+      );
+      return lastObj?.value || null;
+    };
+
+    const parseDate = (dateString) => {
+      if (!dateString) return null;
+      const parts = dateString.split("-");
+      if (parts.length !== 3) return null;
+      return new Date(parts[2], parts[1] - 1, parts[0]);
+    };
+
+    const expiresToday = [];
+    const expiringSoon = [];
+
+    jobs.forEach((job) => {
+      const lastDateStr = extractLastDate(job);
+      const lastDate = parseDate(lastDateStr);
+      if (!lastDate || isNaN(lastDate)) return;
+
+      const diffTime = lastDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        expiresToday.push({
+          _id: job._id,
+          title: job.postTitle,
+          slug: job.slug,
+          lastDate: lastDateStr,
+          message: "Last date is today!"
+        });
+      } else if (diffDays > 0 && diffDays <= 5) {
+        expiringSoon.push({
+          _id: job._id,
+          title: job.postTitle,
+          slug: job.slug,
+          lastDate: lastDateStr,
+          daysLeft: diffDays,
+          message: `${diffDays} days left`
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      expiresToday,
+      expiringSoon,
+      totalExpiring: expiresToday.length + expiringSoon.length
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+const STATE_KEYWORDS = {
+  "bihar": "Bihar",
+  "bssc": "Bihar",
+
+  "rajasthan": "Rajasthan",
+  "rssb": "Rajasthan",
+  "rsmssb": "Rajasthan",
+
+  "west bengal": "West Bengal",
+  "wb": "West Bengal",
+  "wbssc": "West Bengal",
+
+  "uttar pradesh": "Uttar Pradesh",
+  "upsssc": "Uttar Pradesh",
+  "uppsc": "Uttar Pradesh",
+
+  "delhi": "Delhi",
+  "dsssb": "Delhi",
+
+  "maharashtra": "Maharashtra",
+  "mh": "Maharashtra",
+
+  "kvs": "India",
+  "ssc": "India",
+  "drdo": "India",
+  "afcat": "India",
+  "af": "India",
+  "aiims": "India",
+  "sebi": "India",
+  "ecgc": "India",
+  "bank of baroda": "India"
+};
+
+const detectStateSmart = (job) => {
+  const text =
+    `${job.postTitle} ${job.slug} ${job.organization}`.toLowerCase();
+
+  for (const key in STATE_KEYWORDS) {
+    if (text.includes(key)) return STATE_KEYWORDS[key];
+  }
+  return "Unknown";
+};
+
+const getJobsSmartByState = async (req, res) => {
+  try {
+    const { state } = req.query;
+    if (!state)
+      return res.status(400).json({
+        success: false,
+        message: "Please provide ?state=Bihar"
+      });
+
+    const jobs = await Post.find({ postType: "JOB" }).lean();
+
+    const filtered = jobs.filter((job) => {
+      const detected = detectStateSmart(job);
+      return detected.toLowerCase() === state.toLowerCase();
+    });
+
+    res.json({
+      success: true,
+      count: filtered.length,
+      state,
+      data: filtered
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createPost,
   updatePost,
@@ -419,5 +557,7 @@ module.exports = {
   insertBulkPosts,
   getallPost,
   getDocsById,
-  getPrivateJob
+  getPrivateJob,
+  getExpiringJobsReminder,
+  getJobsSmartByState
 };
