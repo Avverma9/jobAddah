@@ -15,6 +15,7 @@ const PostSchema = new mongoose.Schema({
     required: true,
     index: true 
   },
+  fav: { type: Boolean, default: false },
   postType: {
     type: String,
     required: true,

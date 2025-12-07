@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getJobs, deleteJob } from "../../redux/slices/job";
+import { getJobs, deleteJob, markFav } from "../../redux/slices/job";
 import toast from 'react-hot-toast';
 import { 
   Briefcase,
@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   X,
+  Star,
 } from "lucide-react";
 
 export default function AllJobs() {
@@ -26,7 +27,19 @@ export default function AllJobs() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [localJobs, setLocalJobs] = useState([]); // NEW: Local state for instant UI updates
   const itemsPerPage = 10;
+
+  // NEW: Optimistic update function for instant star toggle
+  const updateLocalJobFav = useCallback((jobId, newFavValue) => {
+    setLocalJobs(prevJobs => 
+      prevJobs.map(job => 
+        (job._id || job.id) === jobId 
+          ? { ...job, fav: newFavValue }
+          : job
+      )
+    );
+  }, []);
 
   useEffect(() => {
     if (jobs.length === 0) {
@@ -34,15 +47,18 @@ export default function AllJobs() {
     }
   }, [dispatch, jobs.length]);
 
-  // NEW: API response ko UI-friendly format me map karne wala helper
-  const mapApiJobToUI = (job) => {
-    // Title: postTitle first, fallback to old title
-    const title = job.postTitle || job.title || "Untitled";
+  // NEW: Sync localJobs with redux jobs when redux data changes
+  useEffect(() => {
+    if (Array.isArray(jobs)) {
+      setLocalJobs(jobs);
+    }
+  }, [jobs]);
 
-    // Organization: organization first, fallback to old org
+  // UPDATED: mapApiJobToUI with fav from localJobs
+  const mapApiJobToUI = (job) => {
+    const title = job.postTitle || job.title || "Untitled";
     const org = job.organization || job.org || "-";
 
-    // Date priority: createdAt -> Application Start dates -> Result dates
     let displayDate = job.createdAt || "";
     if (!displayDate && Array.isArray(job.importantDates)) {
       const datePriority = [
@@ -62,12 +78,11 @@ export default function AllJobs() {
       }
     }
 
-    // Status logic based on new API structure
     let status = "Active";
     const postType = (job.postType || "").toUpperCase();
     
     if (postType === "RESULT") {
-      status = "Expired"; // Results ko expired treat kar rahe hain
+      status = "Expired";
     } else if (["JOB", "PRIVATEJOB"].includes(postType)) {
       status = job.isLive === false ? "Expired" : "Active";
     } else {
@@ -80,6 +95,7 @@ export default function AllJobs() {
       org,
       createdAt: displayDate,
       status,
+      fav: job.fav || false
     };
   };
 
@@ -87,16 +103,75 @@ export default function AllJobs() {
     navigate(`/dashboard/job-edit/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    const ok = window.confirm("Delete this job?");
-    if (!ok) return;
+  // UPDATED: toggleFavorite with INSTANT optimistic update
+  const toggleFavorite = async (id, currentFav) => {
+    const newFavValue = !currentFav;
+    
+    // OPTIMISTIC UPDATE - Instant UI change
+    updateLocalJobFav(id, newFavValue);
+    
     try {
-      await dispatch(deleteJob(id)).unwrap();
-      toast.success('Job deleted');
+      await dispatch(markFav({ id, fav: newFavValue })).unwrap();
+      toast.success(
+        newFavValue 
+          ? 'Added to favorites' 
+          : 'Removed from favorites',
+        { duration: 2000 }
+      );
     } catch (err) {
-      console.error('Delete failed:', err);
-      toast.error('Failed to delete job');
+      // REVERT on error
+      updateLocalJobFav(id, currentFav);
+      console.error('Favorite toggle failed:', err);
+      toast.error('Failed to update favorite status');
     }
+  };
+
+  const handleDelete = async (id) => {
+    const confirmed = await toast(
+      (t) => (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              Delete this job post?
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await dispatch(deleteJob(id)).unwrap();
+                  toast.success('Job deleted successfully');
+                } catch (err) {
+                  console.error('Delete failed:', err);
+                  toast.error('Failed to delete job');
+                }
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+        position: 'top-right',
+        style: {
+          maxWidth: '400px',
+          padding: '16px',
+        }
+      }
+    );
   };
 
   const handleGoBack = () => {
@@ -123,12 +198,11 @@ export default function AllJobs() {
     setSortOrder(prev => prev === "asc" ? "desc" : "asc");
   };
 
-  // UPDATED: New API structure ke saath filtering + mapping
+  // UPDATED: Use localJobs instead of redux jobs for instant updates
   const filteredAndSortedJobs = useMemo(() => {
-    if (!Array.isArray(jobs) || jobs.length === 0) return [];
+    if (!Array.isArray(localJobs) || localJobs.length === 0) return [];
 
-    // Pehle saare jobs ko normalize karo
-    const normalizedJobs = jobs.map(mapApiJobToUI);
+    const normalizedJobs = localJobs.map(mapApiJobToUI);
 
     let filtered = normalizedJobs.filter((job) => {
       const matchesSearch = (job.title || "")
@@ -152,7 +226,7 @@ export default function AllJobs() {
     });
 
     return filtered;
-  }, [jobs, searchTerm, filterCategory, filterStatus, sortOrder]);
+  }, [localJobs, searchTerm, filterCategory, filterStatus, sortOrder]);
 
   const totalPages = Math.ceil(filteredAndSortedJobs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -165,7 +239,6 @@ export default function AllJobs() {
     setCurrentPage(1);
   }, [searchTerm, filterCategory, filterStatus, sortOrder]);
 
-  // UPDATED: Stats calculation normalized jobs pe
   const statsData = useMemo(() => {
     if (!Array.isArray(filteredAndSortedJobs)) {
       return { total: 0, active: 0, draft: 0, expired: 0 };
@@ -185,16 +258,15 @@ export default function AllJobs() {
     };
   }, [filteredAndSortedJobs]);
 
-  // NEW: Dynamic organization options
   const orgOptions = useMemo(() => {
-    if (!Array.isArray(jobs)) return [];
-    const normalized = jobs.map(mapApiJobToUI);
+    if (!Array.isArray(localJobs)) return [];
+    const normalized = localJobs.map(mapApiJobToUI);
     const uniqueOrgs = new Set();
     normalized.forEach(job => {
       if (job.org && job.org !== '-') uniqueOrgs.add(job.org);
     });
     return Array.from(uniqueOrgs).sort();
-  }, [jobs]);
+  }, [localJobs]);
 
   const getStatusBadge = (status) => {
     const statusLower = (status || 'Active').toLowerCase();
@@ -232,7 +304,7 @@ export default function AllJobs() {
             Dashboard
           </button>
           <span className="hidden text-xs text-slate-400 sm:inline">
-            Total: {jobs.length}
+            Total: {localJobs.length}
           </span>
         </div>
       </div>
@@ -403,6 +475,19 @@ export default function AllJobs() {
                         </td>
                         <td className="px-4 py-3 align-middle text-right">
                           <div className="inline-flex items-center gap-1.5">
+                            {/* ✨ INSTANT Star Toggle - NO reload needed ✨ */}
+                            <button
+                              onClick={() => toggleFavorite(job._id || job.id, job.fav)}
+                              className="p-1.5 rounded-lg hover:bg-yellow-50 transition-all group"
+                              title={job.fav ? "Remove from favorites" : "Add to favorites"}
+                            >
+                              <Star className={`h-4 w-4 transition-colors ${
+                                job.fav 
+                                  ? "text-yellow-400 group-hover:text-yellow-500" 
+                                  : "text-slate-400 group-hover:text-yellow-400"
+                              }`} />
+                            </button>
+                            
                             <button
                               onClick={() => handleEditClick(job._id || job.id)}
                               className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-indigo-700"

@@ -1,18 +1,41 @@
-import React, { useEffect } from "react"; 
+import React, { useEffect, useState, useCallback } from "react"; 
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getJobs, deleteJob } from "../../redux/slices/job";
+import { getJobs, deleteJob, markFav } from "../../redux/slices/job";
+import toast from 'react-hot-toast';
+import { StarIcon, StarIcon as StarIconSolid } from "@heroicons/react/24/outline";
 
 export default function JobCard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { jobs: jobData, loading } = useSelector((state) => state.job);
 
+  // NEW: Local state for instant UI updates
+  const [localJobs, setLocalJobs] = useState([]);
+
+  // NEW: Optimistic update function for instant star toggle
+  const updateLocalJobFav = useCallback((jobId, newFavValue) => {
+    setLocalJobs(prevJobs => 
+      prevJobs.map(job => 
+        (job._id || job.id) === jobId 
+          ? { ...job, fav: newFavValue }
+          : job
+      )
+    );
+  }, []);
+
   useEffect(() => {
     dispatch(getJobs());
   }, [dispatch]);
 
-  // NEW: Same mapper as AllJobs - API response ko UI-friendly format me convert
+  // NEW: Sync localJobs with redux jobData when redux data changes
+  useEffect(() => {
+    if (Array.isArray(jobData)) {
+      setLocalJobs(jobData);
+    }
+  }, [jobData]);
+
+  // UPDATED: Same mapper as AllJobs - API response ko UI-friendly format me convert
   const mapApiJobToUI = (job) => {
     // Title: postTitle first, fallback to old title
     const title = job.postTitle || job.title || job.name || "Untitled";
@@ -58,6 +81,7 @@ export default function JobCard() {
       category,
       date: displayDate,
       status,
+      fav: job.fav || false  // Ensure fav key exists
     };
   };
 
@@ -65,7 +89,79 @@ export default function JobCard() {
     navigate(`/dashboard/job-edit/${id}`);
   };
 
-  const JobRow = ({ id, title, category, date, status }) => (
+  // UPDATED: Mark/Unmark Favorite function with INSTANT optimistic update + toast
+  const toggleFavorite = async (id, currentFav) => {
+    const newFavValue = !currentFav;
+    
+    // OPTIMISTIC UPDATE - Instant UI change
+    updateLocalJobFav(id, newFavValue);
+    
+    try {
+      await dispatch(markFav({ id, fav: newFavValue })).unwrap();
+      toast.success(
+        newFavValue 
+          ? 'Added to favorites' 
+          : 'Removed from favorites',
+        { duration: 2000 }
+      );
+    } catch (err) {
+      // REVERT on error
+      updateLocalJobFav(id, currentFav);
+      console.error("Favorite toggle failed:", err);
+      toast.error('Failed to update favorite status');
+    }
+  };
+
+  // NEW: Custom delete confirmation with react-hot-toast
+  const handleDelete = async (id) => {
+    const confirmed = await toast(
+      (t) => (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              Delete this job?
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id);
+                try {
+                  await dispatch(deleteJob(id)).unwrap();
+                  toast.success('Job deleted successfully');
+                } catch (err) {
+                  console.error("Delete failed:", err);
+                  toast.error('Failed to delete job');
+                }
+              }}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+        position: 'top-right',
+        style: {
+          maxWidth: '400px',
+          padding: '16px',
+        }
+      }
+    );
+  };
+
+  const JobRow = ({ id, title, category, date, status, fav }) => (
     <tr className="group hover:bg-slate-50 transition-colors duration-200">
       <td className="px-6 py-4 font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
         {title}
@@ -102,24 +198,28 @@ export default function JobCard() {
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
+          {/* ✨ INSTANT Favorite Star Icon - NO reload needed */}
+          <button
+            onClick={() => toggleFavorite(id, fav)}
+            className="p-1 rounded-full hover:bg-slate-100 transition-colors group/star"
+            title={fav ? "Remove from favorites" : "Add to favorites"}
+          >
+            {fav ? (
+              <StarIconSolid className="w-5 h-5 text-yellow-400 group-hover/star:text-yellow-500" />
+            ) : (
+              <StarIcon className="w-5 h-5 text-slate-400 group-hover/star:text-yellow-400 transition-colors" />
+            )}
+          </button>
+          
           <button
             onClick={() => handleEditClick(id)}
             className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
           >
             Edit
           </button>
+          {/* NEW: Custom toast delete instead of window.confirm */}
           <button
-            onClick={async () => {
-              const ok = window.confirm("Delete this job?");
-              if (!ok) return;
-              try {
-                await dispatch(deleteJob(id)).unwrap();
-                alert("Job deleted");
-              } catch (err) {
-                console.error("Delete failed:", err);
-                alert("Failed to delete: " + (err?.message || "Unknown"));
-              }
-            }}
+            onClick={() => handleDelete(id)}
             className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
           >
             Delete
@@ -129,8 +229,10 @@ export default function JobCard() {
     </tr>
   );
 
-  // NEW: Normalize jobs data before rendering
-  const normalizedJobs = Array.isArray(jobData) ? jobData.map(mapApiJobToUI) : [];
+  // UPDATED: Normalize localJobs data before rendering - instant updates
+  const normalizedJobs = Array.isArray(localJobs) 
+    ? localJobs.map(mapApiJobToUI)
+    : [];
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -172,6 +274,7 @@ export default function JobCard() {
                   category={job.category}
                   date={job.date}
                   status={job.status}
+                  fav={job.fav}
                 />
               ))
             ) : (
