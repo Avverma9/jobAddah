@@ -17,6 +17,7 @@ import {
   MapPin,
   Loader,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
@@ -121,138 +122,45 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
   );
 };
 
-// New Component for Recent Visits - Horizontal Scrollable
+// Tag/Chip Style Recent Visits Component
+// Tag/Chip Style Recent Visits Component - WITHOUT SLIDER
 const RecentVisitsSection = ({ data, isLoading }) => {
-  const scrollContainerRef = useRef(null);
-
-  const scroll = (direction) => {
-    const container = scrollContainerRef.current;
-    const scrollAmount = 300;
-    if (direction === "left") {
-      container.scrollBy({ left: -scrollAmount, behavior: "smooth" });
-    } else {
-      container.scrollBy({ left: scrollAmount, behavior: "smooth" });
-    }
-  };
-
   if (isLoading || data.length === 0) {
     return null;
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="flex items-center justify-between bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 p-4 sm:p-5 border-b border-orange-200 dark:border-orange-900/30">
-        <div>
-          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-              <TrendingUp size={16} className="text-white sm:w-5 sm:h-5" />
-            </div>
-            Your Recent Visits
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Jobs you've recently viewed
-          </p>
+    <div className="space-y-3 sm:space-y-4">
+      {/* Title with Icon */}
+      <div className="flex items-center gap-2 px-1">
+        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
+          <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
         </div>
-        <Link
-          to="/recent-visits"
-          className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 text-xs sm:text-sm font-semibold flex items-center gap-1 transition-colors"
-        >
-          View All
-          <ChevronRight size={16} />
-        </Link>
+        <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+          Recent Visits
+        </h3>
       </div>
 
-      <div className="relative">
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto px-4 sm:px-5 py-4 sm:py-6 scrollbar-hide"
-          style={{
-            scrollBehavior: "smooth",
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          }}
-        >
-          {data.map((job) => (
-            <Link
-              key={job.id}
-              to={`/post?_id=${job.id}`}
-              className="flex-shrink-0 w-72 sm:w-80 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-900/30 p-4 sm:p-5 hover:shadow-lg dark:hover:shadow-xl transition-all group"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                    {job.title}
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {job.organization}
-                  </p>
-                </div>
-                {job.isNew && (
-                  <span className="flex-shrink-0 ml-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    NEW
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                  <Calendar size={14} className="flex-shrink-0" />
-                  <span>{job.lastDate}</span>
-                </div>
-                {job.totalPosts > 0 && (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                    <Briefcase size={14} className="flex-shrink-0" />
-                    <span>{job.totalPosts} Posts</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex gap-2 flex-wrap">
-                {job.allFields.slice(0, 2).map((field, idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs font-semibold bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 px-2 py-1 rounded"
-                  >
-                    {field.label}: {field.value}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-900/30 flex items-center justify-between">
-                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                  {job.postType}
-                </span>
-                <ChevronRight
-                  size={16}
-                  className="text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform"
-                />
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {data.length > 3 && (
-          <>
-            <button
-              onClick={() => scroll("left")}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-2"
-              aria-label="Scroll left"
-            >
-              <ChevronRight size={20} className="rotate-180 text-gray-700 dark:text-gray-300" />
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-2"
-              aria-label="Scroll right"
-            >
-              <ChevronRight size={20} className="text-gray-700 dark:text-gray-300" />
-            </button>
-          </>
-        )}
+      {/* Tags - no slider, no arrows */}
+      <div className="flex flex-wrap gap-2 sm:gap-3">
+        {data.map((job) => (
+          <Link
+            key={job.id}
+            to={`/post?_id=${job.id}`}
+            className="group"
+          >
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white dark:bg-gray-900 border border-blue-300 text-blue-600 dark:text-blue-300 dark:border-blue-700 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
+              <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                {job.title}
+              </span>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
 };
+
 
 const getUserStateFromGeolocation = async () => {
   try {
@@ -525,7 +433,7 @@ export default function HomeScreen() {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-8">
-            {/* Recent Visits - Full Width */}
+            {/* Recent Visits - Tag Style */}
             {topVisited.length > 0 && (
               <RecentVisitsSection data={topVisited} isLoading={false} />
             )}
