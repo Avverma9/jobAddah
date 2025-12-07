@@ -95,16 +95,20 @@ const extractJobData = (job) => {
 
 const QuickCard = ({ icon: Icon, title, id, color }) => {
   const colorMap = {
-    orange: "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100",
-    pink: "bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100",
-    purple: "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100",
-    blue: "bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100",
+    orange:
+      "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/50",
+    pink: "bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-900/50",
+    purple:
+      "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50",
+    blue: "bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50",
+    green:
+      "bg-green-50 text-green-600 border-green-100 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/50",
   };
 
   return (
     <Link
       to={`/post?_id=${id}`}
-      className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border ${colorMap[color]} hover:shadow-md dark:hover:shadow-lg transition-all group`}
+      className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all group ${colorMap[color]}`}
       aria-label={title}
     >
       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/80 dark:bg-gray-800/50 rounded-lg flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
@@ -114,6 +118,139 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
         {title}
       </span>
     </Link>
+  );
+};
+
+// New Component for Recent Visits - Horizontal Scrollable
+const RecentVisitsSection = ({ data, isLoading }) => {
+  const scrollContainerRef = useRef(null);
+
+  const scroll = (direction) => {
+    const container = scrollContainerRef.current;
+    const scrollAmount = 300;
+    if (direction === "left") {
+      container.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+    } else {
+      container.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  if (isLoading || data.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="flex items-center justify-between bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 p-4 sm:p-5 border-b border-orange-200 dark:border-orange-900/30">
+        <div>
+          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+              <TrendingUp size={16} className="text-white sm:w-5 sm:h-5" />
+            </div>
+            Your Recent Visits
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Jobs you've recently viewed
+          </p>
+        </div>
+        <Link
+          to="/recent-visits"
+          className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 text-xs sm:text-sm font-semibold flex items-center gap-1 transition-colors"
+        >
+          View All
+          <ChevronRight size={16} />
+        </Link>
+      </div>
+
+      <div className="relative">
+        <div
+          ref={scrollContainerRef}
+          className="flex gap-3 sm:gap-4 overflow-x-auto px-4 sm:px-5 py-4 sm:py-6 scrollbar-hide"
+          style={{
+            scrollBehavior: "smooth",
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
+        >
+          {data.map((job) => (
+            <Link
+              key={job.id}
+              to={`/post?_id=${job.id}`}
+              className="flex-shrink-0 w-72 sm:w-80 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-900/30 p-4 sm:p-5 hover:shadow-lg dark:hover:shadow-xl transition-all group"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white line-clamp-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                    {job.title}
+                  </h4>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {job.organization}
+                  </p>
+                </div>
+                {job.isNew && (
+                  <span className="flex-shrink-0 ml-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    NEW
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  <Calendar size={14} className="flex-shrink-0" />
+                  <span>{job.lastDate}</span>
+                </div>
+                {job.totalPosts > 0 && (
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    <Briefcase size={14} className="flex-shrink-0" />
+                    <span>{job.totalPosts} Posts</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex gap-2 flex-wrap">
+                {job.allFields.slice(0, 2).map((field, idx) => (
+                  <span
+                    key={idx}
+                    className="text-xs font-semibold bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 px-2 py-1 rounded"
+                  >
+                    {field.label}: {field.value}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-900/30 flex items-center justify-between">
+                <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                  {job.postType}
+                </span>
+                <ChevronRight
+                  size={16}
+                  className="text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform"
+                />
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {data.length > 3 && (
+          <>
+            <button
+              onClick={() => scroll("left")}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-2"
+              aria-label="Scroll left"
+            >
+              <ChevronRight size={20} className="rotate-180 text-gray-700 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-2"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={20} className="text-gray-700 dark:text-gray-300" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -349,6 +486,7 @@ export default function HomeScreen() {
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
+        {/* Search & Quick Cards Section */}
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
@@ -359,20 +497,18 @@ export default function HomeScreen() {
               placeholder="Search jobs, admit cards, results..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm bg-white"
+              className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 dark:text-white"
             />
           </div>
-          
+
           {favPosts.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-             
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
                 <QuickCard
                   key={item._id}
                   id={item._id}
                   icon={Briefcase}
                   title={item.postTitle || "Notification"}
-                  keyProp={item._id} // Fixed: using keyProp instead of key
                   color="orange"
                 />
               ))}
@@ -389,26 +525,35 @@ export default function HomeScreen() {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-8">
+            {/* Recent Visits - Full Width */}
+            {topVisited.length > 0 && (
+              <RecentVisitsSection data={topVisited} isLoading={false} />
+            )}
+
+            {/* Mobile: Latest Jobs Section First */}
+            <div className="lg:hidden">
+              <SectionColumn
+                title={`Latest ${latestJobsByState.state} Jobs`}
+                icon={MapPin}
+                data={filteredData.stateJobs}
+                colorTheme="green"
+                postType="JOB"
+                isLoading={latestJobsByState.isLoading}
+                showStateSelector={true}
+                currentState={selectedState}
+                onStateChange={handleStateChange}
+              />
+            </div>
+
+            {/* Urgent Reminders */}
             <UrgentReminderSection
               expiresToday={reminders.expiresToday}
               expiringSoon={reminders.expiringSoon}
               isLoading={reminders.isLoading}
             />
 
-            {topVisited.length > 0 && (
-              <div className="grid grid-cols-1 gap-6 sm:gap-8">
-                <SectionColumn
-                  title="Recent Visits"
-                  icon={TrendingUp}
-                  data={topVisited}
-                  colorTheme="orange"
-                  showTrending
-                  postType="ALL"
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Desktop: 3-Column Grid with Latest Jobs */}
+            <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-6">
               <SectionColumn
                 title="Results"
                 icon={Award}
@@ -438,6 +583,28 @@ export default function HomeScreen() {
               />
             </div>
 
+            {/* Mobile: 2-Column or 1-Column Grid */}
+            <div className="lg:hidden space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <SectionColumn
+                  title="Results"
+                  icon={Award}
+                  data={filteredData.results}
+                  colorTheme="red"
+                  postType="RESULT"
+                  isLoading={categoryData.isLoading}
+                />
+                <SectionColumn
+                  title="Admit Cards"
+                  icon={FileText}
+                  data={filteredData.admitCards}
+                  colorTheme="blue"
+                  postType="ADMIT_CARD"
+                  isLoading={categoryData.isLoading}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               <SectionColumn
                 title="Answer Keys"
@@ -465,9 +632,10 @@ export default function HomeScreen() {
               />
             </div>
 
+            {/* Private Jobs Section */}
             <div
               id="private-jobs"
-              className="bg-white rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-900 dark:bg-slate-800 text-white p-4 sm:p-6 gap-3 sm:gap-4">
                 <div>
@@ -528,6 +696,9 @@ export default function HomeScreen() {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </div>
