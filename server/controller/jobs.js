@@ -624,22 +624,43 @@ const markFav = async (req, res) => {
   try {
     const { id } = req.params;
     const { fav } = req.body;
-    const findFavPost = await Post.find({ fav: true });
-    if (findFavPost) {
-      findFavPost.length > 8
-      return res.status(400).json({ success: false, message: "You can mark only 8 posts as favorite" });
+
+    // Agar user fav true karna chahta hai tabhi limit check hoga
+    if (fav === true) {
+      const favCount = await Post.countDocuments({ fav: true });
+
+      if (favCount >= 8) {
+        return res.status(400).json({
+          success: false,
+          message: "You can mark only 8 posts as favorite"
+        });
+      }
     }
+
     const updatedPost = await Post.findByIdAndUpdate(
       id,
-      { fav: fav },
+      { fav },
       { new: true }
     );
+
+    if (!updatedPost) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
     res.json({ success: true, data: updatedPost });
+
   } catch (err) {
     console.error("markFav error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
+
 
 const getFavPosts = async (req, res) => {
   try {
