@@ -18,23 +18,37 @@ import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
 
-const VISIT_STORAGE_KEY = "jobAddah_visit_counts";
+// --- STORAGE LOGIC FIX ---
+const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2"; // Changed key to reset old format
 
-const getVisitCounts = () => {
+// Helper to get recent IDs
+const getRecentVisitIds = () => {
   try {
     const stored = localStorage.getItem(VISIT_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
+    return stored ? JSON.parse(stored) : [];
   } catch {
-    return {};
+    return [];
   }
 };
 
-const getTopVisitedIds = (limit = 10) => {
-  const counts = getVisitCounts();
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([id]) => id);
+// Helper to save a visit (Logic: Remove if exists, Add to top, Keep max 20)
+const saveRecentVisit = (id) => {
+  if (!id) return;
+  try {
+    let visits = getRecentVisitIds();
+    // Remove duplicate to move it to the top
+    visits = visits.filter((visitId) => visitId !== id);
+    // Add to the beginning (Most Recent)
+    visits.unshift(id);
+    // Limit to 20 items
+    visits = visits.slice(0, 20);
+    localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
+    
+    // Dispatch event to update UI immediately if needed
+    window.dispatchEvent(new Event("recent-visits-updated"));
+  } catch (error) {
+    console.error("Failed to save visit", error);
+  }
 };
 
 const isNewJob = (createdAt) => {
@@ -102,6 +116,8 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
   return (
     <Link
       to={`/post?_id=${id}`}
+      // onClick is handled by the global capture in Main, but we can double ensure here
+      onClick={() => saveRecentVisit(id)}
       className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all group ${colorMap[color]}`}
       aria-label={title}
     >
@@ -156,13 +172,14 @@ const SkeletonPrivateJobCard = () => (
 
 // --- MAIN COMPONENTS ---
 
-const RecentVisitsSection = ({ data, isLoading }) => {
-  if (isLoading || data.length === 0) {
+const RecentVisitsSection = ({ data }) => {
+  // If no data, return null immediately
+  if (!data || data.length === 0) {
     return null;
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 px-1">
         <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
           <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
@@ -177,6 +194,7 @@ const RecentVisitsSection = ({ data, isLoading }) => {
           <Link
             key={job.id}
             to={`/post?_id=${job.id}`}
+            onClick={() => saveRecentVisit(job.id)}
             className="group"
           >
             <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white dark:bg-gray-900 border border-blue-300 text-blue-600 dark:text-blue-300 dark:border-blue-700 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
@@ -195,6 +213,9 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("ALL");
   const [favPosts, setFavPosts] = useState([]);
+  
+  // State for Recent Visits
+  const [recentVisitIds, setRecentVisitIds] = useState([]);
 
   const [reminders, setReminders] = useState({
     expiresToday: [],
@@ -218,6 +239,7 @@ export default function HomeScreen() {
     isLoading: true,
   });
 
+  // Load state from local storage
   useEffect(() => {
     const storedState = localStorage.getItem("userState");
     if (storedState) {
@@ -226,6 +248,19 @@ export default function HomeScreen() {
       setSelectedState("ALL");
       localStorage.setItem("userState", "ALL");
     }
+  }, []);
+
+  // --- NEW: Load Recent Visits on Mount & Listen for Updates ---
+  useEffect(() => {
+    const loadVisits = () => {
+      setRecentVisitIds(getRecentVisitIds());
+    };
+
+    loadVisits();
+
+    // Listen for our custom event (in case multiple components update it)
+    window.addEventListener("recent-visits-updated", loadVisits);
+    return () => window.removeEventListener("recent-visits-updated", loadVisits);
   }, []);
 
   useEffect(() => {
@@ -364,8 +399,10 @@ export default function HomeScreen() {
     };
   }, [categoryData, latestJobsByState.data, searchQuery]);
 
-  const topVisited = useMemo(() => {
-    const topVisitedIds = getTopVisitedIds(10);
+  // --- DERIVE RECENT VISITS DATA ---
+  const recentVisitsData = useMemo(() => {
+    if (recentVisitIds.length === 0) return [];
+
     const allJobs = [
       ...categoryData.results,
       ...categoryData.admitCards,
@@ -373,10 +410,35 @@ export default function HomeScreen() {
       ...categoryData.admissions,
       ...categoryData.scholarships,
       ...categoryData.privateJobs,
+      ...latestJobsByState.data, // Also include state jobs
     ];
 
-    return allJobs.filter((job) => topVisitedIds.includes(job.id));
-  }, [categoryData]);
+    // Create a map for faster lookup
+    const jobMap = new Map(allJobs.map((job) => [job.id, job]));
+
+    // Map IDs to actual job objects, preserving the order of 'recentVisitIds'
+    return recentVisitIds
+      .map((id) => jobMap.get(id))
+      .filter((job) => job !== undefined); // Remove undefined if job not found in current list
+  }, [categoryData, recentVisitIds, latestJobsByState.data]);
+
+
+  // --- CLICK CAPTURE HANDLER ---
+  // This detects clicks on any <a> tag inside the main container
+  // allowing us to track clicks even inside imported components like SectionColumn
+  const handleGlobalClick = (e) => {
+    const link = e.target.closest('a');
+    if (link && link.href) {
+      // Check if the link goes to /post and has an _id param
+      const url = new URL(link.href);
+      if (url.pathname.includes('/post')) {
+        const id = url.searchParams.get('_id');
+        if (id) {
+            saveRecentVisit(id);
+        }
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -410,7 +472,11 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
+      {/* Added onClickCapture to track clicks in children components */}
+      <main 
+        className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8"
+        onClickCapture={handleGlobalClick} 
+      >
         <div className="space-y-4 sm:space-y-6">
           {/* Search Bar */}
           <div className="relative max-w-2xl mx-auto w-full">
@@ -444,8 +510,10 @@ export default function HomeScreen() {
 
         {/* Content Sections with Skeleton Loading */}
         <div className="space-y-6 sm:space-y-8">
-          {topVisited.length > 0 && (
-            <RecentVisitsSection data={topVisited} isLoading={false} />
+          
+          {/* Recent Visits Section - Now using the correct data */}
+          {recentVisitsData.length > 0 && (
+            <RecentVisitsSection data={recentVisitsData} />
           )}
 
           {/* Mobile State Jobs */}
