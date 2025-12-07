@@ -1,571 +1,432 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
-  Save,
-  Code,
-  X,
-  Copy,
-  AlertCircle,
-  CheckCircle,
-  ChevronDown,
-  Plus,
-  Trash2,
+  ArrowLeft, Save, Code, X, Copy, AlertCircle, CheckCircle,
+  ChevronDown, Plus, Trash2, Calendar, Hash, Type, ToggleLeft,
+  MoreVertical, FileText, Layers
 } from "lucide-react";
 import { getJobById, updateJob, deleteJob } from "../../redux/slices/job";
+
+// --- Utility Functions ---
+
+const formatLabel = (text) => {
+  if (!text) return "";
+  // Split camelCase, capitalize first letter
+  return text
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+};
+
+const cleanData = (data) => {
+  const copy = JSON.parse(JSON.stringify(data));
+  ["_id", "__v", "createdAt", "updatedAt"].forEach((key) => delete copy[key]);
+  return copy;
+};
+
+const getEmptySchema = (obj) => {
+  const newObj = {};
+  for (const key in obj) {
+    if (typeof obj[key] === "number") newObj[key] = 0;
+    else if (typeof obj[key] === "boolean") newObj[key] = false;
+    else newObj[key] = "";
+  }
+  return newObj;
+};
+
+// --- Specialized Components ---
+
+// 1. Professional Switch Component
+const SwitchInput = ({ label, value, onChange }) => (
+  <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-colors">
+    <div className="flex flex-col">
+      <span className="text-sm font-semibold text-slate-700">{formatLabel(label)}</span>
+      <span className="text-xs text-slate-400">{value ? "Enabled" : "Disabled"}</span>
+    </div>
+    <button
+      onClick={() => onChange(!value)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+        value ? "bg-blue-600" : "bg-slate-200"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+          value ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  </div>
+);
+
+// 2. Compact Input Component
+const SimpleInput = ({ label, value, path, onChange, error }) => {
+  const isDate = label.toLowerCase().includes("date") || (!isNaN(Date.parse(value)) && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value));
+  const isNumber = typeof value === "number";
+  
+  return (
+    <div className="w-full">
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+        {formatLabel(label)}
+        {error && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative group">
+        <input
+          type={isDate ? "date" : isNumber ? "number" : "text"}
+          value={value ?? ""}
+          onChange={(e) => onChange(path, isNumber ? Number(e.target.value) : e.target.value)}
+          className={`w-full text-sm font-medium text-slate-800 bg-slate-50 border px-3 py-2.5 rounded-lg outline-none transition-all ${
+            error
+              ? "border-red-500 bg-red-50 focus:border-red-600"
+              : "border-slate-200 focus:border-blue-500 focus:bg-white focus:shadow-sm group-hover:border-slate-300"
+          }`}
+          placeholder={`Enter ${formatLabel(label).toLowerCase()}`}
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none opacity-50">
+          {isDate ? <Calendar size={14} /> : isNumber ? <Hash size={14} /> : null}
+        </div>
+      </div>
+      {error && <p className="text-red-600 text-[10px] mt-1 font-medium">{error}</p>}
+    </div>
+  );
+};
+
+// 3. Array Manager (New Items on TOP)
+const ArrayField = ({ label, value, path, onChange, renderRecursive }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const addItem = () => {
+    let newItem = "";
+    if (value.length > 0 && typeof value[0] === "object") {
+      newItem = getEmptySchema(value[0]);
+    } else if (value.length === 0) {
+       // Best guess for empty array: object
+       newItem = {}; 
+    }
+    // INSERT AT TOP (Spread newItem first)
+    onChange(path, [newItem, ...value]);
+    setIsExpanded(true);
+  };
+
+  const removeItem = (index) => {
+    const newArr = [...value];
+    newArr.splice(index, 1);
+    onChange(path, newArr);
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden mb-4">
+      <div 
+        className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 cursor-pointer select-none"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Layers size={16} className="text-blue-600" />
+          <span className="font-semibold text-slate-700 text-sm">{formatLabel(label)}</span>
+          <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md font-bold">
+            {value.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+           <button
+            onClick={(e) => { e.stopPropagation(); addItem(); }}
+            className="flex items-center gap-1 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors shadow-sm"
+          >
+            <Plus size={12} /> ADD NEW
+          </button>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="p-3 bg-slate-50/50 space-y-3">
+          {value.length === 0 && (
+             <div className="text-center py-6 text-slate-400 text-xs italic border-2 border-dashed border-slate-200 rounded-lg">
+                No items in this list. Click "Add New" to start.
+             </div>
+          )}
+          {value.map((item, index) => (
+            <div key={index} className="relative group bg-white rounded border border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.05)] overflow-hidden transition-all hover:border-blue-300">
+              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
+              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-50 bg-slate-50/30">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase">Index {index}</span>
+                 <button
+                  onClick={() => removeItem(index)}
+                  className="p-1 text-slate-300 hover:text-red-600 transition-colors"
+                  title="Remove Item"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+
+              <div className="p-4 grid grid-cols-1 gap-4">
+                {typeof item === "object" && item !== null ? (
+                  // If array contains objects, map keys
+                  Object.keys(item).map((subKey) => (
+                    renderRecursive(subKey, item[subKey], `${path}.${index}`)
+                  ))
+                ) : (
+                  // If array contains primitives (strings/numbers)
+                  renderRecursive(index, item, path) 
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 4. Object Wrapper
+const ObjectField = ({ label, value, path, renderRecursive }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  return (
+    <div className="border border-slate-200 rounded-lg bg-white mb-4">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-slate-50 rounded-t-lg transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+          <span className="font-semibold text-slate-700 text-sm">{formatLabel(label)}</span>
+        </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+      </button>
+
+      {isExpanded && (
+        <div className="p-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/30">
+          {Object.keys(value).map((key) => renderRecursive(key, value[key], path))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Main Page Component ---
 
 export default function JobEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const { currentJob, loading, error } = useSelector((state) => state.job);
 
-  const [form_data, set_form_data] = useState({});
-  const [show_json_modal, set_show_json_modal] = useState(false);
-  const [json_output, set_json_output] = useState("");
-  const [is_saving, set_is_saving] = useState(false);
-  const [copy_success, set_copy_success] = useState(false);
-  const [validation_errors, set_validation_errors] = useState({});
-  const [success_message, set_success_message] = useState("");
-  const [expanded_sections, set_expanded_sections] = useState({});
+  const [formData, setFormData] = useState({});
+  const [modalState, setModalState] = useState({ showJson: false, showDelete: false });
+  const [jsonOutput, setJsonOutput] = useState("");
+  const [status, setStatus] = useState({ saving: false, copySuccess: false, message: "" });
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
-    if (id) {
-      dispatch(getJobById(id));
-    }
+    if (id) dispatch(getJobById(id));
   }, [id, dispatch]);
 
   useEffect(() => {
     if (currentJob) {
-      set_form_data(JSON.parse(JSON.stringify(currentJob)));
-      set_validation_errors({});
-      set_success_message("");
+      setFormData(JSON.parse(JSON.stringify(currentJob)));
     }
   }, [currentJob]);
 
-  const eval_path = (obj, path_value) => {
-    return path_value
-      .split(".")
-      .reduce(
-        (accumulator, key) => (accumulator ? accumulator[key] : undefined),
-        obj
-      );
-  };
-
-  const update_field = (path_value, value) => {
-    set_form_data((previous_state) => {
-      const copy = JSON.parse(JSON.stringify(previous_state));
-      const keys = path_value.split(".");
+  const handleFieldChange = useCallback((path, newValue) => {
+    setFormData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      const keys = path.split(".");
       let current = copy;
-
-      keys.forEach((key, index) => {
-        if (index === keys.length - 1) {
-          current[key] = value;
-        } else {
-          if (!current[key] || typeof current[key] !== "object") {
-            current[key] = {};
-          }
-          current = current[key];
-        }
-      });
-
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) current[keys[i]] = {}; 
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = newValue;
       return copy;
     });
+  }, []);
 
-    if (validation_errors[path_value]) {
-      set_validation_errors((previous_errors) => {
-        const new_errors = { ...previous_errors };
-        delete new_errors[path_value];
-        return new_errors;
-      });
-    }
-  };
-
-  const create_empty_object_based_on = (obj) => {
-    const new_obj = {};
-    for (const key in obj) {
-      new_obj[key] =
-        typeof obj[key] === "string"
-          ? ""
-          : typeof obj[key] === "number"
-          ? 0
-          : typeof obj[key] === "boolean"
-          ? false
-          : "";
-    }
-    return new_obj;
-  };
-
-  const add_array_item = (path_value) => {
-    const arr = eval_path(form_data, path_value) || [];
-    let new_item = {};
-
-    if (arr.length > 0 && typeof arr[0] === "object") {
-      new_item = create_empty_object_based_on(arr[0]);
-    }
-
-    update_field(path_value, [...arr, new_item]);
-  };
-
-  const remove_array_item = (path_value, index) => {
-    const arr = [...eval_path(form_data, path_value)];
-    arr.splice(index, 1);
-    update_field(path_value, arr);
-  };
-
-  const toggle_section = (section_key) => {
-    set_expanded_sections((prev) => ({
-      ...prev,
-      [section_key]: !prev[section_key],
-    }));
-  };
-
-  const validate_form = () => {
-    const errors = {};
-
-    if (!form_data.title || form_data.title.toString().trim() === "") {
-      errors.title = "Job title is required";
-    }
-
-    if (
-      !form_data.description ||
-      form_data.description.toString().trim() === ""
-    ) {
-      errors.description = "Job description is required";
-    }
-
-    if (!form_data.company || form_data.company.toString().trim() === "") {
-      errors.company = "Company name is required";
-    }
-
-    set_validation_errors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const clean_data = (data) => {
-    const copy = JSON.parse(JSON.stringify(data));
-    ["_id", "__v", "createdAt", "updatedAt"].forEach((key) => delete copy[key]);
-    return copy;
-  };
-
-  const handle_export_json = () => {
-    const cleaned_output = clean_data(form_data);
-    set_json_output(JSON.stringify(cleaned_output, null, 2));
-    set_show_json_modal(true);
-  };
-
-  const handle_copy_json = () => {
-    navigator.clipboard.writeText(json_output);
-    set_copy_success(true);
-    setTimeout(() => set_copy_success(false), 2000);
-  };
-
-  const handle_update = async () => {
-    set_is_saving(true);
-    try {
-      const cleaned_data = clean_data(form_data);
-      await dispatch(updateJob({ id, jobData: cleaned_data })).unwrap();
-      set_success_message("✓ Job updated successfully!");
-      setTimeout(() => {
-        navigate("/dashboard/all-jobs");
-      }, 1500);
-    } catch (err) {
-      console.error("Update error:", err);
-      set_validation_errors({
-        general: "Failed to update job. Please try again.",
-      });
-    } finally {
-      set_is_saving(false);
-    }
-  };
-
-  const format_label = (text) => {
-    return text
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
-  };
-
-  const render_field = (key, value, path_value = "") => {
-    const full_path = path_value ? `${path_value}.${key}` : key;
-    const has_error = validation_errors[full_path];
-    const label_text = format_label(key);
-
+  // --- Recursive Render Logic ---
+  const renderField = (key, value, parentPath = "") => {
+    const currentPath = parentPath ? `${parentPath}.${key}` : key;
+    
+    // Ignore internal keys
     if (["_id", "__v", "createdAt", "updatedAt"].includes(key)) return null;
 
-    if (Array.isArray(value)) {
-      const is_expanded = expanded_sections[full_path] !== false;
-
-      return (
-        <div key={full_path} className="mb-6">
-          <button
-            onClick={() => toggle_section(full_path)}
-            className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 hover:from-slate-900 hover:via-slate-800 hover:to-slate-900 text-white px-6 py-4 rounded-xl font-semibold flex items-center justify-between transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></div>
-              <span className="capitalize tracking-wide">{label_text}</span>
-              <span className="ml-2 text-xs bg-blue-500 px-2.5 py-1 rounded-full font-bold">
-                {value.length} items
-              </span>
-            </div>
-            <ChevronDown
-              size={20}
-              className={`transition-transform duration-300 ${
-                is_expanded ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-
-          {is_expanded && (
-            <div className="mt-4 space-y-4 animate-fade-in">
-              {value.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 transition-colors">
-                  <div className="text-slate-400 text-4xl mb-3">📋</div>
-                  <p className="text-slate-500 font-medium">
-                    No items added yet
-                  </p>
-                  <p className="text-slate-400 text-sm mt-1">
-                    Click add button to create new entry
-                  </p>
-                </div>
-              ) : (
-                value.map((item, index) => (
-                  <div
-                    key={index}
-                    className="group relative border-2 border-slate-200 rounded-2xl p-6 bg-gradient-to-br from-white via-slate-50 to-white hover:from-slate-50 hover:via-blue-50 hover:to-white transition-all duration-300 shadow-sm hover:shadow-xl hover:border-blue-300 transform hover:scale-[1.02]"
-                  >
-                    <div className="absolute top-0 right-0 w-1 h-12 bg-gradient-to-b from-blue-500 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                    <div className="flex items-start justify-between mb-5">
-                      <span className="inline-block px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold tracking-wider">
-                        Item {index + 1}
-                      </span>
-                      <button
-                        onClick={() => remove_array_item(full_path, index)}
-                        className="inline-flex items-center justify-center w-9 h-9 text-red-600 bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-red-100 hover:scale-110 active:scale-95"
-                        title="Remove item"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {typeof item === "object" && item !== null
-                        ? Object.keys(item).map((sub_key) =>
-                            render_field(
-                              sub_key,
-                              item[sub_key],
-                              `${full_path}.${index}`
-                            )
-                          )
-                        : render_field(index, item, full_path)}
-                    </div>
-                  </div>
-                ))
-              )}
-
-              <button
-                onClick={() => add_array_item(full_path)}
-                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 group mt-6"
-              >
-                <Plus
-                  size={20}
-                  className="group-hover:rotate-90 transition-transform duration-300"
-                />
-                Add New Item
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (typeof value === "object" && value !== null) {
-      const is_expanded = expanded_sections[full_path] !== false;
-
-      return (
-        <div key={full_path} className="mb-6">
-          <button
-            onClick={() => toggle_section(full_path)}
-            className="w-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-700 hover:via-indigo-600 hover:to-indigo-700 text-white px-6 py-4 rounded-xl font-semibold flex items-center justify-between transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.01] active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full bg-indigo-300 animate-pulse"></div>
-              <span className="capitalize tracking-wide">{label_text}</span>
-            </div>
-            <ChevronDown
-              size={20}
-              className={`transition-transform duration-300 ${
-                is_expanded ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-
-          {is_expanded && (
-            <div className="mt-4 p-6 bg-gradient-to-br from-slate-50 via-indigo-50 to-slate-50 rounded-xl border border-indigo-200 space-y-5 animate-fade-in">
-              {Object.keys(value).map((sub_key) =>
-                render_field(sub_key, value[sub_key], full_path)
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
+    // 1. Handle Boolean (Switch)
     if (typeof value === "boolean") {
-      return (
-        <div key={full_path} className="group">
-          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-lg hover:bg-slate-100 transition-all duration-200">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={value}
-                onChange={(event) =>
-                  update_field(full_path, event.target.checked)
-                }
-                className="w-6 h-6 cursor-pointer accent-blue-600 rounded-lg border-2 border-slate-300 transition-all duration-200 focus:ring-2 focus:ring-blue-400"
-              />
+        return (
+            <div key={currentPath} className="col-span-1 md:col-span-2">
+                <SwitchInput label={key} value={value} onChange={(val) => handleFieldChange(currentPath, val)} />
             </div>
-            <span className="font-medium text-slate-700 capitalize group-hover:text-slate-900 transition-colors duration-200 select-none">
-              {label_text}
-            </span>
-          </label>
+        );
+    }
+
+    // 2. Handle Arrays
+    if (Array.isArray(value)) {
+      return (
+        <div key={currentPath} className="col-span-1 md:col-span-2">
+            <ArrayField
+            label={key}
+            value={value}
+            path={currentPath}
+            onChange={handleFieldChange}
+            renderRecursive={renderField}
+            />
         </div>
       );
     }
 
-    const input_type = key.toLowerCase().includes("date")
-      ? "date"
-      : typeof value === "number"
-      ? "number"
-      : "text";
-
-    return (
-      <div key={full_path} className="group">
-        <label className="block mb-2.5 font-bold text-slate-700 capitalize text-sm tracking-wide">
-          {label_text}
-          {has_error && <span className="text-red-500 ml-1.5 text-lg">●</span>}
-        </label>
-        <div className="relative">
-          <input
-            type={input_type}
-            value={value ?? ""}
-            onChange={(event) => update_field(full_path, event.target.value)}
-            className={`w-full px-5 py-3.5 rounded-xl font-medium transition-all duration-300 outline-none border-2 placeholder-slate-400 ${
-              has_error
-                ? "border-red-500 bg-red-50 focus:ring-2 focus:ring-red-200 focus:border-red-600 text-red-900"
-                : "border-slate-300 bg-white hover:border-slate-400 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 text-slate-900"
-            }`}
-            placeholder={`Enter ${label_text.toLowerCase()}`}
-          />
-          {input_type === "date" && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none">
-              📅
-            </div>
-          )}
+    // 3. Handle Objects
+    if (typeof value === "object" && value !== null) {
+      return (
+        <div key={currentPath} className="col-span-1 md:col-span-2">
+            <ObjectField
+            label={key}
+            value={value}
+            path={currentPath}
+            renderRecursive={renderField}
+            />
         </div>
-        {has_error && (
-          <p className="text-red-600 text-xs mt-2.5 font-bold flex items-center gap-1.5 uppercase tracking-wide">
-            <AlertCircle size={14} className="flex-shrink-0" />
-            {validation_errors[full_path]}
-          </p>
-        )}
-      </div>
+      );
+    }
+
+    // 4. Handle Primitives (String/Number)
+    return (
+      <SimpleInput
+        key={currentPath}
+        label={key}
+        value={value}
+        path={currentPath}
+        onChange={handleFieldChange}
+        error={validationErrors[currentPath]}
+      />
     );
   };
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-gradient-to-br from-white to-slate-50 border-2 border-red-200 rounded-2xl p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center shadow-lg">
-              <AlertCircle className="text-red-600" size={24} />
-            </div>
-            <h3 className="text-xl font-bold text-red-900">
-              Error Loading Job
-            </h3>
-          </div>
-          <p className="text-red-700 text-sm mb-8 leading-relaxed">
-            {error || "Failed to load job details. Please try again."}
-          </p>
-          <button
-            onClick={() => navigate(-1)}
-            className="w-full px-6 py-3 text-red-700 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-300 rounded-lg font-bold hover:from-red-100 hover:to-red-200 hover:border-red-400 transition-all duration-200 active:scale-95 shadow-md"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
+  const handleExportJson = () => {
+    setJsonOutput(JSON.stringify(cleanData(formData), null, 2));
+    setModalState({ ...modalState, showJson: true });
+  };
+
+  const handleUpdate = async () => {
+    setStatus((prev) => ({ ...prev, saving: true }));
+    try {
+      const cleanedData = cleanData(formData);
+      await dispatch(updateJob({ id, jobData: cleanedData })).unwrap();
+      setStatus({ saving: false, message: "Saved successfully!", copySuccess: false });
+      setTimeout(() => setStatus(prev => ({...prev, message: ""})), 3000);
+    } catch (err) {
+      console.error(err);
+      setStatus({ saving: false, message: "" });
+      setValidationErrors({ general: "Failed to update." });
+    }
+  };
+
+  const handleDelete = async () => {
+    setStatus((prev) => ({ ...prev, saving: true }));
+    try {
+      await dispatch(deleteJob(id)).unwrap();
+      navigate("/dashboard/all-jobs");
+    } catch (err) {
+      setStatus({ saving: false, message: "" });
+      setValidationErrors({ general: "Delete failed." });
+    }
+  };
+
+  // --- Render ---
+
+  if (loading || !currentJob) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div></div>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
-      <div className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-10">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-bold transition-all duration-200 mb-8 group text-sm tracking-wide"
-          >
-            <ArrowLeft
-              size={20}
-              className="group-hover:-translate-x-1 transition-transform duration-200"
-            />
-            BACK TO JOBS
-          </button>
-
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-8 rounded-2xl shadow-2xl">
-            <h1 className="text-5xl font-black tracking-tighter mb-3">
-              Edit Job Posting
-            </h1>
-            <p className="text-slate-300 font-medium">
-              Update job details and save your changes
-            </p>
-          </div>
-        </div>
-
-        {success_message && (
-          <div className="mb-8 flex items-center gap-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-600 rounded-xl shadow-lg animate-fade-in">
-            <CheckCircle className="text-green-600 flex-shrink-0" size={24} />
-            <p className="text-green-800 font-bold text-lg">
-              {success_message}
-            </p>
-          </div>
-        )}
-
-        {validation_errors.general && (
-          <div className="mb-8 flex items-center gap-4 p-6 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-600 rounded-xl shadow-lg">
-            <AlertCircle className="text-red-600 flex-shrink-0" size={24} />
-            <p className="text-red-800 font-bold text-lg">
-              {validation_errors.general}
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-4 mb-10">
-          <button
-            onClick={handle_export_json}
-            className="inline-flex items-center gap-3 px-6 py-3.5 bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700 hover:from-slate-800 hover:via-slate-700 hover:to-slate-800 text-white font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm tracking-wide uppercase"
-          >
-            <Code size={20} />
-            Export JSON
-          </button>
-          <button
-            onClick={async () => {
-              const ok = window.confirm("Are you sure you want to delete this job?");
-              if (!ok) return;
-              set_is_saving(true);
-              try {
-                await dispatch(deleteJob(id)).unwrap();
-                set_success_message("✓ Job deleted");
-                setTimeout(() => navigate('/dashboard/all-jobs'), 800);
-              } catch (err) {
-                console.error('Delete failed', err);
-                set_validation_errors({ general: 'Failed to delete job. Please try again.' });
-              } finally {
-                set_is_saving(false);
-              }
-            }}
-            className="inline-flex items-center gap-3 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm tracking-wide uppercase"
-          >
-            <Trash2 size={20} />
-            Delete Job
-          </button>
-
-          <button
-            onClick={handle_update}
-            disabled={is_saving}
-            className={`inline-flex items-center gap-3 px-6 py-3.5 font-bold rounded-xl transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm tracking-wide uppercase ${
-              is_saving
-                ? "bg-blue-400 text-white cursor-not-allowed opacity-75"
-                : "bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 hover:from-blue-700 hover:via-blue-600 hover:to-blue-700 text-white"
-            }`}
-          >
-            <Save size={20} />
-            {is_saving ? "SAVING..." : "SAVE CHANGES"}
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {Object.keys(form_data).length === 0 ? (
-            <div className="text-center py-16 bg-white border-2 border-dashed border-slate-300 rounded-2xl shadow-sm">
-              <p className="text-slate-500 font-bold text-lg">
-                No form data available
-              </p>
+    <div className="min-h-screen bg-slate-50/50 text-slate-800 font-sans pb-20">
+      
+      {/* Top Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-sm">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+                    <ArrowLeft size={20} />
+                </button>
+                <div className="flex flex-col">
+                    <h1 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Edit Job</h1>
+                    <span className="text-[10px] text-slate-400 font-mono">{id}</span>
+                </div>
             </div>
-          ) : (
-            Object.keys(form_data).map((key) =>
-              render_field(key, form_data[key], "")
-            )
-          )}
+
+            <div className="flex items-center gap-2">
+                <button onClick={handleExportJson} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Export JSON">
+                    <Code size={18} />
+                </button>
+                <button onClick={() => setModalState({...modalState, showDelete: true})} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+                    <Trash2 size={18} />
+                </button>
+                <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                <button
+                    onClick={handleUpdate}
+                    disabled={status.saving}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all active:scale-95 ${
+                    status.saving ? "bg-slate-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                >
+                    <Save size={14} />
+                    {status.saving ? "SAVING..." : "SAVE CHANGES"}
+                </button>
+            </div>
         </div>
       </div>
 
-      {show_json_modal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-white to-slate-50 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-fade-in border border-slate-200">
-            <div className="flex items-center justify-between p-8 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 flex-shrink-0 border-b border-slate-700">
-              <h2 className="text-2xl font-black text-white tracking-tight">
-                Job Data Export
-              </h2>
-              <button
-                onClick={() => set_show_json_modal(false)}
-                className="text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition-all duration-200 active:scale-95 shadow-lg"
-              >
-                <X size={24} />
-              </button>
-            </div>
+      {/* Main Form Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        
+        {status.message && (
+          <div className="fixed top-20 right-4 z-50 bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-bounce-in">
+             <CheckCircle size={18} /> {status.message}
+          </div>
+        )}
 
-            <div className="p-8 flex-shrink-0 border-b border-slate-200">
-              <button
-                onClick={handle_copy_json}
-                className={`inline-flex items-center gap-3 px-6 py-3 rounded-lg font-bold transition-all duration-200 text-sm tracking-wide uppercase shadow-md ${
-                  copy_success
-                    ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-2 border-green-300"
-                    : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-2 border-blue-300 hover:from-blue-200 hover:to-indigo-200"
-                }`}
-              >
-                <Copy size={18} />
-                {copy_success ? "Copied!" : "Copy JSON"}
-              </button>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Object.keys(formData).length === 0 ? (
+                    <div className="col-span-2 text-center py-12 text-slate-400">No data found</div>
+                ) : (
+                    Object.keys(formData).map((key) => renderField(key, formData[key]))
+                )}
             </div>
+        </div>
+      </div>
 
-            <div className="flex-grow overflow-y-auto px-8 pb-8">
-              <textarea
-                value={json_output}
-                readOnly
-                className="w-full h-full min-h-[400px] border-2 border-slate-300 p-6 rounded-xl font-mono text-xs bg-gradient-to-br from-slate-900 to-slate-800 text-green-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-inner"
-              />
+      {/* JSON Modal */}
+      {modalState.showJson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            <div className="flex justify-between items-center px-5 py-4 border-b border-slate-100">
+                <h3 className="font-bold text-slate-700">JSON Data</h3>
+                <button onClick={() => setModalState({ ...modalState, showJson: false })} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-900 p-5">
+              <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed">{jsonOutput}</pre>
             </div>
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-15px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        textarea::selection {
-          background-color: rgba(59, 130, 246, 0.5);
-          color: #10b981;
-        }
-      `}</style>
+      {/* Delete Modal */}
+      {modalState.showDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-2xl text-center">
+             <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                <AlertCircle size={24} />
+             </div>
+             <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Job?</h3>
+             <p className="text-sm text-slate-500 mb-6">This action cannot be undone. Are you sure?</p>
+             <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setModalState({ ...modalState, showDelete: false })} className="py-2.5 rounded-lg border border-slate-200 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button onClick={handleDelete} className="py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 shadow-lg shadow-red-200/50">Delete</button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

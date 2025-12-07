@@ -122,8 +122,6 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
   );
 };
 
-// Tag/Chip Style Recent Visits Component
-// Tag/Chip Style Recent Visits Component - WITHOUT SLIDER
 const RecentVisitsSection = ({ data, isLoading }) => {
   if (isLoading || data.length === 0) {
     return null;
@@ -131,7 +129,6 @@ const RecentVisitsSection = ({ data, isLoading }) => {
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Title with Icon */}
       <div className="flex items-center gap-2 px-1">
         <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
           <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
@@ -141,7 +138,6 @@ const RecentVisitsSection = ({ data, isLoading }) => {
         </h3>
       </div>
 
-      {/* Tags - no slider, no arrows */}
       <div className="flex flex-wrap gap-2 sm:gap-3">
         {data.map((job) => (
           <Link
@@ -159,18 +155,6 @@ const RecentVisitsSection = ({ data, isLoading }) => {
       </div>
     </div>
   );
-};
-
-
-const getUserStateFromGeolocation = async () => {
-  try {
-    const response = await fetch("https://ipapi.co/json/");
-    const data = await response.json();
-    return data.region || "ALL";
-  } catch (error) {
-    console.error("Geolocation error:", error);
-    return "ALL";
-  }
 };
 
 export default function HomeScreen() {
@@ -201,18 +185,13 @@ export default function HomeScreen() {
   });
 
   useEffect(() => {
-    const initializeUserState = async () => {
-      const storedState = localStorage.getItem("userState");
-      if (storedState) {
-        setSelectedState(storedState);
-      } else {
-        const detectedState = await getUserStateFromGeolocation();
-        setSelectedState(detectedState);
-        localStorage.setItem("userState", detectedState);
-      }
-    };
-
-    initializeUserState();
+    const storedState = localStorage.getItem("userState");
+    if (storedState) {
+      setSelectedState(storedState);
+    } else {
+      setSelectedState("ALL");
+      localStorage.setItem("userState", "ALL");
+    }
   }, []);
 
   useEffect(() => {
@@ -394,7 +373,6 @@ export default function HomeScreen() {
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
-        {/* Search & Quick Cards Section */}
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
@@ -433,12 +411,10 @@ export default function HomeScreen() {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-8">
-            {/* Recent Visits - Tag Style */}
             {topVisited.length > 0 && (
               <RecentVisitsSection data={topVisited} isLoading={false} />
             )}
 
-            {/* Mobile: Latest Jobs Section First */}
             <div className="lg:hidden">
               <SectionColumn
                 title={`Latest ${latestJobsByState.state} Jobs`}
@@ -453,14 +429,12 @@ export default function HomeScreen() {
               />
             </div>
 
-            {/* Urgent Reminders */}
             <UrgentReminderSection
               expiresToday={reminders.expiresToday}
               expiringSoon={reminders.expiringSoon}
               isLoading={reminders.isLoading}
             />
 
-            {/* Desktop: 3-Column Grid with Latest Jobs */}
             <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-6">
               <SectionColumn
                 title="Results"
@@ -491,7 +465,6 @@ export default function HomeScreen() {
               />
             </div>
 
-            {/* Mobile: 2-Column or 1-Column Grid */}
             <div className="lg:hidden space-y-4 sm:space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <SectionColumn
@@ -540,7 +513,6 @@ export default function HomeScreen() {
               />
             </div>
 
-            {/* Private Jobs Section */}
             <div
               id="private-jobs"
               className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"

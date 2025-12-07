@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Moon, Sun, Sparkles, Send, Bot } from 'lucide-react';
+import { Menu, X, Moon, Sun, Sparkles, Send, Bot, Copy, Check } from 'lucide-react';
+import { baseUrl } from '../../util/baseUrl';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,7 +25,7 @@ export default function Header() {
     });
   };
 
-  // --- INTERNAL STYLES FOR ANIMATION (No external plugins needed) ---
+  // --- INTERNAL STYLES ---
   const animationStyles = `
     @keyframes slideInUp {
       from {
@@ -39,23 +40,38 @@ export default function Header() {
     .chat-animate-enter {
       animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    @keyframes bounce-delay-100 {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-8px); }
+    }
+    @keyframes bounce-delay-200 {
+      0%, 60%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+    }
+    .animate-bounce-delay-100 {
+      animation: bounce-delay-100 1s infinite;
+    }
+    .animate-bounce-delay-200 {
+      animation: bounce-delay-200 1s infinite;
+    }
   `;
 
   // --- CHAT WIDGET COMPONENT ---
   const GeminiChatWidget = () => {
     const [messages, setMessages] = useState([
-      { text: "Hello! Main JobsAddah AI Assistant hu. Jobs, Results ya Admit card se juda kuch bhi puchiye!", isUser: false }
+      { 
+        text: "Namaste! 🙏 Main JobsAddah AI Assistant hu.\n\nMain aapki madad kar sakta hu:\n• Latest govt jobs ke baare mein\n• Results aur admit cards\n• Application fees aur dates\n• Eligibility criteria\n\nKuch bhi puchiye!", 
+        isUser: false 
+      }
     ]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState(null);
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
-      // Prefer directly setting scrollTop on the scrollable container to avoid
-      // causing a global document scroll (some browsers may scroll viewport
-      // when using scrollIntoView on fixed-position elements).
       try {
         const el = messagesContainerRef.current;
         if (el) {
@@ -72,6 +88,44 @@ export default function Header() {
       scrollToBottom();
     }, [messages, isLoading]);
 
+    // Copy message to clipboard
+    const copyToClipboard = (text, index) => {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      });
+    };
+
+    // Format AI message with proper line breaks and structure
+    const formatMessage = (text) => {
+      return text.split('\n').map((line, i) => {
+        // Check if line contains URLs
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = line.split(urlRegex);
+        
+        return (
+          <p key={i} className={`${i > 0 ? 'mt-2' : ''} leading-relaxed`}>
+            {parts.map((part, j) => {
+              if (urlRegex.test(part)) {
+                return (
+                  <a
+                    key={j}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-rose-600 dark:text-rose-400 hover:underline break-all font-medium"
+                  >
+                    {part}
+                  </a>
+                );
+              }
+              return <span key={j}>{part}</span>;
+            })}
+          </p>
+        );
+      });
+    };
+
     const sendMessage = async () => {
       if (!input.trim()) return;
 
@@ -81,7 +135,7 @@ export default function Header() {
       setIsLoading(true);
 
       try {
-        const response = await fetch('http://localhost:5000/api/v1/ai-chat', {
+        const response = await fetch(`${baseUrl}/ai-chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: userMessage.text }),
@@ -96,7 +150,11 @@ export default function Header() {
         }
       } catch (error) {
         console.error("Chat Error:", error);
-        setMessages((prev) => [...prev, { text: "Network error. Please check backend connection.", isUser: false, isError: true }]);
+        setMessages((prev) => [...prev, { 
+          text: "😔 Maaf kijiye, kuch technical problem hai. Kripya thodi der baad try karein.", 
+          isUser: false, 
+          isError: true 
+        }]);
       } finally {
         setIsLoading(false);
       }
@@ -109,7 +167,7 @@ export default function Header() {
         <div className="fixed bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end gap-4 chat-animate-enter">
           
           {/* Chat Box */}
-          <div className="w-[90vw] md:w-96 h-[500px] max-h-[75vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+          <div className="w-[90vw] md:w-[420px] h-[500px] max-h-[75vh] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
             
             {/* Header */}
             <div className="bg-gradient-to-r from-rose-600 to-orange-500 p-4 flex justify-between items-center text-white shadow-sm shrink-0">
@@ -131,43 +189,79 @@ export default function Header() {
               <button 
                 onClick={() => setIsChatOpen(false)} 
                 className="hover:bg-white/20 p-2 rounded-full transition-colors active:scale-95"
+                aria-label="Close chat"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Body */}
-            <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 dark:bg-gray-950/50 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+            {/* Messages Body */}
+            <div 
+              ref={messagesContainerRef} 
+              className="flex-1 p-4 overflow-y-auto space-y-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950/50 dark:to-gray-900"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent'
+              }}
+            >
               {messages.map((msg, index) => (
-                <div key={index} className={`flex gap-3 ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
+                <div key={index} className={`flex gap-3 ${msg.isUser ? 'justify-end' : 'justify-start'} group`}>
                   
+                  {/* AI Avatar */}
                   {!msg.isUser && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-900/30 dark:to-orange-900/30 flex items-center justify-center flex-shrink-0 border border-rose-200 dark:border-rose-800 shadow-sm mt-1">
                       <Sparkles size={14} className="text-rose-600 dark:text-rose-400" />
                     </div>
                   )}
 
-                  <div className={`max-w-[80%] p-3.5 text-sm rounded-2xl shadow-sm ${
-                    msg.isUser 
-                      ? 'bg-gradient-to-r from-rose-600 to-orange-600 text-white rounded-tr-sm' 
-                      : msg.isError
-                        ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-tl-sm'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-gray-700 rounded-tl-sm'
-                  }`}>
-                    {msg.text}
+                  {/* Message Bubble */}
+                  <div className="flex flex-col max-w-[85%]">
+                    <div className={`p-3.5 text-sm rounded-2xl shadow-sm relative ${
+                      msg.isUser 
+                        ? 'bg-gradient-to-r from-rose-600 to-orange-600 text-white rounded-tr-sm' 
+                        : msg.isError
+                          ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-tl-sm'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-tl-sm'
+                    }`}>
+                      <div className="break-words overflow-wrap-anywhere">
+                        {msg.isUser ? (
+                          <p className="leading-relaxed">{msg.text}</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {formatMessage(msg.text)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Copy Button for AI Messages */}
+                    {!msg.isUser && (
+                      <button
+                        onClick={() => copyToClipboard(msg.text, index)}
+                        className="self-start mt-1 ml-2 p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100"
+                        aria-label="Copy message"
+                      >
+                        {copiedIndex === index ? (
+                          <Check size={14} className="text-green-500" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
 
+              {/* Loading Indicator */}
               {isLoading && (
                 <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                    <Sparkles size={14} className="text-gray-400" />
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-900/30 dark:to-orange-900/30 flex items-center justify-center border border-rose-200 dark:border-rose-800 shadow-sm">
+                    <Sparkles size={14} className="text-rose-600 dark:text-rose-400" />
                   </div>
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl rounded-tl-sm border border-gray-100 dark:border-gray-700 flex items-center gap-1.5 shadow-sm">
-                    <span className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-bounce delay-100"></span>
-                    <span className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-bounce delay-200"></span>
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl rounded-tl-sm border border-gray-200 dark:border-gray-700 flex items-center gap-2 shadow-sm">
+                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></span>
+                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-bounce-delay-100"></span>
+                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-bounce-delay-200"></span>
                   </div>
                 </div>
               )}
@@ -175,29 +269,33 @@ export default function Header() {
             </div>
 
             {/* Input Footer */}
-            <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0">
-              <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 border border-transparent focus-within:border-rose-500/50 focus-within:ring-2 focus-within:ring-rose-500/20 transition-all shadow-inner">
+            <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-2.5 border border-gray-200 dark:border-gray-700 focus-within:border-rose-500 focus-within:ring-2 focus-within:ring-rose-500/20 transition-all">
                 <input 
                   type="text" 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Ask a question..." 
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                  placeholder="Type your question..." 
                   disabled={isLoading}
                   className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none min-w-0"
                 />
                 <button 
                   onClick={sendMessage}
                   disabled={isLoading || !input.trim()}
-                  className={`p-2 rounded-full transition-all flex-shrink-0 ${
+                  className={`p-2 rounded-lg transition-all flex-shrink-0 ${
                     input.trim() 
-                      ? 'bg-rose-500 text-white hover:bg-rose-600 shadow-md transform hover:scale-105 active:scale-95' 
-                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-rose-500 to-orange-500 text-white hover:shadow-md transform hover:scale-105 active:scale-95' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                   }`}
+                  aria-label="Send message"
                 >
                   <Send size={16} />
                 </button>
               </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 text-center">
+                AI may make mistakes. Verify official sources.
+              </p>
             </div>
           </div>
         </div>
@@ -244,6 +342,7 @@ export default function Header() {
                 <button
                   onClick={toggleTheme}
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-yellow-400 transition-colors"
+                  aria-label="Toggle theme"
                 >
                   {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
@@ -265,7 +364,11 @@ export default function Header() {
 
             {/* Mobile Actions */}
             <div className="flex items-center gap-3 md:hidden">
-              <button onClick={toggleTheme} className="p-2 text-gray-600 dark:text-yellow-400">
+              <button 
+                onClick={toggleTheme} 
+                className="p-2 text-gray-600 dark:text-yellow-400"
+                aria-label="Toggle theme"
+              >
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
 
@@ -276,6 +379,7 @@ export default function Header() {
                     ? 'bg-rose-100 text-rose-600' 
                     : 'bg-gradient-to-r from-rose-500 to-orange-500 text-white shadow-lg'
                 }`}
+                aria-label="Toggle AI chat"
               >
                 {isChatOpen ? <X size={20} /> : <Sparkles size={20} />}
               </button>
@@ -283,6 +387,7 @@ export default function Header() {
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 text-gray-700 dark:text-white"
+                aria-label="Toggle menu"
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -292,7 +397,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-white dark:bg-gray-900 border-t dark:border-gray-800 animate-in slide-in-from-top-5">
+          <div className="md:hidden bg-white dark:bg-gray-900 border-t dark:border-gray-800">
             <div className="px-4 pt-2 pb-4 space-y-1">
               {['Home', "Result", "Admit Card", "Latest Jobs"].map((nav) => (
                 <a

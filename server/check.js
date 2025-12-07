@@ -31,11 +31,15 @@ async function findMyModels() {
       console.log("❌ No models available for 'Content Generation' (Maybe only Embedding models available?)");
     }
 
-    usableModels.forEach(model => {
-      console.log(`   👉 Name: ${model.name.replace("models/", "")} \t (Version: ${model.version})`);
-    });
+    const modelData = usableModels.map(model => ({
+        "Model Name": model.name.replace("models/", ""),
+        "Version": model.version,
+        "Supported Methods": model.supportedGenerationMethods.join(', ')
+    }));
 
-    console.log("\n📋 Suggestion: Pick the first name from above and paste it into your code.");
+    console.table(modelData);
+
+    console.log("\n📋 Suggestion: Pick a 'Model Name' from the table above and use it in your code (e.g., in `index.js` or `ai.js`).");
 
   } catch (error) {
     console.error("\n❌ REQUEST FAILED.");
