@@ -1,23 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
   Bell,
-  ChevronRight,
   Award,
   FileText,
   Briefcase,
   BookOpen,
-  ExternalLink,
-  Calendar,
   TrendingUp,
   Building2,
-  AlertCircle,
-  Clock,
   MapPin,
   Loader,
-  ChevronDown,
-  X,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
@@ -121,6 +114,47 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
     </Link>
   );
 };
+
+// --- SKELETON LOADING COMPONENTS ---
+
+const SkeletonSection = () => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm h-full">
+    <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-3">
+      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+    </div>
+    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="p-3 sm:p-4 flex gap-3">
+          <div className="w-1.5 h-1.5 mt-2 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
+            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const SkeletonPrivateJobCard = () => (
+  <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+      <div className="space-y-2 flex-1">
+        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
+        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
+      </div>
+    </div>
+    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full animate-pulse" />
+    <div className="flex gap-2 pt-2">
+      <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+    </div>
+  </div>
+);
+
+// --- MAIN COMPONENTS ---
 
 const RecentVisitsSection = ({ data, isLoading }) => {
   if (isLoading || data.length === 0) {
@@ -348,23 +382,27 @@ export default function HomeScreen() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
       <Header />
 
+      {/* Marquee Section */}
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-blue-700 to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-blue-600 to-transparent z-10" />
         <div className="animate-marquee whitespace-nowrap flex gap-8 sm:gap-10 items-center px-3 sm:px-4">
-          {filteredData.stateJobs.slice(0, 5).map((job, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm"
-            >
-              <Bell
-                size={12}
-                className="fill-yellow-400 text-yellow-400 animate-pulse sm:w-3.5 sm:h-3.5"
-              />
-              {job.title}
-            </span>
-          ))}
-          {filteredData.stateJobs.length === 0 && (
+          {categoryData.isLoading ? (
+            <span className="text-[11px] sm:text-sm">Loading latest updates...</span>
+          ) : filteredData.stateJobs.length > 0 ? (
+            filteredData.stateJobs.slice(0, 5).map((job, i) => (
+              <span
+                key={i}
+                className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm"
+              >
+                <Bell
+                  size={12}
+                  className="fill-yellow-400 text-yellow-400 animate-pulse sm:w-3.5 sm:h-3.5"
+                />
+                {job.title}
+              </span>
+            ))
+          ) : (
             <span className="text-[11px] sm:text-sm">
               Welcome to JobsAddah - India's No.1 Job Portal
             </span>
@@ -374,6 +412,7 @@ export default function HomeScreen() {
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
         <div className="space-y-4 sm:space-y-6">
+          {/* Search Bar */}
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
               <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
@@ -387,6 +426,7 @@ export default function HomeScreen() {
             />
           </div>
 
+          {/* Quick Links (Fav Posts) */}
           {favPosts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
@@ -402,78 +442,54 @@ export default function HomeScreen() {
           )}
         </div>
 
-        {categoryData.isLoading ? (
-          <div className="py-16 sm:py-20 text-center">
-            <div className="inline-block w-10 h-10 sm:w-12 sm:h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="mt-3 sm:mt-4 text-gray-500 font-medium text-sm">
-              Loading updates...
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6 sm:space-y-8">
-            {topVisited.length > 0 && (
-              <RecentVisitsSection data={topVisited} isLoading={false} />
+        {/* Content Sections with Skeleton Loading */}
+        <div className="space-y-6 sm:space-y-8">
+          {topVisited.length > 0 && (
+            <RecentVisitsSection data={topVisited} isLoading={false} />
+          )}
+
+          {/* Mobile State Jobs */}
+          <div className="lg:hidden">
+            {latestJobsByState.isLoading ? (
+              <SkeletonSection />
+            ) : (
+              <SectionColumn
+                title={`Latest ${latestJobsByState.state} Jobs`}
+                icon={MapPin}
+                data={filteredData.stateJobs}
+                colorTheme="green"
+                postType="JOB"
+                isLoading={false}
+                showStateSelector={true}
+                currentState={selectedState}
+                onStateChange={handleStateChange}
+              />
             )}
+          </div>
 
-            <div className="lg:hidden">
-              <SectionColumn
-                title={`Latest ${latestJobsByState.state} Jobs`}
-                icon={MapPin}
-                data={filteredData.stateJobs}
-                colorTheme="green"
-                postType="JOB"
-                isLoading={latestJobsByState.isLoading}
-                showStateSelector={true}
-                currentState={selectedState}
-                onStateChange={handleStateChange}
-              />
-            </div>
+          <UrgentReminderSection
+            expiresToday={reminders.expiresToday}
+            expiringSoon={reminders.expiringSoon}
+            isLoading={reminders.isLoading}
+          />
 
-            <UrgentReminderSection
-              expiresToday={reminders.expiresToday}
-              expiringSoon={reminders.expiringSoon}
-              isLoading={reminders.isLoading}
-            />
-
-            <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-6">
-              <SectionColumn
-                title="Results"
-                icon={Award}
-                data={filteredData.results}
-                colorTheme="red"
-                postType="RESULT"
-                isLoading={categoryData.isLoading}
-              />
-              <SectionColumn
-                title="Admit Cards"
-                icon={FileText}
-                data={filteredData.admitCards}
-                colorTheme="blue"
-                postType="ADMIT_CARD"
-                isLoading={categoryData.isLoading}
-              />
-              <SectionColumn
-                title={`Latest ${latestJobsByState.state} Jobs`}
-                icon={MapPin}
-                data={filteredData.stateJobs}
-                colorTheme="green"
-                postType="JOB"
-                isLoading={latestJobsByState.isLoading}
-                showStateSelector={true}
-                currentState={selectedState}
-                onStateChange={handleStateChange}
-              />
-            </div>
-
-            <div className="lg:hidden space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          {/* Main Grid: Results, Admit Cards, State Jobs */}
+          <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-6">
+            {categoryData.isLoading ? (
+              <>
+                <SkeletonSection />
+                <SkeletonSection />
+                <SkeletonSection />
+              </>
+            ) : (
+              <>
                 <SectionColumn
                   title="Results"
                   icon={Award}
                   data={filteredData.results}
                   colorTheme="red"
                   postType="RESULT"
-                  isLoading={categoryData.isLoading}
+                  isLoading={false}
                 />
                 <SectionColumn
                   title="Admit Cards"
@@ -481,83 +497,137 @@ export default function HomeScreen() {
                   data={filteredData.admitCards}
                   colorTheme="blue"
                   postType="ADMIT_CARD"
-                  isLoading={categoryData.isLoading}
+                  isLoading={false}
                 />
-              </div>
-            </div>
+                <SectionColumn
+                  title={`Latest ${latestJobsByState.state} Jobs`}
+                  icon={MapPin}
+                  data={filteredData.stateJobs}
+                  colorTheme="green"
+                  postType="JOB"
+                  isLoading={latestJobsByState.isLoading}
+                  showStateSelector={true}
+                  currentState={selectedState}
+                  onStateChange={handleStateChange}
+                />
+              </>
+            )}
+          </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              <SectionColumn
-                title="Answer Keys"
-                icon={FileText}
-                data={filteredData.answerKeys}
-                colorTheme="pink"
-                postType="ANSWER_KEY"
-                isLoading={categoryData.isLoading}
-              />
-              <SectionColumn
-                title="Admissions"
-                icon={BookOpen}
-                data={filteredData.admissions}
-                colorTheme="purple"
-                postType="ADMISSION"
-                isLoading={categoryData.isLoading}
-              />
-              <SectionColumn
-                title="Scholarships"
-                icon={Award}
-                data={filteredData.scholarships}
-                colorTheme="blue"
-                postType="SCHOLARSHIP"
-                isLoading={categoryData.isLoading}
-              />
-            </div>
-
-            <div
-              id="private-jobs"
-              className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-900 dark:bg-slate-800 text-white p-4 sm:p-6 gap-3 sm:gap-4">
-                <div>
-                  <div className="flex items-center gap-2 font-bold text-base sm:text-2xl mb-0.5 sm:mb-1 dark:text-gray-100">
-                    <div className="p-1.5 sm:p-2 bg-purple-500 rounded-lg">
-                      <Building2 size={18} className="sm:w-6 sm:h-6" />
-                    </div>
-                    MNC & Private Jobs
-                  </div>
-                  <p className="text-slate-400 dark:text-slate-300 text-xs sm:text-sm">
-                    Top private companies hiring now. Apply directly.
-                  </p>
-                </div>
-                <Link
-                  to="/private-jobs"
-                  className="bg-white/10 hover:bg-white/20 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold transition-colors border border-white/10 inline-block whitespace-nowrap"
-                >
-                  View All
-                </Link>
-              </div>
-
-              <div className="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-                {filteredData.privateJobs.length > 0 ? (
-                  filteredData.privateJobs.map((job) => (
-                    <PrivateJobCard key={job.id} job={job} />
-                  ))
-                ) : categoryData.isLoading ? (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8">
-                    <Loader className="mx-auto mb-2 text-slate-400 dark:text-slate-500 animate-spin w-6 h-6 sm:w-8 sm:h-8" />
-                    <p className="text-slate-400 dark:text-slate-300 text-xs sm:text-sm">
-                      Loading private jobs...
-                    </p>
-                  </div>
-                ) : (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
-                    No private jobs available
-                  </div>
-                )}
-              </div>
+          {/* Mobile Grid for Results & Admit Cards */}
+          <div className="lg:hidden space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {categoryData.isLoading ? (
+                <>
+                  <SkeletonSection />
+                  <SkeletonSection />
+                </>
+              ) : (
+                <>
+                  <SectionColumn
+                    title="Results"
+                    icon={Award}
+                    data={filteredData.results}
+                    colorTheme="red"
+                    postType="RESULT"
+                    isLoading={false}
+                  />
+                  <SectionColumn
+                    title="Admit Cards"
+                    icon={FileText}
+                    data={filteredData.admitCards}
+                    colorTheme="blue"
+                    postType="ADMIT_CARD"
+                    isLoading={false}
+                  />
+                </>
+              )}
             </div>
           </div>
-        )}
+
+          {/* Bottom Grid: Answer Keys, Admissions, Scholarships */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {categoryData.isLoading ? (
+              <>
+                <SkeletonSection />
+                <SkeletonSection />
+                <SkeletonSection />
+              </>
+            ) : (
+              <>
+                <SectionColumn
+                  title="Answer Keys"
+                  icon={FileText}
+                  data={filteredData.answerKeys}
+                  colorTheme="pink"
+                  postType="ANSWER_KEY"
+                  isLoading={false}
+                />
+                <SectionColumn
+                  title="Admissions"
+                  icon={BookOpen}
+                  data={filteredData.admissions}
+                  colorTheme="purple"
+                  postType="ADMISSION"
+                  isLoading={false}
+                />
+                <SectionColumn
+                  title="Scholarships"
+                  icon={Award}
+                  data={filteredData.scholarships}
+                  colorTheme="blue"
+                  postType="SCHOLARSHIP"
+                  isLoading={false}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Private Jobs Section */}
+          <div
+            id="private-jobs"
+            className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-900 dark:bg-slate-800 text-white p-4 sm:p-6 gap-3 sm:gap-4">
+              <div>
+                <div className="flex items-center gap-2 font-bold text-base sm:text-2xl mb-0.5 sm:mb-1 dark:text-gray-100">
+                  <div className="p-1.5 sm:p-2 bg-purple-500 rounded-lg">
+                    <Building2 size={18} className="sm:w-6 sm:h-6" />
+                  </div>
+                  MNC & Private Jobs
+                </div>
+                <p className="text-slate-400 dark:text-slate-300 text-xs sm:text-sm">
+                  Top private companies hiring now. Apply directly.
+                </p>
+              </div>
+              <Link
+                to="/private-jobs"
+                className="bg-white/10 hover:bg-white/20 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold transition-colors border border-white/10 inline-block whitespace-nowrap"
+              >
+                View All
+              </Link>
+            </div>
+
+            <div className="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+              {categoryData.isLoading ? (
+                <>
+                  <SkeletonPrivateJobCard />
+                  <SkeletonPrivateJobCard />
+                  <SkeletonPrivateJobCard />
+                  <SkeletonPrivateJobCard />
+                </>
+              ) : filteredData.privateJobs.length > 0 ? (
+                filteredData.privateJobs.map((job) => (
+                  <PrivateJobCard key={job.id} job={job} />
+                ))
+              ) : (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
+                  No private jobs available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </main>
 
       <style>{`
