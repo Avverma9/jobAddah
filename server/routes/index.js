@@ -3,11 +3,12 @@ const adminRoute = require('./admin');
 const authRoute = require('./auth');
 const jobRoute = require('./job');
 const aiAssistantRoute = require('./aiAssistant');
+const scrapperRoute = require('../routes/scrapper');
 const router = express.Router();
 router.use('/', adminRoute);
 router.use('/', authRoute);
 router.use('/', jobRoute);
-
+router.use('/scrapper', scrapperRoute);
 router.use('/', aiAssistantRoute);
 
 module.exports = router;
