@@ -624,17 +624,71 @@ const markFav = async (req, res) => {
   try {
     const { id } = req.params;
     const { fav } = req.body;
+
+    // Validate inputs
+    if (!id || typeof fav !== 'boolean') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid ID or fav status required" 
+      });
+    }
+
+    // Count current favorites for this user (assuming user auth middleware)
+    const userId = req.user?.id; // From auth middleware
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User authentication required" 
+      });
+    }
+
+    const currentFavCount = await Post.countDocuments({ 
+      fav: true, 
+      userId: userId // Per-user favorites
+    });
+
+    if (fav === true && currentFavCount >= 8) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "You can mark only 8 posts as favorite" 
+      });
+    }
+
+    // Find and update the post
     const updatedPost = await Post.findByIdAndUpdate(
       id,
-      { fav: fav },
-      { new: true }
-    );
-    res.json({ success: true, data: updatedPost });
+      { 
+        fav: fav,
+        userId: userId, // Track per user
+        updatedAt: new Date()
+      },
+      { 
+        new: true,
+        runValidators: true 
+      }
+    ).populate('userId', 'name email'); // Optional: populate user info
+
+    if (!updatedPost) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      data: updatedPost 
+    });
+
   } catch (err) {
     console.error("markFav error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error" 
+    });
   }
 };
+
 
 const getFavPosts = async (req, res) => {
   try {
