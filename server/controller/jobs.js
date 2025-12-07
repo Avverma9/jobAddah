@@ -1,12 +1,9 @@
 const Post = require("../models/jobs");
 
 // --- Helper: Standard Response Formatter ---
-const formatResponse = (data, page, limit, total) => ({
+const formatResponse = (data) => ({
   success: true,
   count: data.length,
-  totalDocuments: total,
-  totalPages: Math.ceil(total / limit),
-  currentPage: parseInt(page),
   data: data,
 });
 
@@ -21,25 +18,22 @@ const createPost = async (req, res) => {
     const savedPost = await newPost.save();
     res.status(201).json({ success: true, data: savedPost });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message }); // 400 for Bad Request (Duplicate slug etc)
+    res.status(400).json({ success: false, message: err.message });
   }
 };
 
+// 2. Insert Bulk Posts
 const insertBulkPosts = async (req, res) => {
   try {
     const posts = req.body;
     if (!Array.isArray(posts) || posts.length === 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Input must be a non-empty array of posts",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Input must be a non-empty array of posts",
+      });
     }
 
-    // Mongoose automatically validates each document in the array
     const result = await Post.insertMany(posts);
-    console.log(result);
 
     return res.status(201).json({
       success: true,
@@ -49,55 +43,44 @@ const insertBulkPosts = async (req, res) => {
   } catch (err) {
     console.error("insertBulkPosts error:", err);
 
-    // Handle Mongoose validation errors
     if (err.name === "ValidationError") {
       return res.status(400).json({
         success: false,
-        message: "Validation failed for one or more posts.",
-        // Extract and send back specific validation errors
-        errors: err.errors
-          ? Object.values(err.errors).map((e) => e.message)
-          : "No details available.",
+        message: "Validation failed.",
+        errors: err.errors ? Object.values(err.errors).map((e) => e.message) : "No details.",
       });
     }
 
-    // Handle bulk write errors (e.g., duplicate key)
     if (err.name === "BulkWriteError" && err.code === 11000) {
       return res.status(409).json({
-        // 409 Conflict is more appropriate for duplicates
         success: false,
-        message: "One or more posts have duplicate keys.",
-        // Provide details on which items failed if possible
+        message: "Duplicate keys detected.",
         details: err.writeErrors?.map((e) => ({
           index: e.index,
-          code: e.code,
           errmsg: e.errmsg,
         })),
       });
     }
 
-    // Generic server error
     return res.status(500).json({
       success: false,
-      message: "An unexpected error occurred during bulk insert.",
-      error: err.message, // Provide error message for debugging
+      message: "Unexpected error during bulk insert.",
+      error: err.message,
     });
   }
 };
 
-// 2. Update a Post by ID
+// 3. Update a Post by ID
 const updatePost = async (req, res) => {
   try {
     const updatedPost = await Post.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true } // Return updated doc & validate
+      { new: true, runValidators: true }
     );
 
     if (!updatedPost) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Post not found" });
+      return res.status(404).json({ success: false, message: "Post not found" });
     }
 
     res.json({ success: true, data: updatedPost });
@@ -106,14 +89,12 @@ const updatePost = async (req, res) => {
   }
 };
 
-// 3. Delete a Post by ID
+// 4. Delete a Post by ID
 const deletePost = async (req, res) => {
   try {
     const post = await Post.findByIdAndDelete(req.params.id);
     if (!post) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Post not found" });
+      return res.status(404).json({ success: false, message: "Post not found" });
     }
     res.json({ success: true, message: "Post deleted successfully" });
   } catch (err) {
@@ -121,7 +102,7 @@ const deletePost = async (req, res) => {
   }
 };
 
-// 4. Delete ALL Posts (Dangerous!)
+// 5. Delete ALL Posts
 const deleteAllPosts = async (req, res) => {
   try {
     const result = await Post.deleteMany({});
@@ -135,18 +116,14 @@ const deleteAllPosts = async (req, res) => {
   }
 };
 
-// 5. Get Single Post (By Slug or ID)
+// 6. Get Single Post (By Slug or ID)
 const getPostDetails = async (req, res) => {
   try {
-    // Check if param is valid ObjectID, else treat as Slug
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
     const query = isObjectId ? { _id: req.params.id } : { slug: req.params.id };
 
     const post = await Post.findOne(query);
-    if (!post)
-      return res
-        .status(404)
-        .json({ success: false, message: "Post not found" });
+    if (!post) return res.status(404).json({ success: false, message: "Post not found" });
 
     res.json({ success: true, data: post });
   } catch (err) {
@@ -154,23 +131,32 @@ const getPostDetails = async (req, res) => {
   }
 };
 
+// 7. Get Doc By ID (Simple)
+const getDocsById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: "Not found" });
+    return res.status(200).json(post);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ==========================================
-// B. CATEGORIZED GETTERS (Filtering)
+// B. CATEGORIZED GETTERS (No Pagination)
 // ==========================================
 
-// 6. Get Online Forms (Latest Jobs)
+// 8. Get All Jobs (Online Forms)
 const getJobs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, postType } = req.query;
-
+    const { search, postType } = req.query;
     const query = {};
 
-    // Dynamic postType filter
     if (postType && postType !== "ALL") {
       query.postType = postType.toUpperCase();
     }
 
-    // Search across multiple fields
     if (search) {
       query.$or = [
         { postTitle: { $regex: search, $options: "i" } },
@@ -179,28 +165,17 @@ const getJobs = async (req, res) => {
       ];
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const total = await Post.countDocuments(query);
-
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-
-
-    res.json(formatResponse(posts, page, limit, total));
+    const posts = await Post.find(query).sort({ createdAt: -1 });
+    res.json(formatResponse(posts));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-
-
+// 9. Get Private Jobs
 const getPrivateJob = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const query = { postType: "PRIVATE_JOB" };
 
     if (search) {
@@ -210,167 +185,133 @@ const getPrivateJob = async (req, res) => {
       ];
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const posts = await Post.find(query).sort({ createdAt: -1 }).lean();
 
-    const total = await Post.countDocuments(query);
-
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Lightweight response for listing
     const data = posts.map((post) => ({
       _id: post._id,
       title: post.postTitle,
       slug: post.slug,
       org: post.organization,
       vacancies: post.totalVacancyCount || "N/A",
-      lastDate:
-        post.importantDates?.find((d) =>
-          d.label?.toLowerCase().includes("last")
-        )?.value || "N/A", // "last" label more flexible for various formats
-      createdAt: post.createdAt, // Optionally send createdAt for debugging or frontend sorting
+      lastDate: post.importantDates?.find((d) => d.label?.toLowerCase().includes("last"))?.value || "N/A",
+      createdAt: post.createdAt,
     }));
 
-    res.json(formatResponse(data, page, limit, total));
+    res.json(formatResponse(data));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-const getDocsById = async (req, res) => {
-  const { id } = req.params;
-  const post = await Post.findById(id);
-  return res.status(200).json(post);
-};
-// 7. Get Admit Cards
+
+// 10. Get Admit Cards
 const getAdmitCards = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const query = { postType: "ADMIT_CARD" };
 
     if (search) query.postTitle = { $regex: search, $options: "i" };
 
-    const total = await Post.countDocuments(query);
     const posts = await Post.find(query)
       .select("postTitle slug organization importantDates importantLinks")
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .lean();
 
     const data = posts.map((post) => ({
       _id: post._id,
       title: post.postTitle,
       slug: post.slug,
-      examDate:
-        post.importantDates.find((d) => d.label.toLowerCase().includes("exam"))
-          ?.value || "Soon",
-      downloadLink: post.importantLinks.find(
-        (l) =>
-          l.label.toLowerCase().includes("admit") ||
-          l.label.toLowerCase().includes("download")
-      )?.url,
+      examDate: post.importantDates?.find((d) => d.label.toLowerCase().includes("exam"))?.value || "Soon",
+      downloadLink: post.importantLinks?.find((l) => /admit|download/i.test(l.label))?.url,
     }));
 
-    res.json(formatResponse(data, page, limit, total));
+    res.json(formatResponse(data));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// 8. Get Results
+// 11. Get Results
 const getResults = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search } = req.query;
+    const { search } = req.query;
     const query = { postType: "RESULT" };
 
     if (search) query.postTitle = { $regex: search, $options: "i" };
 
-    const total = await Post.countDocuments(query);
     const posts = await Post.find(query)
       .select("postTitle slug organization importantDates importantLinks")
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .lean();
 
     const data = posts.map((post) => ({
       _id: post._id,
       title: post.postTitle,
       slug: post.slug,
-      resultDate:
-        post.importantDates.find((d) =>
-          d.label.toLowerCase().includes("result")
-        )?.value || "Declared",
-      checkLink: post.importantLinks.find((l) =>
-        l.label.toLowerCase().includes("result")
-      )?.url,
+      resultDate: post.importantDates?.find((d) => d.label.toLowerCase().includes("result"))?.value || "Declared",
+      checkLink: post.importantLinks?.find((l) => l.label.toLowerCase().includes("result"))?.url,
     }));
 
-    res.json(formatResponse(data, page, limit, total));
+    res.json(formatResponse(data));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// 9. Get Upcoming Exams
-// Logic: Finds posts where `importantDates` contains "Exam Date" or "Test Date"
+// 12. Get Upcoming Exams
 const getExams = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-
     const query = {
       "importantDates.label": { $regex: /Exam Date|Test Date|CBT Date/i },
     };
 
-    const total = await Post.countDocuments(query);
     const posts = await Post.find(query)
       .select("postTitle slug organization importantDates")
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .lean();
 
     const data = posts.map((post) => ({
       _id: post._id,
       title: post.postTitle,
       slug: post.slug,
-      examDate: post.importantDates.find((d) =>
-        /Exam Date|Test Date/i.test(d.label)
-      )?.value,
+      examDate: post.importantDates?.find((d) => /Exam Date|Test Date/i.test(d.label))?.value,
     }));
 
-    res.json(formatResponse(data, page, limit, total));
+    res.json(formatResponse(data));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// 10. Get Answer Keys (Bonus)
+// 13. Get Answer Keys
 const getAnswerKeys = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
     const query = { postType: "ANSWER_KEY" };
-
-    const total = await Post.countDocuments(query);
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
-
-    res.json(formatResponse(posts, page, limit, total));
+    const posts = await Post.find(query).sort({ createdAt: -1 });
+    res.json(formatResponse(posts));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// 14. Get All Posts (Raw)
+const getallPost = async (req, res) => {
+  try {
+    const response = await Post.find().sort({ createdAt: -1 });
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ==========================================
-// C. STATS & DASHBOARD
+// C. STATS & UTILITIES
 // ==========================================
 
-// 11. Get Dashboard Stats
+// 15. Get Dashboard Stats
 const getStats = async (req, res) => {
   try {
     const stats = await Promise.all([
-      Post.countDocuments({}), // Total Posts
+      Post.countDocuments({}),
       Post.countDocuments({ postType: "JOB" }),
       Post.countDocuments({ postType: "ADMIT_CARD" }),
       Post.countDocuments({ postType: "RESULT" }),
@@ -393,15 +334,8 @@ const getStats = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-const getallPost = async (req, res) => {
-  try {
-    const response = await Post.find().sort({ createdAt: -1 });
-    res.json(response);
-  } catch (err) {
-    console.error(err);
-  }
-};
 
+// 16. Expiring Jobs Reminder
 const getExpiringJobsReminder = async (req, res) => {
   try {
     const today = new Date();
@@ -411,9 +345,7 @@ const getExpiringJobsReminder = async (req, res) => {
     const jobs = await Post.find({ postType: "JOB", isLive: true }).lean();
 
     const extractLastDate = (job) => {
-      const lastObj = job.importantDates?.find((d) =>
-        d.label?.toLowerCase().includes("last")
-      );
+      const lastObj = job.importantDates?.find((d) => d.label?.toLowerCase().includes("last"));
       return lastObj?.value || null;
     };
 
@@ -441,7 +373,7 @@ const getExpiringJobsReminder = async (req, res) => {
           title: job.postTitle,
           slug: job.slug,
           lastDate: lastDateStr,
-          message: "Last date is today!"
+          message: "Last date is today!",
         });
       } else if (diffDays > 0 && diffDays <= 5) {
         expiringSoon.push({
@@ -450,7 +382,7 @@ const getExpiringJobsReminder = async (req, res) => {
           slug: job.slug,
           lastDate: lastDateStr,
           daysLeft: diffDays,
-          message: `${diffDays} days left`
+          message: `${diffDays} days left`,
         });
       }
     });
@@ -459,107 +391,41 @@ const getExpiringJobsReminder = async (req, res) => {
       success: true,
       expiresToday,
       expiringSoon,
-      totalExpiring: expiresToday.length + expiringSoon.length
+      totalExpiring: expiresToday.length + expiringSoon.length,
     });
-
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-
+// 17. State Filtering Logic
 const STATE_KEYWORDS = {
   // Full States
-  "andhra": "Andhra Pradesh",
-  "arunachal": "Arunachal Pradesh",
-  "assam": "Assam",
-  "bihar": "Bihar",
-  "bssc": "Bihar",
-  "chhattisgarh": "Chhattisgarh",
-  "goa": "Goa",
-  "gujarat": "Gujarat",
-  "haryana": "Haryana",
-  "himachal": "Himachal Pradesh",
-  "hp": "Himachal Pradesh",
-  "jharkhand": "Jharkhand",
-  "karnataka": "Karnataka",
-  "kerala": "Kerala",
-  "madhya pradesh": "Madhya Pradesh",
-  "mp": "Madhya Pradesh",
-  "maharashtra": "Maharashtra",
-  "mh": "Maharashtra",
-  "manipur": "Manipur",
-  "meghalaya": "Meghalaya",
-  "mizoram": "Mizoram",
-  "nagaland": "Nagaland",
-  "odisha": "Odisha",
-  "orissa": "Odisha",
-  "punjab": "Punjab",
-  "rajasthan": "Rajasthan",
-  "rssb": "Rajasthan",
-  "rsmssb": "Rajasthan",
-  "sikkim": "Sikkim",
-  "tamil": "Tamil Nadu",
-  "tn": "Tamil Nadu",
-  "telangana": "Telangana",
-  "tripura": "Tripura",
-  "uttar pradesh": "Uttar Pradesh",
-  "up": "Uttar Pradesh",
-  "upsssc": "Uttar Pradesh",
-  "uppsc": "Uttar Pradesh",
-  "uttarakhand": "Uttarakhand",
-  "uk": "Uttarakhand",
-  "west bengal": "West Bengal",
-  "wb": "West Bengal",
-  "wbssc": "West Bengal",
-
+  andhra: "Andhra Pradesh", arunachal: "Arunachal Pradesh", assam: "Assam", bihar: "Bihar", bssc: "Bihar",
+  chhattisgarh: "Chhattisgarh", goa: "Goa", gujarat: "Gujarat", haryana: "Haryana",
+  himachal: "Himachal Pradesh", hp: "Himachal Pradesh", jharkhand: "Jharkhand", karnataka: "Karnataka",
+  kerala: "Kerala", "madhya pradesh": "Madhya Pradesh", mp: "Madhya Pradesh", maharashtra: "Maharashtra",
+  mh: "Maharashtra", manipur: "Manipur", meghalaya: "Meghalaya", mizoram: "Mizoram", nagaland: "Nagaland",
+  odisha: "Odisha", orissa: "Odisha", punjab: "Punjab", rajasthan: "Rajasthan", rssb: "Rajasthan",
+  rsmssb: "Rajasthan", sikkim: "Sikkim", tamil: "Tamil Nadu", tn: "Tamil Nadu", telangana: "Telangana",
+  tripura: "Tripura", "uttar pradesh": "Uttar Pradesh", up: "Uttar Pradesh", upsssc: "Uttar Pradesh",
+  uppsc: "Uttar Pradesh", uttarakhand: "Uttarakhand", uk: "Uttarakhand", "west bengal": "West Bengal",
+  wb: "West Bengal", wbssc: "West Bengal",
   // Union Territories
-  "andaman": "Andaman and Nicobar Islands",
-  "nicobar": "Andaman and Nicobar Islands",
-  "chandigarh": "Chandigarh",
-  "dd": "Dadra and Nagar Haveli and Daman and Diu",
-  "daman": "Dadra and Nagar Haveli and Daman and Diu",
-  "diu": "Dadra and Nagar Haveli and Daman and Diu",
-  "delhi": "Delhi",
-  "new delhi": "Delhi",
-  "dsssb": "Delhi",
-  "jammu": "Jammu and Kashmir",
-  "kashmir": "Jammu and Kashmir",
-  "ladakh": "Ladakh",
-  "lakshadweep": "Lakshadweep",
-  "puducherry": "Puducherry",
-  "pondicherry": "Puducherry",
-
-  // Central Govt (Return ALL)
-  "ssc": "ALL",
-  "sscsr": "ALL",
-  "sscnr": "ALL",
-  "drdo": "ALL",
-  "afcat": "ALL",
-  "af": "ALL",
-  "army": "ALL",
-  "navy": "ALL",
-  "air force": "ALL",
-  "aiims": "ALL",
-  "sebi": "ALL",
-  "ecgc": "ALL",
-  "rbi": "ALL",
-  "bank of baroda": "ALL",
-  "bob": "ALL",
-  "ibps": "ALL",
-  "railway": "ALL",
-  "rrb": "ALL",
-  "ntpc": "ALL",
-  "ongc": "ALL",
-  "gail": "ALL",
-  "bpsc central": "ALL",
-  "upsc": "ALL"
+  andaman: "Andaman and Nicobar Islands", nicobar: "Andaman and Nicobar Islands", chandigarh: "Chandigarh",
+  dd: "Dadra and Nagar Haveli and Daman and Diu", daman: "Dadra and Nagar Haveli and Daman and Diu",
+  diu: "Dadra and Nagar Haveli and Daman and Diu", delhi: "Delhi", "new delhi": "Delhi", dsssb: "Delhi",
+  jammu: "Jammu and Kashmir", kashmir: "Jammu and Kashmir", ladakh: "Ladakh", lakshadweep: "Lakshadweep",
+  puducherry: "Puducherry", pondicherry: "Puducherry",
+  // Central Govt
+  ssc: "ALL", sscsr: "ALL", sscnr: "ALL", drdo: "ALL", afcat: "ALL", af: "ALL", army: "ALL", navy: "ALL",
+  "air force": "ALL", aiims: "ALL", sebi: "ALL", ecgc: "ALL", rbi: "ALL", "bank of baroda": "ALL",
+  bob: "ALL", ibps: "ALL", railway: "ALL", rrb: "ALL", ntpc: "ALL", ongc: "ALL", gail: "ALL",
+  "bpsc central": "ALL", upsc: "ALL",
 };
 
 const detectStateSmart = (job) => {
-  const text =
-    `${job.postTitle} ${job.slug} ${job.organization}`.toLowerCase();
-
+  const text = `${job.postTitle} ${job.slug} ${job.organization}`.toLowerCase();
   for (const key in STATE_KEYWORDS) {
     if (text.includes(key)) return STATE_KEYWORDS[key];
   }
@@ -571,36 +437,21 @@ const getJobsSmartByState = async (req, res) => {
     const { state } = req.query;
 
     if (!state) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide ?state=Bihar or ?state=ALL"
-      });
+      return res.status(400).json({ success: false, message: "Please provide ?state=Bihar or ?state=ALL" });
     }
 
-    // Build main query
-    const query = { postType: "JOB" };
+    // Get all jobs, simple find, no cursors needed for non-paginated small-to-medium datasets
+    const allJobs = await Post.find({ postType: "JOB" }).sort({ createdAt: -1 }).lean();
 
-    // Use cursor with sorting
-    const cursor = Post.find(query)
-      .sort({ createdAt: -1 })
-      .cursor();
-
-    const allJobs = [];
-    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-      allJobs.push(doc.toObject());
-    }
-
-    // If state = ALL → return complete sorted list
     if (state.toUpperCase() === "ALL") {
       return res.json({
         success: true,
         count: allJobs.length,
         state: "ALL",
-        data: allJobs
+        data: allJobs,
       });
     }
 
-    // Smart filtering
     const filtered = allJobs.filter((job) => {
       const detected = detectStateSmart(job);
       return detected.toLowerCase() === state.toLowerCase();
@@ -610,64 +461,40 @@ const getJobsSmartByState = async (req, res) => {
       success: true,
       count: filtered.length,
       state,
-      data: filtered
+      data: filtered,
     });
-
   } catch (err) {
-    console.error("getJobsSmartByState error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-
+// 18. Favorite Logic
 const markFav = async (req, res) => {
   try {
     const { id } = req.params;
     const { fav } = req.body;
 
-    // Agar user fav true karna chahta hai tabhi limit check hoga
     if (fav === true) {
       const favCount = await Post.countDocuments({ fav: true });
-
       if (favCount >= 8) {
-        return res.status(400).json({
-          success: false,
-          message: "You can mark only 8 posts as favorite"
-        });
+        return res.status(400).json({ success: false, message: "You can mark only 8 posts as favorite" });
       }
     }
 
-    const updatedPost = await Post.findByIdAndUpdate(
-      id,
-      { fav },
-      { new: true }
-    );
-
-    if (!updatedPost) {
-      return res.status(404).json({
-        success: false,
-        message: "Post not found"
-      });
-    }
+    const updatedPost = await Post.findByIdAndUpdate(id, { fav }, { new: true });
+    if (!updatedPost) return res.status(404).json({ success: false, message: "Post not found" });
 
     res.json({ success: true, data: updatedPost });
-
   } catch (err) {
-    console.error("markFav error:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 const getFavPosts = async (req, res) => {
   try {
     const favPosts = await Post.find({ fav: true }).sort({ createdAt: -1 });
     res.json({ success: true, count: favPosts.length, data: favPosts });
   } catch (err) {
-    console.error("getFavPosts error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -691,5 +518,5 @@ module.exports = {
   getExpiringJobsReminder,
   getJobsSmartByState,
   markFav,
-  getFavPosts
+  getFavPosts,
 };
