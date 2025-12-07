@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FileText,
@@ -13,12 +13,12 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal
+  Star
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 // Redux Actions
-import { getStats, getJobs, getPrivateJob, deleteJob } from "../../redux/slices/job";
+import { getStats, getJobs, getPrivateJob, deleteJob, markFav } from "../../redux/slices/job";
 import {
   getAdmitCards,
   getResults,
@@ -31,7 +31,7 @@ import { WidgetCard } from "../pages/WidgetCard";
 
 // --- Constants ---
 const FILTERS = [
-  { id: "JOB", label: "Public Jobs", icon: Briefcase },
+  { id: "JOB", label: "Govt Jobs", icon: Briefcase },
   { id: "PRIVATE_JOB", label: "Private Jobs", icon: Award },
   { id: "ADMIT_CARD", label: "Admit Cards", icon: FileText },
   { id: "RESULT", label: "Results", icon: CheckCircle },
@@ -39,7 +39,7 @@ const FILTERS = [
   { id: "ANSWER_KEY", label: "Answer Keys", icon: FileText },
 ];
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 8; // Increased slightly for better view
 
 export default function JobAddahAdmin() {
   const dispatch = useDispatch();
@@ -49,8 +49,6 @@ export default function JobAddahAdmin() {
   const [activeTab, setActiveTab] = useState("JOB");
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
 
   // --- Redux State ---
@@ -73,10 +71,38 @@ export default function JobAddahAdmin() {
     fetchAllData();
   }, [dispatch]);
 
-  // --- Reset Pagination on Tab/Search Change ---
+  // --- Reset Pagination ---
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, searchQuery]);
+
+  // --- Handlers (Memoized) ---
+  
+  // 1. Toggle Favorite Handler
+  const handleToggleFav = useCallback((e, id, currentFavStatus) => {
+    e.stopPropagation(); 
+    // Dispatch action to update backend
+    dispatch(markFav({ id, fav: !currentFavStatus }));
+  }, [dispatch]);
+
+  // 2. Delete Handler
+  const handleDelete = (id) => {
+    let type = "";
+    if (activeTab === "PRIVATE_JOB") type = "privateJob";
+    else if (activeTab === "ADMIT_CARD") type = "admitCards";
+    else if (activeTab === "RESULT") type = "results";
+    else if (activeTab === "EXAM") type = "exams";
+    else if (activeTab === "ANSWER_KEY") type = "answerKeys";
+    
+    dispatch(deleteJob({ id, type: type || undefined }));
+    setConfirmDelete(null);
+  };
+
+  // 3. Edit Handler
+  const handleEdit = (item) => {
+    let path = `/dashboard/job-edit/${item._id}`;
+    navigate(path, { state: { data: item } });
+  };
 
   // --- Data Filtering Logic ---
   const filteredData = useMemo(() => {
@@ -91,7 +117,6 @@ export default function JobAddahAdmin() {
       default: data = [];
     }
     
-    // Search Filter
     if (searchQuery) {
       return data.filter(item => 
         (item.postTitle || item.title || item.slug || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -103,43 +128,15 @@ export default function JobAddahAdmin() {
   // --- Pagination Logic ---
   const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-  
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredData, currentPage]);
 
-  // --- Handlers ---
-  const handleDelete = (id) => {
-    let type = "";
-    if (activeTab === "PRIVATE_JOB") type = "privateJob";
-    else if (activeTab === "ADMIT_CARD") type = "admitCards";
-    else if (activeTab === "RESULT") type = "results";
-    else if (activeTab === "EXAM") type = "exams";
-    else if (activeTab === "ANSWER_KEY") type = "answerKeys";
-    
-    dispatch(deleteJob({ id, type: type || undefined }));
-    setConfirmDelete(null);
-  };
-
-  const handleEdit = (item) => {
-    let path = "";
-    switch (activeTab) {
-      case "JOB": path = `/dashboard/job-edit/${item._id}`; break;
-      case "PRIVATE_JOB": path = `/dashboard/job-edit/${item._id}`; break;
-      case "ADMIT_CARD": path = `/dashboard/job-edit/${item._id}`; break;
-      case "RESULT": path = `/dashboard/job-edit/${item._id}`; break;
-      case "EXAM": path = `/dashboard/job-edit/${item._id}`; break;
-      case "ANSWER_KEY": path = `/dashboard/job-edit/${item._id}`; break;
-      default: path = `/dashboard/job-edit/${item._id}`;
-    }
-    navigate(path, { state: { data: item } });
-  };
-
   const totalCount = (stats?.jobs || 0) + (privateJobs?.data?.length || 0);
 
   return (
-    <div className="space-y-8 font-sans text-slate-800">
+    <div className="space-y-8 font-sans text-slate-800 pb-10">
       
       {/* 1. Stats Section */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -149,27 +146,27 @@ export default function JobAddahAdmin() {
         <StatCard title="Admissions" value={stats?.admissions || 0} color="bg-orange-500" icon={<GraduationCap />} loading={loading} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* 2. Main Content Manager (Left Column) */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col h-full">
             
             {/* Header */}
-            <div className="border-b border-slate-100 px-6 py-5">
+            <div className="border-b border-slate-100 px-6 py-5 bg-white">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">All Postings</h3>
-                  <p className="text-sm text-slate-500">Manage all your posts in one place.</p>
+                  <p className="text-sm text-slate-500">Manage your content efficiently.</p>
                 </div>
-                <div className="relative">
+                <div className="relative w-full md:w-auto">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input 
                     type="text" 
                     placeholder="Search..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64 transition-shadow"
                   />
                 </div>
               </div>
@@ -180,10 +177,10 @@ export default function JobAddahAdmin() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 border 
                       ${activeTab === tab.id 
-                        ? "bg-slate-800 text-white shadow-md" 
-                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-slate-800 text-white border-slate-800 shadow-md" 
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
                       }`}
                   >
                     <tab.icon size={16} />
@@ -194,19 +191,20 @@ export default function JobAddahAdmin() {
             </div>
 
             {/* List Content */}
-            <div className="divide-y divide-slate-100 flex-grow min-h-[400px]">
+            <div className="divide-y divide-slate-100 flex-grow min-h-[400px] bg-white">
               {loading ? (
                 <div className="flex items-center justify-center h-40">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : paginatedData.length > 0 ? (
-                paginatedData.map((item, idx) => (
+                paginatedData.map((item) => (
                   <ListItem 
-                    key={item._id || idx}
+                    key={item._id}
                     item={item}
                     type={activeTab}
                     onEdit={() => handleEdit(item)}
                     onDelete={() => setConfirmDelete({ id: item._id })}
+                    onToggleFav={handleToggleFav}
                   />
                 ))
               ) : (
@@ -237,8 +235,8 @@ export default function JobAddahAdmin() {
              <div className="grid grid-cols-2 gap-3">
                 <QuickActionBtn label="Add Job" onClick={() => navigate('/create-job')} color="blue" />
                 <QuickActionBtn label="Add Result" onClick={() => navigate('/create-job')} color="green" />
-                <QuickActionBtn label="Add Admit Card" onClick={() => navigate('/create-job')} color="purple" />
-                <QuickActionBtn label="Add Answer Key" onClick={() => navigate('/create-job')} color="orange" />
+                <QuickActionBtn label="Add Admit" onClick={() => navigate('/create-job')} color="purple" />
+                <QuickActionBtn label="Add Key" onClick={() => navigate('/create-job')} color="orange" />
              </div>
           </WidgetCard>
 
@@ -263,12 +261,87 @@ export default function JobAddahAdmin() {
   );
 }
 
-// --- Helper Components ---
+// --- Optimized List Item Component ---
+const ListItem = React.memo(({ item, onEdit, onDelete, onToggleFav, type }) => {
+  const title = item.postTitle || item.title || item.slug || "Untitled Post";
+  const date = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : (item.date || "-");
+  const isFav = item.fav === true;
+
+  const getBadgeColor = () => {
+      switch(type) {
+          case 'JOB': return 'bg-blue-100 text-blue-700';
+          case 'PRIVATE_JOB': return 'bg-indigo-100 text-indigo-700';
+          case 'RESULT': return 'bg-green-100 text-green-700';
+          case 'ADMIT_CARD': return 'bg-purple-100 text-purple-700';
+          default: return 'bg-slate-100 text-slate-700';
+      }
+  };
+
+  return (
+    <div className="group flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors duration-200 gap-4">
+      {/* Left Side: Icon + Content */}
+      <div className="flex items-center gap-4 min-w-0 flex-1">
+        {/* Status Dot */}
+        <div className={`flex-shrink-0 h-2.5 w-2.5 rounded-full ${type === 'PRIVATE_JOB' ? 'bg-indigo-500' : 'bg-blue-500'} group-hover:scale-125 transition-transform`}></div>
+        
+        <div className="flex flex-col min-w-0">
+          {/* Title Row - Flexbox for perfect alignment */}
+          <div className="flex items-center gap-2">
+            <h4 
+                className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors cursor-pointer truncate" 
+                onClick={onEdit}
+                title={title}
+            >
+                {title}
+            </h4>
+            
+            {/* Star Button: Fixed size, proper alignment */}
+            {type === 'JOB' && (
+                <button 
+                    onClick={(e) => onToggleFav(e, item._id, isFav)}
+                    className="flex-shrink-0 focus:outline-none transition-transform active:scale-95 p-0.5"
+                    title={isFav ? "Unmark Favorite" : "Mark as Favorite"}
+                >
+                    <Star 
+                        size={16} 
+                        className={`transition-colors ${isFav ? "fill-yellow-400 text-yellow-400" : "text-slate-300 hover:text-yellow-400"}`} 
+                    />
+                </button>
+            )}
+          </div>
+
+          {/* Sub-info Row */}
+          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+             <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide ${getBadgeColor()}`}>
+                 {type === 'JOB' ? 'GOVT' : type.replace('_', ' ')}
+             </span>
+             <span className="text-xs text-slate-400 flex items-center gap-1 truncate max-w-[150px]">
+                <Briefcase size={10} /> {item.organization || item.company || "N/A"}
+             </span>
+             <span className="text-xs text-slate-400">
+                {date}
+             </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Right Side: Action Buttons */}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+          <Edit2 size={16} />
+        </button>
+        <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// --- Other Helper Components ---
 
 const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) return null;
-  
-    // Logic to show limited page numbers (e.g. 1 2 3 ... 10)
     const getPageNumbers = () => {
       const pages = [];
       if (totalPages <= 5) {
@@ -323,54 +396,6 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
         </button>
       </div>
     );
-};
-
-const ListItem = ({ item, onEdit, onDelete, type }) => {
-  const title = item.postTitle || item.title || item.slug || "Untitled Post";
-  const date = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : (item.date || "-");
-  
-  const getBadgeColor = () => {
-      switch(type) {
-          case 'JOB': return 'bg-blue-100 text-blue-700';
-          case 'PRIVATE_JOB': return 'bg-indigo-100 text-indigo-700';
-          case 'RESULT': return 'bg-green-100 text-green-700';
-          case 'ADMIT_CARD': return 'bg-purple-100 text-purple-700';
-          default: return 'bg-slate-100 text-slate-700';
-      }
-  };
-
-  return (
-    <div className="group flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors duration-200">
-      <div className="flex items-start gap-4">
-        <div className={`mt-1 h-2 w-2 rounded-full ${type === 'PRIVATE_JOB' ? 'bg-indigo-500' : 'bg-blue-500'} group-hover:scale-125 transition-transform`}></div>
-        <div>
-          <h4 className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors cursor-pointer" onClick={onEdit}>
-            {title}
-          </h4>
-          <div className="flex items-center gap-3 mt-1">
-             <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${getBadgeColor()}`}>
-                 {type.replace('_', ' ')}
-             </span>
-             <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Briefcase size={10} /> {item.organization || item.company || "N/A"}
-             </span>
-             <span className="text-xs text-slate-400">
-                {date}
-             </span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={onEdit} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
-          <Edit2 size={16} />
-        </button>
-        <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-          <Trash2 size={16} />
-        </button>
-      </div>
-    </div>
-  );
 };
 
 const SimpleList = ({ data }) => {

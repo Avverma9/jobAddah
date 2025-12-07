@@ -55,6 +55,19 @@ export const bulkInsert = createAsyncThunk(
     }
   }
 );
+export const insertBulkPosts = createAsyncThunk(
+  "job/insertBulkPosts",
+  async (jobDataArray, { rejectWithValue }) => {
+    try {
+      // Make sure this URL matches your Backend Route for bulk insert
+      // Based on your previous backend code, it expects an array in req.body
+      const response = await api.post("/bulk-insert", jobDataArray);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response ? error.response.data : error.message);
+    }
+  }
+);
 
 // Update Job
 export const updateJob = createAsyncThunk(
@@ -217,12 +230,30 @@ const jobSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
+        // ✅ ADD CASES FOR insertBulkPosts
+    builder
+    .addCase(insertBulkPosts.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    })
+    .addCase(insertBulkPosts.fulfilled, (state, action) => {
+      state.loading = false;
+      // Optionally add the new jobs to the state
+      if (action.payload.data) {
+         // If backend returns the array of inserted docs
+         state.jobs = [...action.payload.data, ...state.jobs]; 
+      }
+    })
+    .addCase(insertBulkPosts.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload || action.error.message;
+    });
 
     /* --- Update Job --- */
     builder
       .addCase(updateJob.pending, (state) => { state.loading = true; })
       .addCase(updateJob.fulfilled, (state, action) => {
-        const updated = action.payload?.job;
+        const updated = action.payload?.data || action.payload?.job; // Handle nested response
         state.loading = false;
         state.message = "Job updated";
         if (updated) {
@@ -254,7 +285,8 @@ const jobSlice = createSlice({
       .addCase(getJobById.pending, (state) => { state.loading = true; })
       .addCase(getJobById.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentJob = action.payload;
+        // Often backend returns { success: true, data: { ... } }, handle that
+        state.currentJob = action.payload.data ? action.payload.data : action.payload;
       })
       .addCase(getJobById.rejected, (state, action) => {
         state.loading = false;
@@ -272,6 +304,29 @@ const jobSlice = createSlice({
       .addCase(getStats.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      });
+
+    /* --- Mark Favorite (New Logic Added Here) --- */
+    builder
+      .addCase(markFav.pending, (state) => {
+         // Optionally set loading or keep silent for better UX
+      })
+      .addCase(markFav.fulfilled, (state, action) => {
+        // Extract the updated job data from the API response
+        // Backend usually returns: { success: true, data: { ...updatedJob } }
+        const updatedJob = action.payload.data || action.payload;
+        
+        if (updatedJob && updatedJob._id) {
+          // Find and update the job in the jobs array
+          const index = state.jobs.findIndex((job) => job._id === updatedJob._id);
+          if (index !== -1) {
+            state.jobs[index] = updatedJob; // Update state instantly
+          }
+        }
+      })
+      .addCase(markFav.rejected, (state, action) => {
+        state.error = action.payload;
+        // Optionally show a toast error here
       });
   }
 });
