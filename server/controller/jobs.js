@@ -620,6 +620,31 @@ const getJobsSmartByState = async (req, res) => {
 };
 
 
+const markFav = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fav } = req.body;
+    const updatedPost = await Post.findByIdAndUpdate(
+      id,
+      { fav: fav },
+      { new: true }
+    );
+    res.json({ success: true, data: updatedPost });
+  } catch (err) {
+    console.error("markFav error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const getFavPosts = async (req, res) => {
+  try {
+    const favPosts = await Post.find({ fav: true }).sort({ createdAt: -1 });
+    res.json({ success: true, count: favPosts.length, data: favPosts });
+  } catch (err) {
+    console.error("getFavPosts error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 module.exports = {
   createPost,
@@ -638,5 +663,7 @@ module.exports = {
   getDocsById,
   getPrivateJob,
   getExpiringJobsReminder,
-  getJobsSmartByState
+  getJobsSmartByState,
+  markFav,
+  getFavPosts
 };

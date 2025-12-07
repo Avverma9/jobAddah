@@ -108,6 +108,20 @@ export const getStats = createAsyncThunk(
   }
 );
 
+export const markFav = createAsyncThunk(
+  "job/markFav",
+  async ({id,fav}, { rejectWithValue }) => {  
+    try {
+      const { data } = await api.put(`/mark-fav/${id}`,{fav});
+      return data;
+    } catch (error) {
+      return rejectWithValue(error?.response?.data?.message || "Failed to mark favorite");
+    }
+  }
+);
+
+
+
 /* ===========================
    INITIAL STATE
 =========================== */

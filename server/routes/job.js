@@ -21,6 +21,8 @@ const {
   getPrivateJob,
   getExpiringJobsReminder,
   getJobsSmartByState,
+  getFavPosts,
+  markFav,
 } = require("../controller/jobs");
 
 // ==================================================================
@@ -35,6 +37,8 @@ router.get(
 );
 router.get("/get-private-jobs", getPrivateJob); // Fetch Latest Jobs
 // Fetch Latest Jobs
+router.get("/fav-posts", getFavPosts); // Fetch Favorite Posts
+router.put("/mark-fav/:id", markFav); // Mark/Unmark Favorite Post
 router.get("/admit-cards", getAdmitCards); // Fetch Admit Cards
 router.get("/results", getResults); // Fetch Results
 router.get("/exams", getExams); // Fetch Upcoming Exams
