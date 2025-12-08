@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const postSchema = new mongoose.Schema(
+const postListSchema = new mongoose.Schema(
   {},
   {
     strict: false, // <-- yeh magic line, ab schema kuch bhi allow karega
@@ -8,6 +8,6 @@ const postSchema = new mongoose.Schema(
   }
 );
 
-const Post = mongoose.model('Post', postSchema);
+const postList = mongoose.model('postList', postListSchema);
 
-module.exports = Post;
+module.exports = postList;
