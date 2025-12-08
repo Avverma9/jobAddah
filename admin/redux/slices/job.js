@@ -1,3 +1,4 @@
+// redux/slices/job.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../util/api";
 
@@ -73,11 +74,12 @@ export const getStats = createAsyncThunk(
   }
 );
 
+// ⭐ mark/unmark favourite – same API, fav param se toggle
 export const markFav = createAsyncThunk(
   "job/markFav",
   async ({ id, fav }) => {
     const { data } = await api.put(`/mark-fav/${id}`, { fav });
-    return data;
+    return data; // expected: { data: updatedJob } ya direct updatedJob
   }
 );
 
@@ -97,22 +99,52 @@ export const getPostlist = createAsyncThunk(
   }
 );
 
+// ✅ GET /get-model -> { success, modelName }
+export const getModel = createAsyncThunk(
+  "job/getModel",
+  async () => {
+    const { data } = await api.get("/get-model");
+    return data;
+  }
+);
+
+// ✅ POST /set-model
+export const setModel = createAsyncThunk(
+  "job/setModel",
+  async (modelName, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/set-model", { modelName });
+      return { ...(data || {}), modelName };
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: "Failed to set model" });
+    }
+  }
+);
+
 const initialState = {
   jobs: [],
   currentJob: null,
   stats: null,
   privateJobs: { data: [] },
   message: null,
-  sections: [],                     // <-- getSections result
-  postlist: { success: false, count: 0, jobs: [] } // <-- getPostlist result
+  sections: [],
+  postlist: { success: false, count: 0, jobs: [] },
+
+  // model related
+  isSettingModel: false,
+  currentModel: null,
 };
 
 const jobSlice = createSlice({
   name: "job",
   initialState,
   reducers: {
-    clearMessage: (state) => { state.message = null; },
-    clearCurrentJob: (state) => { state.currentJob = null; },
+    clearMessage: (state) => {
+      state.message = null;
+    },
+    clearCurrentJob: (state) => {
+      state.currentJob = null;
+    },
     removeLocalJobs: (state, action) => {
       const ids = Array.isArray(action.payload) ? action.payload : [action.payload];
       state.jobs = state.jobs.filter((j) => !ids.includes(j._id || j.id));
@@ -121,9 +153,8 @@ const jobSlice = createSlice({
       const items = Array.isArray(action.payload) ? action.payload : [action.payload];
       state.jobs = [...items, ...state.jobs];
     },
-    resetJobState: () => initialState
+    resetJobState: () => initialState,
   },
-
   extraReducers: (builder) => {
     builder.addCase(getJobs.fulfilled, (state, action) => {
       state.jobs = action.payload;
@@ -171,24 +202,69 @@ const jobSlice = createSlice({
       state.stats = action.payload;
     });
 
+    // ⭐ fav update state.jobs + state.postlist
     builder.addCase(markFav.fulfilled, (state, action) => {
-      const updated = action.payload.data || action.payload;
-      if (updated?._id) {
-        const index = state.jobs.findIndex((job) => job._id === updated._id);
-        if (index !== -1) state.jobs[index] = updated;
+      const updated = action.payload?.data || action.payload;
+      if (!updated) return;
+      const id = updated._id || updated.id;
+      const fav = !!updated.fav;
+
+      // jobs array
+      state.jobs = state.jobs.map((job) =>
+        job._id === id || job.id === id ? { ...job, fav } : job
+      );
+
+      // postlist: { jobs: [] }
+      if (state.postlist && Array.isArray(state.postlist.jobs)) {
+        state.postlist.jobs = state.postlist.jobs.map((j) =>
+          j._id === id || j.id === id ? { ...j, fav } : j
+        );
+      }
+
+      // postlist: sections array
+      if (Array.isArray(state.postlist)) {
+        state.postlist = state.postlist.map((section) => {
+          if (!Array.isArray(section.jobs)) return section;
+          return {
+            ...section,
+            jobs: section.jobs.map((j) =>
+              j._id === id || j.id === id ? { ...j, fav } : j
+            ),
+          };
+        });
       }
     });
 
-    // ✅ sections from /get-sections
     builder.addCase(getSections.fulfilled, (state, action) => {
       state.sections = Array.isArray(action.payload) ? action.payload : [];
     });
 
-    // ✅ post list from /get-postlist
     builder.addCase(getPostlist.fulfilled, (state, action) => {
       state.postlist = action.payload || { success: false, count: 0, jobs: [] };
     });
-  }
+
+    // /get-model
+    builder.addCase(getModel.fulfilled, (state, action) => {
+      state.currentModel = action.payload?.modelName || null;
+    });
+
+    // /set-model
+    builder
+      .addCase(setModel.pending, (state) => {
+        state.isSettingModel = true;
+        state.message = null;
+      })
+      .addCase(setModel.fulfilled, (state, action) => {
+        state.isSettingModel = false;
+        state.currentModel = action.payload?.modelName || null;
+        state.message = action.payload?.message || "Model set successfully";
+      })
+      .addCase(setModel.rejected, (state, action) => {
+        state.isSettingModel = false;
+        state.message =
+          action.payload?.message || action.error?.message || "Failed to set model";
+      });
+  },
 });
 
 export const {
@@ -196,7 +272,7 @@ export const {
   clearCurrentJob,
   removeLocalJobs,
   restoreJobs,
-  resetJobState
+  resetJobState,
 } = jobSlice.actions;
 
 export default jobSlice.reducer;

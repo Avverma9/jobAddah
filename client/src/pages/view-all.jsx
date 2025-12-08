@@ -7,43 +7,105 @@ import {
   Briefcase, 
   Building2, 
   Search, 
-  Filter, 
   AlertCircle,
   FileText,
   Award,
   X,
-  ArrowUpDown,
   Bell,
   CheckCircle,
   BookOpen,
   List
 } from "lucide-react";
 
+
+const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
+
+
+const getRecentVisitIds = () => {
+  try {
+    const stored = localStorage.getItem(VISIT_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+
+const saveRecentVisit = (id) => {
+  if (!id) return;
+  try {
+    let visits = getRecentVisitIds();
+    visits = visits.filter((visitId) => visitId !== id);
+    visits.unshift(id);
+    visits = visits.slice(0, 20);
+    localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
+    window.dispatchEvent(new Event("recent-visits-updated"));
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+
+
+const getPostLink = (post) => {
+  console.log("here is post details", post);
+  if (post.link && (post.link.startsWith("http") || post.link.startsWith("https"))) {
+    return `/post?url=${(post.link)}`;
+  }
+  return `/post?id=${post._id}`;
+};
+
+
+const formatTitle = (type) => type ? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Latest Updates";
+
+
+const getIconStyle = (type) => {
+  if (!type) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  const t = type.toUpperCase();
+  if (t.includes('RESULT')) return "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400";
+  if (t.includes('ADMIT')) return "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400";
+  if (t.includes('LATEST') || t.includes('JOB')) return "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400";
+  if (t.includes('ANSWER')) return "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400";
+  if (t.includes('SYLLABUS')) return "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400";
+  if (t.includes('ADMISSION')) return "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400";
+  return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+};
+
+
+const getIcon = (type) => {
+  if (!type) return <FileText size={20} />;
+  const t = type.toUpperCase();
+  if(t.includes('RESULT')) return <Award size={20} />;
+  if(t.includes('ADMIT')) return <FileText size={20} />;
+  if(t.includes('LATEST')) return <Bell size={20} />;
+  if(t.includes('ANSWER')) return <CheckCircle size={20} />;
+  if(t.includes('SYLLABUS')) return <List size={20} />;
+  if(t.includes('ADMISSION')) return <BookOpen size={20} />;
+  return <Briefcase size={20} />;
+};
+
+
+const ListSkeleton = () => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4 animate-pulse">
+    <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+    <div className="flex-1 space-y-2">
+       <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+       <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3"></div>
+    </div>
+    <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded shrink-0"></div>
+  </div>
+);
+
+
 export default function ViewAll() {
   const [allPosts, setAllPosts] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [postType, setPostType] = useState(null);
-  
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState("newest"); 
+  const [sortOrder, setSortOrder] = useState("newest");
 
   const location = useLocation();
-
-  const encodeUrl = (url) => {
-    try {
-      return btoa(url);
-    } catch (e) {
-      return url;
-    }
-  };
-
-  const getPostLink = (post) => {
-    if (post.link && post.link.startsWith("http")) {
-      return `/post?q=${encodeUrl(post.link)}`;
-    }
-    return `/post?id=${post._id}`;
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,47 +204,32 @@ export default function ViewAll() {
     return result;
   }, [allPosts, searchQuery, sortOrder]);
 
+  const handleGlobalClick = (e) => {
+    const link = e.target.closest("a");
+    if (link && link.href) {
+      const url = new URL(link.href);
+      
+      if (url.pathname.includes("/post")) {
+        const urlParam = url.searchParams.get("url");
+        if (urlParam) {
+            saveRecentVisit(decodeURIComponent(urlParam));
+            return;
+        }
 
-  const formatTitle = (type) => type ? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Latest Updates";
-
-  const getIconStyle = (type) => {
-    if (!type) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
-    const t = type.toUpperCase();
-    if (t.includes('RESULT')) return "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400";
-    if (t.includes('ADMIT')) return "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400";
-    if (t.includes('LATEST') || t.includes('JOB')) return "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400";
-    if (t.includes('ANSWER')) return "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400";
-    if (t.includes('SYLLABUS')) return "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400";
-    if (t.includes('ADMISSION')) return "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400";
-    return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+        const id = url.searchParams.get("id") || url.searchParams.get("_id");
+        if (id) {
+            saveRecentVisit(id);
+            return;
+        }
+      }
+    }
   };
 
-  const getIcon = (type) => {
-      if (!type) return <FileText size={20} />;
-      const t = type.toUpperCase();
-      if(t.includes('RESULT')) return <Award size={20} />;
-      if(t.includes('ADMIT')) return <FileText size={20} />;
-      if(t.includes('LATEST')) return <Bell size={20} />;
-      if(t.includes('ANSWER')) return <CheckCircle size={20} />;
-      if(t.includes('SYLLABUS')) return <List size={20} />;
-      if(t.includes('ADMISSION')) return <BookOpen size={20} />;
-      return <Briefcase size={20} />;
-  }
-
-  // Updated List Skeleton
-  const ListSkeleton = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4 animate-pulse">
-      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
-      <div className="flex-1 space-y-2">
-         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3"></div>
-      </div>
-      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded shrink-0"></div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900">
+    <div 
+        className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900"
+        onClickCapture={handleGlobalClick}
+    >
       <Header />
       
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
@@ -250,14 +297,13 @@ export default function ViewAll() {
               <Link
                 key={post._id}
                 to={getPostLink(post)}
+                onClick={() => saveRecentVisit(post._id || post.link)}
                 className="group flex items-center gap-4 bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
               >
-                {/* Icon Box */}
                 <div className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getIconStyle(postType)} group-hover:scale-110 transition-transform`}>
                    {getIcon(postType)}
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate pr-2">
                      {post.postTitle}
@@ -270,7 +316,6 @@ export default function ViewAll() {
                   )}
                 </div>
 
-                {/* Arrow */}
                 <div className="shrink-0 text-gray-300 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-colors">
                    <ChevronRight size={20} />
                 </div>

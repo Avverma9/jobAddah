@@ -1,13 +1,17 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Post = require("../models/jobs");
 const postList = require("../models/postList");
 const Section = require("../models/section");
+const GeminiModel = require("../controller/gemini-model");
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const cleanText = (text) => {
   if (!text) return "";
-  return text.replace(/\s+/g, " ").trim();
+  return text.replace(/\s+/g, " ").replace(/\n+/g, " ").trim();
 };
 
 const ensureProtocol = (inputUrl) => {
@@ -17,6 +21,66 @@ const ensureProtocol = (inputUrl) => {
     clean = "https://" + clean;
   }
   return clean;
+};
+
+const formatWithAI = async (scrapedData) => {
+  try {
+    const modelName = await GeminiModel.findOne().sort({ createdAt: -1 });
+    if (!modelName) {
+      throw new Error("No Gemini model configured in the database");
+    }
+    const model = genAI.getGenerativeModel({
+      model: modelName.modelName,
+      generationConfig: { responseMimeType: "application/json" },
+    });
+
+    const prompt =
+      "You are a highly strict data formatting assistant. You MUST convert the scraped recruitment data into ONLY valid JSON." +
+      "\n\nMANDATORY RULES:" +
+      '\n1. Output MUST contain ONLY one top-level key: "recruitment".' +
+      "\n2. YOU ARE NOT ALLOWED to rename, remove, or add new keys inside the recruitment object." +
+      "\n3. ONLY fill the values using scrapedData. Keys MUST remain EXACTLY the same." +
+      "\n4. If any section is missing in scrapedData, keep the key but leave it empty." +
+      '\n5. If "districtWiseData" appears anywhere in scrapedData (tables, lists, text, structured sections), YOU MUST include:' +
+      '\n      "districtWiseData": []' +
+      '\n   inside the "recruitment" object and fill it with extracted values.' +
+      "\n6. Your output MUST be strictly valid JSON. No markdown. No explanation. No extra text." +
+      "\n\nSTRUCTURE YOU MUST FOLLOW EXACTLY:" +
+      "\n{" +
+      '\n  "recruitment": {' +
+      '\n    "title": "",' +
+      '\n    "organization": {},' +
+      '\n    "importantDates": {},' +
+      '\n    "vacancyDetails": {' +
+      '\n      "totalPosts": 0,' +
+      '\n      "positions": []' +
+      "\n    }," +
+      '\n    "applicationFee": {},' +
+      '\n    "ageLimit": {},' +
+      '\n    "eligibility": {},' +
+      '\n    "selectionProcess": [],' +
+      '\n    "importantLinks": {},' +
+      '\n    "districtWiseData": []' +
+      "\n  }" +
+      "\n}" +
+      "\n\nScraped Data:\n" +
+      JSON.stringify(scrapedData, null, 2) +
+      "\n\nOUTPUT RULE:" +
+      "\nReturn ONLY pure valid JSON following the exact above structure. Absolutely NO markdown or explanation.";
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Formatting Error:", error.message);
+    return null;
+  }
 };
 
 const scrapper = async (req, res) => {
@@ -55,45 +119,59 @@ const scrapper = async (req, res) => {
     };
 
     $("h1").each((i, el) =>
-      scrapedData.headings.h1.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h1.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
-
     $("h2").each((i, el) =>
-      scrapedData.headings.h2.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h2.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
-
     $("h3").each((i, el) =>
-      scrapedData.headings.h3.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h3.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
-
     $("h4").each((i, el) =>
-      scrapedData.headings.h4.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h4.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
-
     $("h5").each((i, el) =>
-      scrapedData.headings.h5.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h5.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
-
     $("h6").each((i, el) =>
-      scrapedData.headings.h6.push({ text: cleanText($(el).text()), html: $(el).html(), index: i })
+      scrapedData.headings.h6.push({
+        text: cleanText($(el).text()),
+        html: $(el).html(),
+        index: i,
+      })
     );
 
     $("a").each((i, el) => {
       const href = $(el).attr("href");
       const text = cleanText($(el).text());
       if (!href) return;
-
       try {
         const fullUrl = new url.URL(href, jobUrl).href;
         scrapedData.links.push({
           text,
-          href,
-          fullUrl,
+          href: fullUrl,
           title: $(el).attr("title") || "",
           target: $(el).attr("target") || "",
-          class: $(el).attr("class") || "",
-          id: $(el).attr("id") || "",
-          parent: $(el).parent().prop("tagName"),
           index: i,
         });
       } catch {
@@ -103,258 +181,91 @@ const scrapper = async (req, res) => {
 
     $("img").each((i, el) => {
       const src = $(el).attr("src");
-      if (!src) return;
-
-      try {
-        const fullUrl = new url.URL(src, jobUrl).href;
+      if (src) {
         scrapedData.images.push({
           src,
-          fullUrl,
           alt: $(el).attr("alt") || "",
-          title: $(el).attr("title") || "",
-          width: $(el).attr("width") || "",
-          height: $(el).attr("height") || "",
-          class: $(el).attr("class") || "",
           index: i,
         });
-      } catch {
-        scrapedData.images.push({ src, alt: $(el).attr("alt") || "", index: i });
       }
     });
 
-    $("table").each((tableIndex, table) => {
-      const tableData = {
-        index: tableIndex,
-        class: $(table).attr("class") || "",
-        id: $(table).attr("id") || "",
-        rows: [],
-        rawHTML: $(table).html(),
-      };
+    $("p").each((i, el) => {
+      const text = cleanText($(el).text());
+      if (text) scrapedData.paragraphs.push({ text, index: i });
+    });
 
+    $("table").each((tableIndex, table) => {
+      const tableData = { index: tableIndex, rows: [] };
       $(table)
         .find("tr")
         .each((rowIndex, row) => {
           const rowData = { index: rowIndex, cells: [] };
-
           $(row)
             .find("td, th")
             .each((cellIndex, cell) => {
-              const $cell = $(cell);
-              const cellData = {
-                index: cellIndex,
+              rowData.cells.push({
                 tag: cell.tagName.toLowerCase(),
-                text: cleanText($cell.text()),
-                html: $cell.html(),
-                colspan: $cell.attr("colspan") || "1",
-                rowspan: $cell.attr("rowspan") || "1",
-                class: $cell.attr("class") || "",
-                style: $cell.attr("style") || "",
-              };
-
-              const cellLinks = [];
-              $cell.find("a").each((_, link) => {
-                const href = $(link).attr("href");
-                if (!href) return;
-
-                try {
-                  cellLinks.push({
-                    text: cleanText($(link).text()),
-                    href,
-                    fullUrl: new url.URL(href, jobUrl).href,
-                  });
-                } catch {
-                  cellLinks.push({ text: cleanText($(link).text()), href });
-                }
+                text: cleanText($(cell).text()),
+                html: $(cell).html(),
               });
-
-              if (cellLinks.length) cellData.links = cellLinks;
-
-              const cellLists = [];
-              $cell.find("ul, ol").each((_, list) => {
-                const items = [];
-                $(list)
-                  .find("li")
-                  .each((_, li) => items.push(cleanText($(li).text())));
-
-                cellLists.push({
-                  type: list.tagName.toLowerCase(),
-                  items,
-                });
-              });
-
-              if (cellLists.length) cellData.lists = cellLists;
-
-              rowData.cells.push(cellData);
             });
-
           tableData.rows.push(rowData);
         });
-
       scrapedData.tables.push(tableData);
     });
 
     $("ul").each((ulIndex, ul) => {
-      const listData = {
-        index: ulIndex,
-        class: $(ul).attr("class") || "",
-        id: $(ul).attr("id") || "",
-        items: [],
-      };
-
+      const listData = { index: ulIndex, items: [] };
       $(ul)
         .children("li")
         .each((liIndex, li) => {
-          const itemData = {
-            index: liIndex,
+          listData.items.push({
             text: cleanText($(li).text()),
             html: $(li).html(),
-          };
-
-          const liLinks = [];
-          $(li)
-            .find("a")
-            .each((_, link) => {
-              const href = $(link).attr("href");
-              if (!href) return;
-
-              try {
-                liLinks.push({
-                  text: cleanText($(link).text()),
-                  href,
-                  fullUrl: new url.URL(href, jobUrl).href,
-                });
-              } catch {
-                liLinks.push({ text: cleanText($(link).text()), href });
-              }
-            });
-
-          if (liLinks.length) itemData.links = liLinks;
-          listData.items.push(itemData);
+          });
         });
-
       scrapedData.lists.ul.push(listData);
     });
 
     $("ol").each((olIndex, ol) => {
-      const listData = {
-        index: olIndex,
-        class: $(ol).attr("class") || "",
-        id: $(ol).attr("id") || "",
-        items: [],
-      };
-
+      const listData = { index: olIndex, items: [] };
       $(ol)
         .children("li")
         .each((liIndex, li) => {
-          const itemData = {
-            index: liIndex,
+          listData.items.push({
             text: cleanText($(li).text()),
             html: $(li).html(),
-          };
-
-          const liLinks = [];
-          $(li)
-            .find("a")
-            .each((_, link) => {
-              const href = $(link).attr("href");
-              if (!href) return;
-
-              try {
-                liLinks.push({
-                  text: cleanText($(link).text()),
-                  href,
-                  fullUrl: new url.URL(href, jobUrl).href,
-                });
-              } catch {
-                liLinks.push({ text: cleanText($(link).text()), href });
-              }
-            });
-
-          if (liLinks.length) itemData.links = liLinks;
-          listData.items.push(itemData);
+          });
         });
-
       scrapedData.lists.ol.push(listData);
     });
 
-    $("p").each((i, p) => {
-      const text = cleanText($(p).text());
-      if (!text) return;
-
-      scrapedData.paragraphs.push({
-        index: i,
-        text,
-        html: $(p).html(),
-        class: $(p).attr("class") || "",
-        style: $(p).attr("style") || "",
-      });
-    });
-
-    $("section").each((i, section) => {
-      scrapedData.sections.push({
-        index: i,
-        id: $(section).attr("id") || "",
-        class: $(section).attr("class") || "",
-        text: cleanText($(section).text()),
-        html: $(section).html(),
-      });
-    });
-
-    $("div").each((i, div) => {
-      const text = cleanText($(div).text());
-      if (!text || text.length < 10 || text.length > 5000) return;
-
-      scrapedData.divs.push({
-        index: i,
-        id: $(div).attr("id") || "",
-        class: $(div).attr("class") || "",
-        text,
-      });
-    });
-
-    $("form").each((i, form) => {
-      const formData = {
-        index: i,
-        action: $(form).attr("action") || "",
-        method: $(form).attr("method") || "",
-        id: $(form).attr("id") || "",
-        class: $(form).attr("class") || "",
-        inputs: [],
-      };
-
-      $(form)
-        .find("input, textarea, select")
-        .each((_, input) => {
-          formData.inputs.push({
-            type: $(input).attr("type") || input.tagName.toLowerCase(),
-            name: $(input).attr("name") || "",
-            id: $(input).attr("id") || "",
-            placeholder: $(input).attr("placeholder") || "",
-            value: $(input).attr("value") || "",
-            required: $(input).attr("required") !== undefined,
-          });
+    $("div").each((i, el) => {
+      const text = cleanText($(el).text());
+      if (text.length > 20)
+        scrapedData.divs.push({
+          text: text.substring(0, 200),
+          class: $(el).attr("class"),
         });
-
-      scrapedData.forms.push(formData);
     });
 
-    $('button, input[type="button"], input[type="submit"]').each((i, btn) => {
-      scrapedData.buttons.push({
-        index: i,
-        text: cleanText($(btn).text()) || $(btn).attr("value") || "",
-        type: $(btn).attr("type") || "",
-        class: $(btn).attr("class") || "",
-        id: $(btn).attr("id") || "",
+    $("form").each((i, el) => {
+      scrapedData.forms.push({
+        action: $(el).attr("action"),
+        method: $(el).attr("method"),
       });
+    });
+
+    $("button").each((i, el) => {
+      scrapedData.buttons.push({ text: cleanText($(el).text()) });
     });
 
     $("body *").each((_, el) => {
       const tag = el.tagName?.toLowerCase();
       if (!tag) return;
-
       const text = $(el).clone().children().remove().end().text().trim();
       if (!text) return;
-
       const validTags = [
         "p",
         "span",
@@ -365,38 +276,36 @@ const scrapper = async (req, res) => {
         "h1",
         "h2",
         "h3",
-        "h4",
-        "h5",
-        "h6",
         "strong",
         "b",
-        "i",
-        "em",
       ];
-
       if (validTags.includes(tag)) {
-        scrapedData.allText.push({
-          tag,
-          text: cleanText(text),
-          class: $(el).attr("class") || "",
-          style: $(el).attr("style") || "",
-        });
+        scrapedData.allText.push({ tag, text: cleanText(text) });
       }
     });
 
+    console.log("Formatting data with AI...");
+    const formattedData = await formatWithAI(scrapedData);
+
+    if (!formattedData) {
+      return res
+        .status(500)
+        .json({ success: false, error: "Failed to format data with AI" });
+    }
     await Post.findOneAndUpdate(
-      { url: scrapedData.url },
-      { $set: scrapedData },
+      { url: jobUrl },
+      { $set: formattedData },
       { upsert: true, new: true }
     );
 
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
-      data: scrapedData,
+      formatted: formattedData,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+    console.error("Scraper Error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -407,16 +316,12 @@ const getCategories = async (req, res) => {
     if (!targetUrl) return res.status(400).json({ error: "Invalid URL" });
 
     const response = await axios.get(targetUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        Accept: "text/html",
-      },
+      headers: { "User-Agent": "Mozilla/5.0" },
       timeout: 15000,
     });
 
     const $ = cheerio.load(response.data);
     let categories = [];
-
     const menuSelectors =
       "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a, .header-menu a, .menubar a";
 
@@ -426,7 +331,6 @@ const getCategories = async (req, res) => {
       if (!name || !href || href === "#" || href === "/") return;
 
       const fullLink = new url.URL(href, targetUrl).href;
-
       const ignore = [
         "Home",
         "Contact Us",
@@ -468,31 +372,24 @@ const scrapeCategory = async (req, res) => {
       return res.status(400).json({ error: "Category URL is required" });
 
     const response = await axios.get(categoryUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-      },
+      headers: { "User-Agent": "Mozilla/5.0" },
     });
 
     const $ = cheerio.load(response.data);
-
     const postSelectors =
       ".post-link, .entry-title a, .post h2 a, ul li a, table tr td a, .content a";
-
     let jobs = [];
 
     $(postSelectors).each((_, el) => {
       const title = cleanText($(el).text());
       const link = $(el).attr("href");
-
       if (title && title.length > 10 && link) {
         const fullLink = new url.URL(link, categoryUrl).href;
         jobs.push({ title, link: fullLink });
       }
     });
 
-    const uniqueJobs = [
-      ...new Map(jobs.map((i) => [i.link, i])).values(),
-    ];
+    const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
 
     await postList.findOneAndUpdate(
       { url: categoryUrl },

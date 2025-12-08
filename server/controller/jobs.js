@@ -457,35 +457,7 @@ const getJobsSmartByState = async (req, res) => {
 };
 
 // 18. Favorite Logic
-const markFav = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { fav } = req.body;
 
-    if (fav === true) {
-      const favCount = await Post.countDocuments({ fav: true });
-      if (favCount >= 8) {
-        return res.status(400).json({ success: false, message: "You can mark only 8 posts as favorite" });
-      }
-    }
-
-    const updatedPost = await Post.findByIdAndUpdate(id, { fav }, { new: true });
-    if (!updatedPost) return res.status(404).json({ success: false, message: "Post not found" });
-
-    res.json({ success: true, data: updatedPost });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-const getFavPosts = async (req, res) => {
-  try {
-    const favPosts = await Post.find({ fav: true }).sort({ createdAt: -1 });
-    res.json({ success: true, count: favPosts.length, data: favPosts });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 
 const deleteAllJobs = async (req, res) => {
@@ -514,8 +486,6 @@ module.exports = {
   getPrivateJob,
   getExpiringJobsReminder,
   getJobsSmartByState,
-  markFav,
-  getFavPosts,
   deleteAllJobs,
 
 };
