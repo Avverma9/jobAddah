@@ -6,6 +6,9 @@ const getPostDetails = async (req, res) => {
   try {
     const url = req.query.url;
     const getData = await Post.findOne({ url: url }).sort({ createdAt: -1 });
+    if(getData === null){
+      return res.status(404).json({ error: "Post not found" });
+    }
 
     res.json(getData);
   } catch (err) {
