@@ -35,7 +35,7 @@ const saveRecentVisit = (id) => {
     let visits = getRecentVisitIds();
     visits = visits.filter((visitId) => visitId !== id);
     visits.unshift(id);
-    visits = visits.slice(0, 10); // Fixed: assignment needed for slice to work on variable reference logic
+    visits = visits.slice(0, 10);
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
   } catch (error) {
@@ -46,16 +46,18 @@ const saveRecentVisit = (id) => {
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString();
-  
+
+  // If it's a URL, route with ?url= param
   if (val.includes("http") || val.includes("https")) {
     return `/post?url=${encodeURIComponent(val)}`;
   }
-  
+
+  // Otherwise route with ?id= param
   return `/post?id=${val}`;
 };
 
 const getCategoryConfig = (categoryName) => {
-  if (!categoryName) return { icon: FileText, color: "gray", postType: "JOB" }; // Safety check
+  if (!categoryName) return { icon: FileText, color: "gray", postType: "JOB" };
   const name = categoryName.toLowerCase();
   if (name.includes("latest job")) return { icon: Bell, color: "green", postType: "JOB" };
   if (name.includes("admit card")) return { icon: FileText, color: "blue", postType: "ADMIT_CARD" };
@@ -149,7 +151,7 @@ const RecentVisitsSection = ({ data }) => {
       <div className="flex flex-wrap gap-2 sm:gap-3">
         {data.map((job) => (
           <Link
-            key={job.id} // Ensure job.id is unique
+            key={job.id}
             to={getPostLink(job.id)}
             onClick={() => saveRecentVisit(job.id)}
             className="group"
@@ -307,7 +309,7 @@ export default function HomeScreen() {
       .then((res) => res.json())
       .then((data) => setFavPosts(data?.data || []));
   }, []);
-console.log("favPosts:", favPosts);
+
   const filteredSections = useMemo(() => {
     if (!searchQuery) return dynamicSections;
     return dynamicSections.map((section) => ({
@@ -365,7 +367,6 @@ console.log("favPosts:", favPosts);
   };
 
   return (
-    // FIX: Moved onClickCapture to the outermost div so it catches Marquee and Header clicks too
     <div 
         className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
         onClickCapture={handleGlobalClick}
@@ -379,12 +380,10 @@ console.log("favPosts:", favPosts);
           {isDynamicLoading ? (
             <span className="text-[11px] sm:text-sm">Loading latest updates...</span>
           ) : filteredSections.length > 0 && filteredSections[0]?.data?.length > 0 ? (
-            // FIX: Added optional chaining (?.) for data and changed <span> to <Link> to make them clickable
             filteredSections[0].data.slice(0, 5).map((job, i) => (
               <Link
                 key={i}
                 to={getPostLink(job.id)}
-                // Note: global onClickCapture will handle saving, but we keep this for redundancy
                 onClick={() => saveRecentVisit(job.id)} 
                 className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm hover:text-yellow-200 transition-colors"
               >
@@ -418,14 +417,18 @@ console.log("favPosts:", favPosts);
             />
           </div>
 
+          {/* FAV POSTS SECTION FIXED */}
           {favPosts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
                 <QuickCard
                   key={item._id}
-                  id={item._id}
+                  // We prioritize item.url so getPostLink generates a ?url= link (like sections),
+                  // otherwise fallback to item._id
+                  id={item.url || item._id}
                   icon={Briefcase}
-                  title={item.postTitle || "Notification"}
+                  // Title is nested inside recruitment object, fallback to other options just in case
+                  title={item.recruitment?.title || item.title || item.postTitle || "Notification"}
                   color="orange"
                 />
               ))}

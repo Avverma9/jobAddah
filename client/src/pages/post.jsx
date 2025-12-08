@@ -831,45 +831,6 @@ const PostDetails = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <Header />
 
-      {/* Header Navigation */}
-      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="container mx-auto px-4 max-w-7xl h-16 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-slate-700 hover:text-blue-600 font-semibold transition-all hover:gap-3 group"
-          >
-            <ArrowLeft
-              size={20}
-              strokeWidth={2.5}
-              className="group-hover:-translate-x-1 transition-transform"
-            />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-          <div className="flex gap-3">
-            <button
-              onClick={() => window.print()}
-              className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all hover:scale-110"
-              title="Print"
-            >
-              <Printer size={20} />
-            </button>
-            <button
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: data.title,
-                    url: window.location.href,
-                  });
-                }
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:scale-105 transition-all"
-            >
-              <Share2 size={18} />{" "}
-              <span className="hidden sm:inline">Share</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       <main className="container mx-auto px-4 py-10 max-w-7xl space-y-8">
         {/* Title Section */}
