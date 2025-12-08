@@ -8,7 +8,6 @@ const {
   updatePost,
   deletePost,
   deleteAllPosts,
-  getPostDetails, // Single Post (Get by ID or Slug)
   getJobs, // Filtered: Online Forms
   getAdmitCards, // Filtered: Admit Cards
   getResults, // Filtered: Results
@@ -23,7 +22,9 @@ const {
   getJobsSmartByState,
   getFavPosts,
   markFav,
+  deleteAllJobs,
 } = require("../controller/jobs");
+const { getPostDetails } = require("../controller/posts");
 
 // ==================================================================
 // 🟢 PUBLIC ROUTES (Accessible by Everyone - No Login Required)
@@ -42,6 +43,7 @@ router.put("/mark-fav/:id",verifyToken, authorizeRoles("admin", "super_admin"), 
 router.get("/admit-cards", getAdmitCards); // Fetch Admit Cards
 router.get("/results", getResults); // Fetch Results
 router.get("/exams", getExams); // Fetch Upcoming Exams
+router.delete("/delete-all-jobs", verifyToken, authorizeRoles("admin", "super_admin"), deleteAllJobs); // Delete All Jobs
 router.get("/answer-keys", getAnswerKeys); // Fetch Answer Keys
 router.get("/get-all", getallPost);
 router.get("/reminders/expiring-jobs", getExpiringJobsReminder);
@@ -49,7 +51,6 @@ router.get("/smart-by-state", getJobsSmartByState); // General Jobs Listing
 router.get("/jobs/:id", getDocsById);
 // 2. Get Single Post Details
 // Note: This handles ID or Slug (e.g., /posts/6741d8... OR /posts/rrb-group-d-2025)
-router.get("/posts/:id", getPostDetails);
 
 // ==================================================================
 // 🔴 PROTECTED ADMIN ROUTES (Requires Login & Admin Role)
@@ -99,5 +100,8 @@ router.delete(
   authorizeRoles("admin", "super_admin"),
   deleteAllPosts
 );
+
+router.get("/scraped-data", getPostDetails);
+
 
 module.exports = router;

@@ -4,7 +4,6 @@ import Header from "../components/Header";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ChevronRight, 
-  Calendar, 
   Briefcase, 
   Building2, 
   Search, 
@@ -12,63 +11,120 @@ import {
   AlertCircle,
   FileText,
   Award,
-  Clock,
   X,
-  ArrowUpDown
+  ArrowUpDown,
+  Bell,
+  CheckCircle,
+  BookOpen,
+  List
 } from "lucide-react";
 
 export default function ViewAll() {
-  // --- Data State ---
-  const [allPosts, setAllPosts] = useState([]); // Store Original Data
+  const [allPosts, setAllPosts] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [postType, setPostType] = useState(null);
   
-  // --- Filter State ---
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortOrder, setSortOrder] = useState("newest"); // 'newest' | 'oldest'
+  const [sortOrder, setSortOrder] = useState("newest"); 
 
   const location = useLocation();
 
-  // 1. Fetch Data
+  const encodeUrl = (url) => {
+    try {
+      return btoa(url);
+    } catch (e) {
+      return url;
+    }
+  };
+
+  const getPostLink = (post) => {
+    if (post.link && post.link.startsWith("http")) {
+      return `/post?q=${encodeUrl(post.link)}`;
+    }
+    return `/post?id=${post._id}`;
+  };
+
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const type = searchParams.get("type");
-    setPostType(type);
-    setLoading(true);
+    const fetchData = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const type = searchParams.get("type");
+      setPostType(type);
+      setLoading(true);
+      setError(null);
+      setAllPosts([]);
 
-    fetch(`${baseUrl}/get-all`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch posts");
-        return res.json();
-      })
-      .then((data) => {
-        const rawPosts = Array.isArray(data) ? data : (data.jobs || []);
+      try {
+        if (type === "PRIVATE_JOB") {
+          const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
+          const data = await res.json();
+          if (!res.ok) throw new Error("Failed to fetch private jobs");
+          
+          const jobs = Array.isArray(data) ? data : (data.data || []);
+          setAllPosts(jobs);
         
-        // Initial Type Filtering
-        let initialFiltered = rawPosts;
-        if (type && type !== "ALL") {
-           if(type === 'RESULT'){
-             initialFiltered = rawPosts.filter((post) => post.postType === 'RESULT' || post.postType === 'ANSWER_KEY');
-           } else {
-             initialFiltered = rawPosts.filter((post) => post.postType === type);
-           }
-        }
+        } else {
+          const catRes = await fetch(`${baseUrl}/scrapper/get-categories`, {
+             method: "POST",
+             headers: { "Content-Type": "application/json" }
+          });
+          const catData = await catRes.json();
+          
+          let targetUrl = null;
 
-        setAllPosts(initialFiltered);
+          if (catData.success && catData.categories) {
+            const matchedCat = catData.categories.find(c => 
+                c.name.toLowerCase().includes(type.toLowerCase().replace("_", " ")) ||
+                type.toLowerCase().includes(c.name.toLowerCase())
+            );
+            if (matchedCat) targetUrl = matchedCat.link;
+          }
+
+          if (targetUrl) {
+            const scrapeRes = await fetch(`${baseUrl}/scrapper/scrape-category`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: targetUrl }),
+            });
+            const scrapeData = await scrapeRes.json();
+            
+            if (scrapeData.success) {
+                const cleanData = scrapeData.jobs.filter(job => 
+                    job.title.toLowerCase() !== "privacy policy" && 
+                    job.title.toLowerCase() !== "sarkari result" &&
+                    job.title.toLowerCase() !== "contact us"
+                ).map(job => ({
+                    ...job,
+                    _id: job.link, 
+                    postTitle: job.title,
+                    postType: type,
+                    createdAt: new Date().toISOString()
+                }));
+                setAllPosts(cleanData);
+            } else {
+                throw new Error("Failed to load category data");
+            }
+          } else {
+             const fallbackRes = await fetch(`${baseUrl}/get-all`);
+             const fallbackData = await fallbackRes.json();
+             const raw = Array.isArray(fallbackData) ? fallbackData : (fallbackData.jobs || []);
+             setAllPosts(raw.filter(p => p.postType === type));
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Something went wrong");
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, [location.search]);
 
-  // 2. Client-Side Filtering & Sorting Logic
   const processedPosts = useMemo(() => {
     let result = [...allPosts];
 
-    // A. Search Filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(post => 
@@ -77,7 +133,6 @@ export default function ViewAll() {
       );
     }
 
-    // B. Date Sorting
     result.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0);
       const dateB = new Date(b.createdAt || 0);
@@ -88,33 +143,41 @@ export default function ViewAll() {
   }, [allPosts, searchQuery, sortOrder]);
 
 
-  // Helper: Formatters
   const formatTitle = (type) => type ? type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Latest Updates";
 
-  const getBadgeStyles = (type) => {
-    switch (type) {
-      case 'RESULT':
-      case 'ANSWER_KEY': return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800";
-      case 'ADMIT_CARD': return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800";
-      default: return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800";
-    }
+  const getIconStyle = (type) => {
+    if (!type) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+    const t = type.toUpperCase();
+    if (t.includes('RESULT')) return "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400";
+    if (t.includes('ADMIT')) return "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400";
+    if (t.includes('LATEST') || t.includes('JOB')) return "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400";
+    if (t.includes('ANSWER')) return "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400";
+    if (t.includes('SYLLABUS')) return "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400";
+    if (t.includes('ADMISSION')) return "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400";
+    return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
   };
 
   const getIcon = (type) => {
-     if(type === 'RESULT') return <Award size={14} className="mr-1.5" />;
-     if(type === 'ADMIT_CARD') return <FileText size={14} className="mr-1.5" />;
-     return <Briefcase size={14} className="mr-1.5" />;
+      if (!type) return <FileText size={20} />;
+      const t = type.toUpperCase();
+      if(t.includes('RESULT')) return <Award size={20} />;
+      if(t.includes('ADMIT')) return <FileText size={20} />;
+      if(t.includes('LATEST')) return <Bell size={20} />;
+      if(t.includes('ANSWER')) return <CheckCircle size={20} />;
+      if(t.includes('SYLLABUS')) return <List size={20} />;
+      if(t.includes('ADMISSION')) return <BookOpen size={20} />;
+      return <Briefcase size={20} />;
   }
 
-  // Loader
-  const PostSkeleton = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm animate-pulse h-full flex flex-col">
-      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-      <div className="h-4 bg-gray-100 dark:bg-gray-700/50 rounded w-1/3 mb-8"></div>
-      <div className="mt-auto grid grid-cols-2 gap-4">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+  // Updated List Skeleton
+  const ListSkeleton = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-4 animate-pulse">
+      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full shrink-0"></div>
+      <div className="flex-1 space-y-2">
+         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3"></div>
       </div>
+      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded shrink-0"></div>
     </div>
   );
 
@@ -122,160 +185,94 @@ export default function ViewAll() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900">
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         
-        {/* Page Header */}
-        <div className="relative mb-10 text-center space-y-3">
-            <div className="inline-flex items-center justify-center px-4 py-1.5 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 mb-2">
-                <Filter className="w-4 h-4 text-blue-500 mr-2" />
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                    Browsing Category
+        <div className="mb-8 flex flex-col items-center text-center space-y-2">
+            <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                <span className={`p-2 rounded-lg ${getIconStyle(postType)}`}>
+                    {getIcon(postType)}
                 </span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                 {formatTitle(postType)}
             </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+                Browse all latest updates for {formatTitle(postType)}
+            </p>
         </div>
 
-        {/* 🔍 Search & Filter Toolbar */}
-        <div className="sticky top-4 z-30 mb-8 max-w-4xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-2">
-            
-            {/* Search Input */}
+        <div className="sticky top-4 z-30 mb-6">
+          <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input 
                 type="text" 
-                placeholder="Search jobs, organizations..." 
+                placeholder="Search..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50 rounded-xl transition-all"
+                className="w-full pl-9 pr-3 py-2.5 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none"
               />
               {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               )}
             </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative sm:w-48">
-               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <ArrowUpDown size={16} />
-               </div>
-               <select 
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="w-full pl-10 pr-8 py-3 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 rounded-xl border-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer appearance-none font-medium"
-               >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-               </select>
-               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <ChevronRight className="rotate-90 text-gray-400 w-4 h-4" />
-               </div>
-            </div>
-
           </div>
         </div>
 
-        {/* Results Info */}
         {!loading && !error && (
-            <div className="mb-6 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400 px-2">
-               <span>Showing <strong>{processedPosts.length}</strong> results</span>
-               {(searchQuery || sortOrder !== 'newest') && (
-                  <button 
-                    onClick={() => { setSearchQuery(""); setSortOrder("newest"); }}
-                    className="text-blue-600 hover:underline flex items-center gap-1"
-                  >
-                    Reset Filters
-                  </button>
-               )}
+            <div className="mb-4 flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 px-1">
+               <span><strong>{processedPosts.length}</strong> Results Found</span>
             </div>
         )}
 
-        {/* Content Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((n) => <PostSkeleton key={n} />)}
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <ListSkeleton key={n} />)}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-gray-800 rounded-2xl border border-red-100 dark:border-red-900/30 text-center">
             <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Error Loading Posts</h3>
-            <p className="text-gray-500 mb-6">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-6 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">Retry</button>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Error Loading Posts</h3>
+            <p className="text-sm text-gray-500 mb-4">{error}</p>
+            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200">Retry</button>
           </div>
         ) : processedPosts.length === 0 ? (
-           <div className="flex flex-col items-center justify-center py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
-              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-6">
-                 <Search className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No matches found</h3>
-              <p className="text-gray-500 max-w-sm mx-auto">
-                We couldn't find any posts matching "{searchQuery}". Try adjusting your search or filters.
-              </p>
+           <div className="flex flex-col items-center justify-center py-16 text-center bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+              <Search className="w-10 h-10 text-gray-400 mb-3" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No matches found</h3>
            </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-3">
             {processedPosts.map((post) => (
               <Link
                 key={post._id}
-                to={`/post?_id=${post._id}`}
-                className="group relative flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                to={getPostLink(post)}
+                className="group flex items-center gap-4 bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
               >
-                <div className={`h-1.5 w-full ${
-                    post.postType === 'RESULT' ? 'bg-emerald-500' : 
-                    post.postType === 'ADMIT_CARD' ? 'bg-purple-500' : 'bg-blue-600'
-                }`} />
+                {/* Icon Box */}
+                <div className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getIconStyle(postType)} group-hover:scale-110 transition-transform`}>
+                   {getIcon(postType)}
+                </div>
 
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="mb-4">
-                     <h2 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-2">
-                        {post.postTitle}
-                     </h2>
-                  </div>
-
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate pr-2">
+                     {post.postTitle}
+                  </h2>
                   {post.organization && (
-                    <div className="mb-6">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-xs font-medium">
-                            <Building2 size={14} className="text-gray-400" />
-                            <span className="line-clamp-1">{post.organization}</span>
-                        </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <Building2 size={12} />
+                        <span className="truncate">{post.organization}</span>
                     </div>
                   )}
+                </div>
 
-                  <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 gap-4">
-                     <div>
-                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Vacancies</p>
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            <Briefcase size={14} className="text-blue-500" />
-                            <span>{post.totalVacancyCount > 0 ? post.totalVacancyCount : 'N/A'}</span>
-                        </div>
-                     </div>
-                     <div>
-                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Last Date</p>
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                            <Clock size={14} className="text-orange-500" />
-                            <span className="truncate">
-                                {post.importantDates?.find(d => d.label.toLowerCase().includes('last'))?.value || 'Notify Soon'}
-                            </span>
-                        </div>
-                     </div>
-                  </div>
-                  
-                  <div className="mt-5 flex items-center justify-between">
-                     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold border uppercase tracking-wide ${getBadgeStyles(post.postType)}`}>
-                        {getIcon(post.postType)}
-                        {formatTitle(post.postType)}
-                     </span>
-                     <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 transform group-hover:scale-105">
-                        <ChevronRight size={18} />
-                     </div>
-                  </div>
+                {/* Arrow */}
+                <div className="shrink-0 text-gray-300 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-colors">
+                   <ChevronRight size={20} />
                 </div>
               </Link>
             ))}

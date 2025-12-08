@@ -1,373 +1,480 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { 
+  ArrowLeft, Share2, Printer, CheckCircle2, 
+  Calendar, CreditCard, Users, ExternalLink, ChevronRight
+} from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
-import AdSlot from "../components/AdSlot";
-import {
-  ExternalLink, Calendar, Briefcase, GraduationCap, IndianRupee, 
-  Users, FileText, AlertCircle, Download, Link as LinkIcon, 
-  Building2, Hash, CheckCircle, MapPin, Clock, Award
-} from "lucide-react";
 
-export default function PostDetail({ idFromProp }) {
-  const [loading, setLoading] = useState(true);
-  const [post, setPost] = useState(null);
-  const [error, setError] = useState(null);
+// --- Hooks ---
+const useQuery = () => {
+  const { search } = useLocation();
+  return useMemo(() => new URLSearchParams(search), [search]);
+};
 
-  const id = idFromProp || new URLSearchParams(window.location.search).get("_id");
+// --- Helpers ---
+const cleanHtml = (html) => {
+  if (!html) return "";
+  let clean = html.replace(/style="[^"]*"/g, ""); 
+  clean = clean.replace(/<p>&nbsp;<\/p>/g, "");
+  return clean;
+};
 
-  useEffect(() => {
-    if (!id) {
-      setError("Post ID missing");
-      setLoading(false);
-      return;
+const extractText = (html) => {
+  return html?.replace(/<[^>]*>/g, "").trim() || "";
+};
+
+const extractLink = (html) => {
+  const match = html?.match(/href="([^"]*)"/);
+  return match ? match[1] : null;
+};
+
+// --- IMPROVED PARSERS ---
+
+// 1. Extract Dates
+const extractDates = (data) => {
+  const source = data?.allText || [];
+  const startIdx = source.findIndex(t => t.text?.includes("Important Dates"));
+  if (startIdx === -1) return [];
+
+  const dates = [];
+  let i = startIdx + 1;
+  
+  while (i < source.length) {
+    let text = source[i].text?.trim();
+    if (!text) { i++; continue; }
+    
+    // Stop at next section
+    if (text.includes("Application Fee") || text.includes("KVS NVS")) break; 
+
+    // Match standard date labels
+    const isDateLabel = 
+      text.includes("Start Date") || 
+      text.includes("Last Date") || 
+      text.includes("Exam Date") || 
+      text.includes("Admit Card") || 
+      text.includes("Result Date") ||
+      text.includes("Correction Last Date");
+
+    if (isDateLabel) {
+       let fullEntry = text;
+       
+       // If the label ends with separator (:, -) or is just the label, grab next value
+       // "Admit Card :" -> "Before Exam"
+       if (fullEntry.trim().match(/[:\-\u2013]$/) || !fullEntry.match(/\d/)) {
+          let j = i + 1;
+          // Look ahead for value (skip empty nodes)
+          while(j < source.length && !source[j].text?.trim()) j++;
+
+          if (j < source.length) {
+             let nextText = source[j].text?.trim();
+             // Check if next text is NOT another label (e.g. "Result Date :")
+             if (nextText && !nextText.includes("Date :") && !nextText.includes("Admit Card")) {
+                fullEntry += " " + nextText;
+                i = j; // Advance main loop
+             }
+          }
+       }
+       dates.push(fullEntry);
+    } 
+    else if (text.includes("Candidates are advised")) {
+        dates.push(text);
+    }
+    i++;
+  }
+  return dates;
+};
+
+// 2. Extract Fees
+const extractFees = (data) => {
+  const source = data?.allText || [];
+  const startIdx = source.findIndex(t => t.text?.includes("Application Fee"));
+  if (startIdx === -1) return [];
+
+  const fees = [];
+  let i = startIdx + 1;
+  
+  while (i < source.length) {
+    let text = source[i].text?.trim();
+    if (!text) { i++; continue; }
+    
+    // Stop conditions
+    if (text.includes("Age Limit") || text.includes("Vacancy Details")) break;
+    
+    // CASE A: Headers (Post Names ending in :-)
+    if (text.match(/[:\-\u2013]$/) && !text.match(/\d+\/-/) && !text.includes("General") && !text.includes("SC")) {
+       fees.push({ type: 'header', text: text });
+    } 
+    // CASE B: Fee Rows (Category : Amount)
+    else if (text.includes("General") || text.includes("SC") || text.includes("ST") || text.includes("OBC") || text.includes("EWS")) {
+       let fullRow = text;
+       
+       // If "General / OBC :" is separate from "2800/-"
+       if (!fullRow.includes("/-") && !fullRow.match(/Rs\.?\s*\d+/i)) {
+          let j = i + 1;
+          while(j < source.length && !source[j].text?.trim()) j++; // Skip empty
+          
+          if (j < source.length) {
+             let nextText = source[j].text?.trim();
+             // Append if it looks like money
+             if (nextText && (nextText.includes("/-") || nextText.match(/^\d+$/) || nextText.match(/^\d+\/-$/))) {
+                fullRow += " " + nextText;
+                i = j;
+             }
+          }
+       }
+       fees.push({ type: 'row', text: fullRow });
+    } 
+    // CASE C: Payment Mode
+    else if (text.includes("Payment Mode") || text.includes("payment using")) {
+       fees.push({ type: 'header', text: "Payment Mode (Online):" });
+       fees.push({ type: 'list', text: "Debit Card, Credit Card, Net Banking, UPI" });
+       break; 
+    }
+    
+    i++;
+  }
+  return fees;
+};
+
+// 3. Extract Age & Post
+const extractAgeAndPost = (data) => {
+    const source = data?.allText || [];
+    
+    // Find Age Header
+    const ageIdx = source.findIndex(t => t.text?.includes("Age Limits") || t.text?.includes("Minimum Age"));
+    let ageText = [];
+    
+    if (ageIdx !== -1) {
+        let i = ageIdx;
+        while(i < source.length && ageText.length < 6) {
+            let t = source[i].text?.trim();
+            if (t && (t.includes("Total Post") || t.includes("Vacancy Details"))) break;
+            
+            if (t && (t.includes("Minimum Age") || t.includes("Maximum Age") || t.includes("Relaxation"))) {
+                 if (t.trim().endsWith(":")) {
+                    let j = i + 1;
+                    while(j < source.length && !source[j].text?.trim()) j++;
+                    if(source[j]?.text?.trim()) {
+                       t += " " + source[j].text.trim();
+                       i = j;
+                    }
+                 }
+                 ageText.push(t);
+            } else if (t && t.includes("Age Limits As On")) {
+                 ageText.unshift(t);
+            }
+            i++;
+        }
     }
 
-    fetch(`${baseUrl}/posts/${id}`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Failed to load post");
-        return response.json();
-      })
-      .then((data) => {
-        setPost(cleanData(data.data || data));
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [id]);
+    // Find Total Post
+    const postIdx = source.findIndex(t => t.text?.includes("Total Post") || t.text?.includes("Posts"));
+    let totalPost = "See Notification";
+    if (postIdx !== -1) {
+       for(let k=0; k<3; k++) {
+          let val = source[postIdx+k]?.text?.trim();
+          if (val && (val.match(/[\d,]+\s*Posts?/i) || val.match(/^[\d,]+$/))) {
+             totalPost = val;
+             break;
+          }
+       }
+    }
 
-  // Clean internal data (no _id showing)
-  const cleanData = (data) => {
-    if (!data) return data;
-    const cleaned = { ...data };
-    const ignoreKeys = ['_id', '__v', 'id', 'createdAt', 'updatedAt', 'isLive'];
-    ignoreKeys.forEach(key => delete cleaned[key]);
-    
-    Object.keys(cleaned).forEach(key => {
-      if (Array.isArray(cleaned[key])) {
-        cleaned[key] = cleaned[key].map(cleanData);
-      } else if (cleaned[key] && typeof cleaned[key] === 'object') {
-        cleaned[key] = cleanData(cleaned[key]);
+    return { ageText: ageText.length ? ageText : ["Age Limit Details Available in Notification"], totalPost };
+};
+
+
+const PostDetails = () => {
+  const [loading, setLoading] = useState(true);
+  const [postData, setPostData] = useState(null);
+  const [error, setError] = useState(null);
+  
+  const query = useQuery();
+  const navigate = useNavigate();
+  
+  const paramUrl = query.get("url");   
+  const paramId = query.get("id") || query.get("_id"); 
+
+  useEffect(() => {
+    const fetchPostDetails = async () => {
+      setLoading(true);
+      setError(null);
+      
+      let fetchUrl = "";
+      let fetchOptions = {};
+      let targetScrapeUrl = null;
+
+      if (paramUrl) targetScrapeUrl = paramUrl;
+      else if (paramId && paramId.includes("http")) targetScrapeUrl = paramId;
+
+      if (targetScrapeUrl) {
+        fetchUrl = `${baseUrl}/get-post/details?url=${targetScrapeUrl}`;
+        fetchOptions = { method: "GET" };
+      } else if (paramId) {
+        fetchUrl = `${baseUrl}/get-job/${paramId}`;
+        fetchOptions = { method: "GET" };
+      } else {
+        setError("Invalid link");
+        setLoading(false);
+        return;
       }
-    });
-    return cleaned;
-  };
 
-  const structuredData = useMemo(() => {
-    if (!post) return {};
-    return {
-      title: post.postTitle || post.title || post.name,
-      organization: post.organization || post.org || post.company,
-      totalVacancies: post.totalVacancyCount || post.totalPosts || post.vacancies,
-      shortInfo: post.shortInfo || post.description || post.summary,
-      importantDates: post.importantDates || post.dates || [],
-      ageLimit: post.ageLimit,
-      applicationFee: post.applicationFee || post.fees || [],
-      vacancyDetails: post.vacancyDetails || post.vacancies || [],
-      qualification: post.educationalQualification || post.qualification,
-      importantLinks: post.importantLinks || post.links || [],
-      postType: post.postType || post.type
+      try {
+        const response = await fetch(fetchUrl, fetchOptions);
+        if (!response.ok) throw new Error("Failed to fetch data");
+        const data = await response.json();
+        const validData = data.job || data.data || data;
+        
+        if (validData) setPostData(validData);
+        else throw new Error("Details unavailable");
+
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [post]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-orange-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 p-8">
-        <div className="w-20 h-20 border-4 border-orange-300 dark:border-gray-600 border-t-orange-600 dark:border-t-orange-400 rounded-full animate-spin mx-auto mb-6 shadow-xl" />
-        <h2 className="text-2xl font-bold text-orange-800 dark:text-gray-200 mb-2">Loading Job Details</h2>
-        <p className="text-orange-600 dark:text-gray-400">Please wait while we fetch latest information...</p>
-      </div>
-    );
-  }
+    fetchPostDetails();
+  }, [paramUrl, paramId]);
 
-  if (error || !post) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-red-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 p-8">
-        <AlertCircle size={64} className="mx-auto text-red-500 dark:text-red-400 mb-6" />
-        <h1 className="text-3xl font-bold text-red-800 dark:text-gray-100 mb-4">Post Not Found</h1>
-        <p className="text-lg text-red-700 dark:text-gray-400 mb-8">{error || 'Unable to load job details'}</p>
-        <button 
-          onClick={() => window.history.back()}
-          className="px-8 py-4 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-white font-bold text-xl rounded-xl shadow-2xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200"
-        >
-          ← Back to Jobs
-        </button>
-      </div>
-    );
-  }
+  if (loading) return <ModernSkeleton />;
+  if (error) return <ModernError error={error} navigate={navigate} retry={() => window.location.reload()} />;
+
+  const title = postData?.title || "Recruitment Notification";
+  const dates = extractDates(postData);
+  const fees = extractFees(postData);
+  const { ageText, totalPost } = extractAgeAndPost(postData);
+  const tables = postData?.tables || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-yellow-50 to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <Header />
-      
-      {/* Hero Banner - SarkariResult Style */}
-      <div className="bg-gradient-to-r from-orange-600 via-red-600 to-orange-500 text-white py-6 px-4 shadow-2xl">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              {structuredData.postType && (
-                <span className="inline-block bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold mb-3">
-                  📋 {structuredData.postType}
-                </span>
-              )}
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-black leading-tight line-clamp-2">
-                {structuredData.title}
-              </h1>
-              {structuredData.organization && (
-                <p className="text-lg mt-2 opacity-90 flex items-center">
-                  <Building2 size={20} className="inline mr-2 -ml-1 flex-shrink-0" />
-                  <span className="truncate">{structuredData.organization}</span>
-                </p>
-              )}
-            </div>
-            {structuredData.totalVacancies && (
-              <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-8 py-6 text-center shadow-2xl flex-shrink-0">
-                <div className="text-4xl md:text-5xl font-black drop-shadow-2xl">
-                  {structuredData.totalVacancies.toLocaleString()}
-                </div>
-                <div className="text-sm uppercase tracking-wider font-bold mt-1 opacity-90">Posts</div>
-              </div>
-            )}
+
+      {/* --- Sticky Navigation Bar --- */}
+      <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 transition-all">
+        <div className="container mx-auto px-4 max-w-6xl h-14 flex items-center justify-between text-sm">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="flex items-center gap-2 text-slate-600 hover:text-blue-700 font-semibold transition-colors"
+          >
+            <ArrowLeft size={18} /> <span className="hidden sm:inline">Back</span>
+          </button>
+          <div className="flex gap-2">
+             <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all">
+               <Printer size={20}/>
+             </button>
+             <button className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white text-xs font-bold uppercase rounded-full hover:bg-blue-700 hover:shadow-md transition-all">
+               <Share2 size={16}/> Share
+             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-        {/* Short Info */}
-        {structuredData.shortInfo && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-orange-200 dark:border-gray-700 p-6 lg:p-8 mb-8">
-            <div className="text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
-              {structuredData.shortInfo}
-            </div>
-          </div>
-        )}
+      <main className="container mx-auto px-4 py-8 max-w-6xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        {/* --- Hero Title --- */}
+        <div className="text-center space-y-4 max-w-4xl mx-auto">
+           <div className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider rounded-full border border-blue-100">
+              Latest Notification
+           </div>
+           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase leading-snug tracking-tight">
+             {title}
+           </h1>
+           <div className="h-1 w-24 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+        </div>
 
-        {/* Main Left-Right Layout - SarkariResult Style */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-12">
-          {/* LEFT COLUMN - Priority Info */}
-          <div className="lg:pr-4 space-y-6">
-            {/* Important Dates Table */}
-            {structuredData.importantDates?.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 text-white">
-                  <div className="flex items-center gap-3">
-                    <Calendar size={22} />
-                    <h2 className="text-xl font-bold">Important Dates</h2>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-800/50">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-2/3">Event</th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {structuredData.importantDates.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-orange-50 dark:hover:bg-gray-800 transition-colors">
-                          <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {item.label}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300 px-4 py-2 rounded-full text-sm font-bold inline-block">
-                              {item.value}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+        {/* --- SECTION 1: IMPORTANT DATES & FEES (Modern Split Card) --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+           
+           {/* LEFT: Important Dates */}
+           <div className="flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
+              <div className="bg-rose-900 text-white px-6 py-4 flex items-center gap-3">
+                 <div className="p-2 bg-white/10 rounded-lg"><Calendar size={20} className="text-rose-100" /></div>
+                 <h2 className="font-bold text-lg uppercase tracking-wide">Important Dates</h2>
               </div>
-            )}
+              <div className="p-6 md:p-8 flex-1 bg-white">
+                 <ul className="space-y-4">
+                    {dates.length > 0 ? dates.map((date, idx) => (
+                      <li key={idx} className="flex items-start gap-3 text-sm sm:text-base font-medium text-slate-700 group">
+                         <div className="mt-1.5 min-w-[6px] h-1.5 bg-rose-500 rounded-full group-hover:scale-125 transition-transform"></div>
+                         <span className="leading-relaxed">{date.replace(/[:]/g, " : ")}</span>
+                      </li>
+                    )) : (
+                      <li className="text-slate-400 italic">Dates not available</li>
+                    )}
+                 </ul>
+              </div>
+           </div>
 
-            {/* Age Limit Cards */}
-            {structuredData.ageLimit && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
-                  <Users size={22} /> Age Limit
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {structuredData.ageLimit.minAge && (
-                    <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl hover:shadow-lg transition-all">
-                      <div className="text-3xl lg:text-4xl font-black text-green-600 dark:text-green-400 mb-2">
-                        {structuredData.ageLimit.minAge}
-                      </div>
-                      <div className="text-sm font-bold text-green-800 dark:text-green-300 uppercase tracking-wider">
-                        Minimum Age
-                      </div>
+           {/* RIGHT: Application Fee */}
+           <div className="flex flex-col">
+              <div className="bg-rose-900 text-white px-6 py-4 flex items-center gap-3 border-l border-rose-800/20">
+                 <div className="p-2 bg-white/10 rounded-lg"><CreditCard size={20} className="text-rose-100" /></div>
+                 <h2 className="font-bold text-lg uppercase tracking-wide">Application Fee</h2>
+              </div>
+              <div className="p-6 md:p-8 flex-1 bg-white">
+                 <ul className="space-y-3">
+                    {fees.length > 0 ? fees.map((item, idx) => {
+                       const isHeader = item.type === 'header';
+                       return (
+                         <li key={idx} className={`flex items-start gap-3 text-sm sm:text-base ${isHeader ? 'font-bold text-slate-900 mt-4 mb-1' : 'text-slate-700'}`}>
+                            {!isHeader && <div className="mt-1.5 min-w-[6px] h-1.5 bg-rose-500 rounded-full"></div>}
+                            <span className="leading-relaxed">{item.text.replace(/[:]/g, " : ")}</span>
+                         </li>
+                       );
+                    }) : (
+                       <li className="text-slate-400 italic">Fee details not available</li>
+                    )}
+                 </ul>
+              </div>
+           </div>
+        </div>
+
+
+        {/* --- SECTION 2: AGE LIMIT & TOTAL POST (Modern Banner) --- */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-0 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+            
+            {/* Age Limit (Left Side) */}
+            <div className="flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
+               <div className="bg-emerald-700 text-white px-6 py-3 flex items-center gap-3">
+                  <div className="p-1.5 bg-white/10 rounded-lg"><Users size={18} /></div>
+                  <h2 className="font-bold text-base uppercase tracking-wider">{ageText[0]?.replace(':', '') || "Age Limit Details"}</h2>
+               </div>
+               <div className="p-6 md:p-8 flex-1 bg-white">
+                  <ul className="space-y-3">
+                     {ageText.slice(1).map((line, i) => (
+                        <li key={i} className="flex items-start gap-3 text-sm sm:text-base font-semibold text-slate-800">
+                           <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+                           <span className="leading-relaxed">{line.replace(/[:]/g, " : ")}</span>
+                        </li>
+                     ))}
+                  </ul>
+               </div>
+            </div>
+
+            {/* Total Post (Right Side) */}
+            <div className="flex flex-col">
+               <div className="bg-orange-600 text-white text-center py-3 font-bold text-lg uppercase tracking-wider shadow-inner">
+                  Total Post
+               </div>
+               <div className="flex-1 flex flex-col items-center justify-center p-8 bg-orange-50/30">
+                  <span className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">{totalPost.replace(/\D/g, '')}</span>
+                  <span className="text-orange-600 font-bold uppercase text-sm mt-1 tracking-widest">Vacancies</span>
+               </div>
+            </div>
+        </div>
+
+
+        {/* --- SECTION 3: TABLES (Modernized) --- */}
+        {tables.map((table, tIndex) => {
+           if (!table.rows || table.rows.length < 2) return null;
+           const isLinks = JSON.stringify(table).toLowerCase().includes("official website");
+
+           if (isLinks) {
+              return (
+                 <div key={tIndex} className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+                    <div className="bg-pink-600 text-white px-6 py-4 flex items-center gap-3">
+                       <ExternalLink size={20} />
+                       <h2 className="font-bold text-xl uppercase tracking-wide">Important Links</h2>
                     </div>
-                  )}
-                  {structuredData.ageLimit.maxAge && (
-                    <div className="text-center p-6 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-xl hover:shadow-lg transition-all">
-                      <div className="text-3xl lg:text-4xl font-black text-orange-600 dark:text-orange-400 mb-2">
-                        {structuredData.ageLimit.maxAge}
-                      </div>
-                      <div className="text-sm font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wider">
-                        Maximum Age
-                      </div>
+                    <div className="divide-y divide-slate-100">
+                       {table.rows.map((row, rIndex) => {
+                          const label = extractText(row.cells[0]?.html);
+                          const link = extractLink(row.cells[1]?.html);
+                          if (!link) return null;
+                          return (
+                             <div key={rIndex} className="group flex flex-col sm:flex-row items-center hover:bg-slate-50 transition-colors duration-200 p-4 sm:px-6">
+                                <div className="flex-1 font-bold text-slate-700 text-center sm:text-left mb-3 sm:mb-0 group-hover:text-pink-700 transition-colors">
+                                   {label}
+                                </div>
+                                <div className="sm:w-auto w-full">
+                                   <a 
+                                     href={link} 
+                                     target="_blank" 
+                                     rel="noreferrer" 
+                                     className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white font-bold text-sm uppercase rounded-lg hover:bg-pink-600 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+                                   >
+                                      Click Here <ChevronRight size={16} />
+                                   </a>
+                                </div>
+                             </div>
+                          );
+                       })}
                     </div>
-                  )}
-                </div>
-                {structuredData.ageLimit.asOnDate && (
-                  <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-sm text-blue-800 dark:text-blue-400 font-semibold flex items-center gap-2">
-                      📅 Age as on: <span className="font-black text-blue-900 dark:text-blue-300">{structuredData.ageLimit.asOnDate}</span>
-                    </p>
-                  </div>
-                )}
-                {structuredData.ageLimit.details && (
-                  <p className="mt-4 text-sm text-gray-700 dark:text-gray-400 italic leading-relaxed">
-                    {structuredData.ageLimit.details}
-                  </p>
-                )}
+                 </div>
+              );
+           }
+
+           return (
+              <div key={tIndex} className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mt-8">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                       <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                             {table.rows[0].cells.map((cell, c) => (
+                                <th key={c} colSpan={cell.colspan} className="p-4 text-center font-extrabold text-slate-600 uppercase text-xs tracking-wider border-r border-slate-200 last:border-0">
+                                   {extractText(cell.html)}
+                                </th>
+                             ))}
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100">
+                          {table.rows.slice(1).map((row, r) => (
+                             <tr key={r} className="hover:bg-amber-50/50 transition-colors duration-150">
+                                {row.cells.map((cell, c) => (
+                                   <td key={c} colSpan={cell.colspan} className="p-4 text-center text-sm font-medium text-slate-700 border-r border-slate-100 last:border-0 align-middle leading-relaxed">
+                                      <div dangerouslySetInnerHTML={{ __html: cleanHtml(cell.html) }} />
+                                   </td>
+                                ))}
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 </div>
               </div>
-            )}
-          </div>
+           );
+        })}
 
-          {/* RIGHT COLUMN - Forms & Priority Links */}
-          <div className="lg:pl-4 space-y-6">
-            {/* Application Fee Table */}
-            {structuredData.applicationFee?.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4 text-white">
-                  <div className="flex items-center gap-3">
-                    <IndianRupee size={22} />
-                    <h2 className="text-xl font-bold">Application Fee</h2>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-800/50">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Category</th>
-                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {structuredData.applicationFee.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-green-50 dark:hover:bg-gray-800 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{item.category}</div>
-                            {item.note && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{item.note}</div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <span className="text-2xl font-black text-green-600 dark:text-green-400">
-                              ₹{item.amount?.toLocaleString()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Important Links - Apply Buttons First */}
-            {structuredData.importantLinks?.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 lg:p-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-3">
-                  <LinkIcon size={22} /> Important Links
-                </h3>
-                <div className="space-y-3">
-                  {structuredData.importantLinks.map((link, idx) => (
-                    <a
-                      key={idx}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-between p-5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200"
-                    >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                          <ExternalLink size={20} className="group-hover:translate-x-1 transition-transform" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-lg line-clamp-1">{link.label}</div>
-                          <div className="text-sm opacity-90 truncate">{link.url}</div>
-                        </div>
-                      </div>
-                      <span className="font-bold text-lg ml-4">→</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Vacancy Details - Full Width Table */}
-        {structuredData.vacancyDetails?.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-12">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 text-white">
-              <div className="flex items-center gap-3">
-                <Briefcase size={22} />
-                <h2 className="text-xl font-bold">Vacancy Details</h2>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800/50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Post Name</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider w-32">Total Posts</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">Eligibility</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {structuredData.vacancyDetails.slice(0, 8).map((item, idx) => (
-                    <tr key={idx} className="hover:bg-purple-50 dark:hover:bg-gray-800 transition-colors">
-                      <td className="px-6 py-5">
-                        <div className="font-bold text-gray-900 dark:text-gray-100 text-lg line-clamp-2">{item.postName}</div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300 px-6 py-3 rounded-full font-bold text-xl mx-auto w-fit shadow-sm">
-                          {item.totalPost}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{item.eligibility}</div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {structuredData.vacancyDetails.length > 8 && (
-                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 text-center text-sm text-gray-600 dark:text-gray-400 font-semibold border-t border-gray-200 dark:border-gray-700">
-                  +{structuredData.vacancyDetails.length - 8} more posts →
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Ad Slot */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <AdSlot
-            client={import.meta.env.VITE_ADSENSE_CLIENT}
-            slot={import.meta.env.VITE_ADSENSE_SLOT}
-            style={{ display: 'block', width: '100%', height: '120px' }}
-            className="rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
-          />
-        </div>
-
-        {/* Disclaimer */}
-        <div className="bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-950 border-4 border-orange-200 dark:border-orange-800/50 rounded-3xl p-8 lg:p-12 text-center">
-          <AlertCircle size={48} className="mx-auto text-orange-600 dark:text-orange-400 mb-6 shadow-lg" />
-          <h2 className="text-2xl lg:text-3xl font-black text-orange-900 dark:text-orange-200 mb-4">
-            ⚠️ Important Notice
-          </h2>
-          <p className="text-lg lg:text-xl text-orange-800 dark:text-orange-300 max-w-4xl mx-auto leading-relaxed font-medium">
-            Always verify details from the <strong>official notification</strong> before applying. 
-            JobsAddah provides information for convenience and is not responsible for any changes made by recruiting organizations.
-          </p>
-        </div>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+const ModernSkeleton = () => (
+  <div className="min-h-screen bg-slate-50">
+    <Header />
+    <div className="container mx-auto px-4 py-8 space-y-8 max-w-6xl animate-pulse">
+      <div className="h-24 bg-slate-200 w-3/4 mx-auto rounded-2xl"></div>
+      <div className="grid grid-cols-2 gap-4 h-80">
+         <div className="bg-slate-200 rounded-2xl"></div>
+         <div className="bg-slate-200 rounded-2xl"></div>
+      </div>
+      <div className="h-32 bg-slate-200 rounded-2xl mt-4"></div>
+    </div>
+  </div>
+);
+
+const ModernError = ({ error, navigate, retry }) => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 text-center max-w-md w-full">
+        <div className="inline-flex p-4 bg-red-50 rounded-full mb-6">
+           <CheckCircle2 size={40} className="text-red-500 rotate-45" />
+        </div>
+        <h2 className="text-slate-800 font-bold text-2xl mb-3">Unable to Load Post</h2>
+        <p className="text-slate-500 mb-8 leading-relaxed">{error}</p>
+        <div className="flex gap-3 justify-center">
+            <button onClick={() => navigate(-1)} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
+                Go Back
+            </button>
+            <button onClick={retry} className="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 hover:shadow-lg transition-all">
+                Retry Connection
+            </button>
+        </div>
+      </div>
+  </div>
+);
+
+export default PostDetails;

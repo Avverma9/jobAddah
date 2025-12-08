@@ -116,20 +116,7 @@ const deleteAllPosts = async (req, res) => {
   }
 };
 
-// 6. Get Single Post (By Slug or ID)
-const getPostDetails = async (req, res) => {
-  try {
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id);
-    const query = isObjectId ? { _id: req.params.id } : { slug: req.params.id };
 
-    const post = await Post.findOne(query);
-    if (!post) return res.status(404).json({ success: false, message: "Post not found" });
-
-    res.json({ success: true, data: post });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 // 7. Get Doc By ID (Simple)
 const getDocsById = async (req, res) => {
@@ -171,6 +158,7 @@ const getJobs = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // 9. Get Private Jobs
 const getPrivateJob = async (req, res) => {
@@ -499,12 +487,21 @@ const getFavPosts = async (req, res) => {
   }
 };
 
+
+const deleteAllJobs = async (req, res) => {
+  try {
+    const result = await Post.deleteMany({ postType: 'JOB' });
+    res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   createPost,
   updatePost,
   deletePost,
   deleteAllPosts,
-  getPostDetails,
   getJobs,
   getAdmitCards,
   getResults,
@@ -519,4 +516,6 @@ module.exports = {
   getJobsSmartByState,
   markFav,
   getFavPosts,
+  deleteAllJobs,
+
 };

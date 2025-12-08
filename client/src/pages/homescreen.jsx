@@ -9,8 +9,8 @@ import {
   BookOpen,
   TrendingUp,
   Building2,
-  MapPin,
-  Loader,
+  List,
+  CheckCircle,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
@@ -18,10 +18,8 @@ import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
 
-// --- STORAGE LOGIC FIX ---
-const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2"; // Changed key to reset old format
+const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
 
-// Helper to get recent IDs
 const getRecentVisitIds = () => {
   try {
     const stored = localStorage.getItem(VISIT_STORAGE_KEY);
@@ -31,95 +29,61 @@ const getRecentVisitIds = () => {
   }
 };
 
-// Helper to save a visit (Logic: Remove if exists, Add to top, Keep max 20)
 const saveRecentVisit = (id) => {
   if (!id) return;
   try {
     let visits = getRecentVisitIds();
-    // Remove duplicate to move it to the top
     visits = visits.filter((visitId) => visitId !== id);
-    // Add to the beginning (Most Recent)
     visits.unshift(id);
-    // Limit to 20 items
-    visits = visits.slice(0, 20);
+    visits = visits.slice(0, 20); // Fixed: assignment needed for slice to work on variable reference logic
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
-    
-    // Dispatch event to update UI immediately if needed
     window.dispatchEvent(new Event("recent-visits-updated"));
   } catch (error) {
-    console.error("Failed to save visit", error);
+    console.error(error);
   }
 };
 
-const isNewJob = (createdAt) => {
-  if (!createdAt) return false;
-  const created = new Date(createdAt).getTime();
-  const now = Date.now();
-  const threeDays = 3 * 24 * 60 * 60 * 1000;
-  return now - created <= threeDays;
+const getPostLink = (idOrUrl) => {
+  if (!idOrUrl) return "#";
+  const val = idOrUrl.toString();
+  
+  if (val.includes("http") || val.includes("https")) {
+    return `/post?url=${encodeURIComponent(val)}`;
+  }
+  
+  return `/post?id=${val}`;
 };
 
-const extractJobData = (job) => {
-  const lastDate = job.importantDates?.length
-    ? job.importantDates.find((d) =>
-        d.label?.toLowerCase().includes("last")
-      )?.value || job.importantDates[0]?.value
-    : "Check Details";
-
-  const examDate = job.importantDates?.find((d) =>
-    d.label?.toLowerCase().includes("exam")
-  )?.value;
-
-  const applicationFee = job.applicationFee?.[0]?.amount || 0;
-  const maxAge = job.ageLimit?.maxAge || "";
-
-  return {
-    id: job._id,
-    title: job.postTitle || "Notification",
-    organization: job.organization || "",
-    totalPosts: job.totalVacancyCount || 0,
-    lastDate,
-    postType: job.postType || "JOB",
-    jobType: job.jobType || "",
-    createdAt: job.createdAt,
-    isNew: isNewJob(job.createdAt),
-    allFields: [
-      ...(examDate ? [{ label: "Exam Date", value: examDate }] : []),
-      ...(applicationFee > 0
-        ? [{ label: "Application Fee", value: `₹${applicationFee}` }]
-        : []),
-      ...(maxAge ? [{ label: "Max Age", value: maxAge }] : []),
-      ...(job.vacancyDetails?.[0]?.postName
-        ? [
-            {
-              label: "Posts",
-              value: job.vacancyDetails[0].postName,
-            },
-          ]
-        : []),
-    ],
-  };
+const getCategoryConfig = (categoryName) => {
+  if (!categoryName) return { icon: FileText, color: "gray", postType: "JOB" }; // Safety check
+  const name = categoryName.toLowerCase();
+  if (name.includes("latest job")) return { icon: Bell, color: "green", postType: "JOB" };
+  if (name.includes("admit card")) return { icon: FileText, color: "blue", postType: "ADMIT_CARD" };
+  if (name.includes("result")) return { icon: Award, color: "red", postType: "RESULT" };
+  if (name.includes("answer key")) return { icon: CheckCircle, color: "pink", postType: "ANSWER_KEY" };
+  if (name.includes("admission")) return { icon: BookOpen, color: "purple", postType: "ADMISSION" };
+  if (name.includes("syllabus")) return { icon: List, color: "orange", postType: "SYLLABUS" };
+  if (name.includes("scholarship")) return { icon: Award, color: "yellow", postType: "SCHOLARSHIP" };
+  return { icon: FileText, color: "gray", postType: "JOB" };
 };
 
 const QuickCard = ({ icon: Icon, title, id, color }) => {
   const colorMap = {
-    orange:
-      "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/50",
+    orange: "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/50",
     pink: "bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-900/50",
-    purple:
-      "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50",
+    purple: "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50",
     blue: "bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50",
-    green:
-      "bg-green-50 text-green-600 border-green-100 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/50",
+    green: "bg-green-50 text-green-600 border-green-100 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/50",
+    red: "bg-red-50 text-red-600 border-red-100 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50",
+    yellow: "bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-900/50",
+    gray: "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-100 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700",
   };
 
   return (
     <Link
-      to={`/post?_id=${id}`}
-      // onClick is handled by the global capture in Main, but we can double ensure here
+      to={getPostLink(id)}
       onClick={() => saveRecentVisit(id)}
-      className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all group ${colorMap[color]}`}
-      aria-label={title}
+      className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all group ${colorMap[color] || colorMap.gray}`}
     >
       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/80 dark:bg-gray-800/50 rounded-lg flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
         <Icon size={20} className="sm:w-6 sm:h-6" />
@@ -130,8 +94,6 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
     </Link>
   );
 };
-
-// --- SKELETON LOADING COMPONENTS ---
 
 const SkeletonSection = () => (
   <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm h-full">
@@ -170,13 +132,8 @@ const SkeletonPrivateJobCard = () => (
   </div>
 );
 
-// --- MAIN COMPONENTS ---
-
 const RecentVisitsSection = ({ data }) => {
-  // If no data, return null immediately
-  if (!data || data.length === 0) {
-    return null;
-  }
+  if (!data || data.length === 0) return null;
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
@@ -192,8 +149,8 @@ const RecentVisitsSection = ({ data }) => {
       <div className="flex flex-wrap gap-2 sm:gap-3">
         {data.map((job) => (
           <Link
-            key={job.id}
-            to={`/post?_id=${job.id}`}
+            key={job.id} // Ensure job.id is unique
+            to={getPostLink(job.id)}
             onClick={() => saveRecentVisit(job.id)}
             className="group"
           >
@@ -211,11 +168,12 @@ const RecentVisitsSection = ({ data }) => {
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedState, setSelectedState] = useState("ALL");
   const [favPosts, setFavPosts] = useState([]);
-  
-  // State for Recent Visits
   const [recentVisitIds, setRecentVisitIds] = useState([]);
+  const [dynamicSections, setDynamicSections] = useState([]);
+  const [isDynamicLoading, setIsDynamicLoading] = useState(true);
+  const [privateJobs, setPrivateJobs] = useState([]);
+  const [isPrivateLoading, setIsPrivateLoading] = useState(true);
 
   const [reminders, setReminders] = useState({
     expiresToday: [],
@@ -223,91 +181,103 @@ export default function HomeScreen() {
     isLoading: true,
   });
 
-  const [latestJobsByState, setLatestJobsByState] = useState({
-    data: [],
-    isLoading: true,
-    state: "ALL",
-  });
-
-  const [categoryData, setCategoryData] = useState({
-    results: [],
-    admitCards: [],
-    answerKeys: [],
-    admissions: [],
-    scholarships: [],
-    privateJobs: [],
-    isLoading: true,
-  });
-
-  // Load state from local storage
-  useEffect(() => {
-    const storedState = localStorage.getItem("userState");
-    if (storedState) {
-      setSelectedState(storedState);
-    } else {
-      setSelectedState("ALL");
-      localStorage.setItem("userState", "ALL");
-    }
-  }, []);
-
-  // --- NEW: Load Recent Visits on Mount & Listen for Updates ---
   useEffect(() => {
     const loadVisits = () => {
       setRecentVisitIds(getRecentVisitIds());
     };
-
     loadVisits();
-
-    // Listen for our custom event (in case multiple components update it)
     window.addEventListener("recent-visits-updated", loadVisits);
     return () => window.removeEventListener("recent-visits-updated", loadVisits);
   }, []);
 
   useEffect(() => {
-    const fetchAllCategoryData = async () => {
+    const fetchDynamicData = async () => {
       try {
-        setCategoryData((prev) => ({ ...prev, isLoading: true }));
+        setIsDynamicLoading(true);
 
-        const endpoints = {
-          results: "/get-jobs?postType=RESULT",
-          admitCards: "/get-jobs?postType=ADMIT_CARD",
-          answerKeys: "/get-jobs?postType=ANSWER_KEY",
-          admissions: "/get-jobs?postType=ADMISSION",
-          scholarships: "/get-jobs?postType=SCHOLARSHIP",
-          privateJobs: "/get-jobs?postType=PRIVATE_JOB",
-        };
+        const categoryRes = await fetch(`${baseUrl}/get-sections`);
+        const categoryData = await categoryRes.json();
+        
+        const categories = Array.isArray(categoryData) && categoryData.length > 0 
+            ? categoryData[0].categories 
+            : [];
 
-        const results = await Promise.all(
-          Object.entries(endpoints).map(([key, endpoint]) =>
-            fetch(`${baseUrl}${endpoint}`)
-              .then((res) => res.json())
-              .then((data) => ({
-                key,
-                data: Array.isArray(data)
-                  ? data
-                  : data.data || data.jobs || [],
-              }))
-              .catch(() => ({ key, data: [] }))
-          )
-        );
+        if (categories.length === 0) {
+           setDynamicSections([]);
+           return;
+        }
 
-        const categorized = {};
-        results.forEach(({ key, data }) => {
-          categorized[key] = data.map(extractJobData);
+        const sectionPromises = categories.map(async (cat) => {
+            try {
+                const res = await fetch(`${baseUrl}/get-postlist`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ url: cat.link }),
+                });
+                const data = await res.json();
+
+                let jobs = [];
+                if (Array.isArray(data)) {
+                    const match = data.find(item => item.url === cat.link) || data[0];
+                    jobs = match?.jobs || [];
+                } else {
+                    jobs = data?.jobs || [];
+                }
+
+                const processedData = jobs
+                    .filter(job => 
+                        job.title &&
+                        !job.title.toLowerCase().includes("privacy policy") && 
+                        !job.title.toLowerCase().includes("sarkari result")
+                    )
+                    .map(job => ({ ...job, id: job.link }));
+
+                return {
+                    name: cat.name,
+                    data: processedData,
+                    ...getCategoryConfig(cat.name),
+                };
+
+            } catch (err) {
+                console.error(`Error fetching section ${cat.name}:`, err);
+                return {
+                    name: cat.name,
+                    data: [],
+                    ...getCategoryConfig(cat.name),
+                };
+            }
         });
 
-        setCategoryData((prev) => ({
-          ...prev,
-          ...categorized,
-          isLoading: false,
-        }));
+        const sections = await Promise.all(sectionPromises);
+        setDynamicSections(sections);
+
       } catch (error) {
-        console.error("Error fetching category data:", error);
-        setCategoryData((prev) => ({ ...prev, isLoading: false }));
+        console.error("Error fetching dynamic sections:", error);
+      } finally {
+        setIsDynamicLoading(false);
       }
     };
 
-    fetchAllCategoryData();
+    fetchDynamicData();
+  }, []);
+
+  useEffect(() => {
+    const fetchPrivateJobs = async () => {
+      try {
+        const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
+        const data = await res.json();
+        const jobs = Array.isArray(data) ? data : data.data || [];
+        setPrivateJobs(jobs);
+      } catch (error) {
+        console.error("Error fetching private jobs:", error);
+      } finally {
+        setIsPrivateLoading(false);
+      }
+    };
+
+    fetchPrivateJobs();
   }, []);
 
   useEffect(() => {
@@ -315,7 +285,6 @@ export default function HomeScreen() {
       try {
         const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
         const data = await response.json();
-
         if (data.success) {
           setReminders({
             expiresToday: data.expiresToday || [],
@@ -324,7 +293,6 @@ export default function HomeScreen() {
           });
         }
       } catch (error) {
-        console.error("Error fetching reminders:", error);
         setReminders((prev) => ({ ...prev, isLoading: false }));
       }
     };
@@ -335,134 +303,97 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchLatestJobsByState = async () => {
-      try {
-        setLatestJobsByState((prev) => ({ ...prev, isLoading: true }));
-
-        const response = await fetch(
-          `${baseUrl}/smart-by-state?state=${selectedState}`
-        );
-        const data = await response.json();
-
-        if (data.success) {
-          const jobsData = data.data.map(extractJobData);
-          setLatestJobsByState({
-            data: jobsData,
-            isLoading: false,
-            state: data.state,
-          });
-        } else {
-          setLatestJobsByState({
-            data: [],
-            isLoading: false,
-            state: selectedState,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching state jobs:", error);
-        setLatestJobsByState((prev) => ({ ...prev, isLoading: false }));
-      }
-    };
-
-    if (selectedState) {
-      fetchLatestJobsByState();
-    }
-  }, [selectedState]);
-
-  useEffect(() => {
     fetch(`${baseUrl}/fav-posts`)
       .then((res) => res.json())
       .then((data) => setFavPosts(data?.data || []));
   }, []);
 
-  const handleStateChange = (newState) => {
-    setSelectedState(newState);
-    localStorage.setItem("userState", newState);
-  };
-
-  const filteredData = useMemo(() => {
-    const filterBySearch = (items) => {
-      if (!searchQuery) return items;
-      return items.filter((item) =>
+  const filteredSections = useMemo(() => {
+    if (!searchQuery) return dynamicSections;
+    return dynamicSections.map((section) => ({
+      ...section,
+      data: section.data.filter((item) =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    };
+      ),
+    }));
+  }, [dynamicSections, searchQuery]);
 
-    return {
-      results: filterBySearch(categoryData.results),
-      admitCards: filterBySearch(categoryData.admitCards),
-      answerKeys: filterBySearch(categoryData.answerKeys),
-      admissions: filterBySearch(categoryData.admissions),
-      scholarships: filterBySearch(categoryData.scholarships),
-      privateJobs: filterBySearch(categoryData.privateJobs),
-      stateJobs: filterBySearch(latestJobsByState.data),
-    };
-  }, [categoryData, latestJobsByState.data, searchQuery]);
-
-  // --- DERIVE RECENT VISITS DATA ---
   const recentVisitsData = useMemo(() => {
     if (recentVisitIds.length === 0) return [];
-
+    
+    // Combine data from dynamic sections and private jobs for lookup
     const allJobs = [
-      ...categoryData.results,
-      ...categoryData.admitCards,
-      ...categoryData.answerKeys,
-      ...categoryData.admissions,
-      ...categoryData.scholarships,
-      ...categoryData.privateJobs,
-      ...latestJobsByState.data, // Also include state jobs
+        ...dynamicSections.flatMap(s => s.data), 
+        ...privateJobs.map(j => ({...j, id: j._id, title: j.postTitle}))
     ];
 
-    // Create a map for faster lookup
     const jobMap = new Map(allJobs.map((job) => [job.id, job]));
 
-    // Map IDs to actual job objects, preserving the order of 'recentVisitIds'
     return recentVisitIds
       .map((id) => jobMap.get(id))
-      .filter((job) => job !== undefined); // Remove undefined if job not found in current list
-  }, [categoryData, recentVisitIds, latestJobsByState.data]);
+      .filter((job) => job !== undefined);
+  }, [dynamicSections, privateJobs, recentVisitIds]);
 
-
-  // --- CLICK CAPTURE HANDLER ---
-  // This detects clicks on any <a> tag inside the main container
-  // allowing us to track clicks even inside imported components like SectionColumn
   const handleGlobalClick = (e) => {
-    const link = e.target.closest('a');
+    const link = e.target.closest("a");
     if (link && link.href) {
-      // Check if the link goes to /post and has an _id param
       const url = new URL(link.href);
-      if (url.pathname.includes('/post')) {
-        const id = url.searchParams.get('_id');
+      
+      if (url.pathname.includes("/post")) {
+        const urlParam = url.searchParams.get("url");
+        if (urlParam) {
+            saveRecentVisit(decodeURIComponent(urlParam));
+            return;
+        }
+
+        const scrapedUrlEncoded = url.searchParams.get("q");
+        if (scrapedUrlEncoded) {
+          try {
+             const decodedUrl = atob(scrapedUrlEncoded);
+             saveRecentVisit(decodedUrl);
+          } catch(e) {}
+          return;
+        }
+
+        const id = url.searchParams.get("id") || url.searchParams.get("_id");
         if (id) {
             saveRecentVisit(id);
+            return;
         }
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+    // FIX: Moved onClickCapture to the outermost div so it catches Marquee and Header clicks too
+    <div 
+        className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
+        onClickCapture={handleGlobalClick}
+    >
       <Header />
 
-      {/* Marquee Section */}
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-blue-700 to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-blue-600 to-transparent z-10" />
         <div className="animate-marquee whitespace-nowrap flex gap-8 sm:gap-10 items-center px-3 sm:px-4">
-          {categoryData.isLoading ? (
+          {isDynamicLoading ? (
             <span className="text-[11px] sm:text-sm">Loading latest updates...</span>
-          ) : filteredData.stateJobs.length > 0 ? (
-            filteredData.stateJobs.slice(0, 5).map((job, i) => (
-              <span
+          ) : filteredSections.length > 0 && filteredSections[0]?.data?.length > 0 ? (
+            // FIX: Added optional chaining (?.) for data and changed <span> to <Link> to make them clickable
+            filteredSections[0].data.slice(0, 5).map((job, i) => (
+              <Link
                 key={i}
-                className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm"
+                to={getPostLink(job.id)}
+                // Note: global onClickCapture will handle saving, but we keep this for redundancy
+                onClick={() => saveRecentVisit(job.id)} 
+                className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm hover:text-yellow-200 transition-colors"
               >
                 <Bell
                   size={12}
                   className="fill-yellow-400 text-yellow-400 animate-pulse sm:w-3.5 sm:h-3.5"
                 />
                 {job.title}
-              </span>
+              </Link>
             ))
           ) : (
             <span className="text-[11px] sm:text-sm">
@@ -472,13 +403,8 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Added onClickCapture to track clicks in children components */}
-      <main 
-        className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8"
-        onClickCapture={handleGlobalClick} 
-      >
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
         <div className="space-y-4 sm:space-y-6">
-          {/* Search Bar */}
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
               <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
@@ -492,7 +418,6 @@ export default function HomeScreen() {
             />
           </div>
 
-          {/* Quick Links (Fav Posts) */}
           {favPosts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
@@ -508,32 +433,10 @@ export default function HomeScreen() {
           )}
         </div>
 
-        {/* Content Sections with Skeleton Loading */}
         <div className="space-y-6 sm:space-y-8">
-          
-          {/* Recent Visits Section - Now using the correct data */}
           {recentVisitsData.length > 0 && (
             <RecentVisitsSection data={recentVisitsData} />
           )}
-
-          {/* Mobile State Jobs */}
-          <div className="lg:hidden">
-            {latestJobsByState.isLoading ? (
-              <SkeletonSection />
-            ) : (
-              <SectionColumn
-                title={`Latest ${latestJobsByState.state} Jobs`}
-                icon={MapPin}
-                data={filteredData.stateJobs}
-                colorTheme="green"
-                postType="JOB"
-                isLoading={false}
-                showStateSelector={true}
-                currentState={selectedState}
-                onStateChange={handleStateChange}
-              />
-            )}
-          </div>
 
           <UrgentReminderSection
             expiresToday={reminders.expiresToday}
@@ -541,117 +444,22 @@ export default function HomeScreen() {
             isLoading={reminders.isLoading}
           />
 
-          {/* Main Grid: Results, Admit Cards, State Jobs */}
-          <div className="hidden lg:grid grid-cols-3 gap-4 sm:gap-6">
-            {categoryData.isLoading ? (
-              <>
-                <SkeletonSection />
-                <SkeletonSection />
-                <SkeletonSection />
-              </>
-            ) : (
-              <>
-                <SectionColumn
-                  title="Results"
-                  icon={Award}
-                  data={filteredData.results}
-                  colorTheme="red"
-                  postType="RESULT"
-                  isLoading={false}
-                />
-                <SectionColumn
-                  title="Admit Cards"
-                  icon={FileText}
-                  data={filteredData.admitCards}
-                  colorTheme="blue"
-                  postType="ADMIT_CARD"
-                  isLoading={false}
-                />
-                <SectionColumn
-                  title={`Latest ${latestJobsByState.state} Jobs`}
-                  icon={MapPin}
-                  data={filteredData.stateJobs}
-                  colorTheme="green"
-                  postType="JOB"
-                  isLoading={latestJobsByState.isLoading}
-                  showStateSelector={true}
-                  currentState={selectedState}
-                  onStateChange={handleStateChange}
-                />
-              </>
-            )}
-          </div>
-
-          {/* Mobile Grid for Results & Admit Cards */}
-          <div className="lg:hidden space-y-4 sm:space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              {categoryData.isLoading ? (
-                <>
-                  <SkeletonSection />
-                  <SkeletonSection />
-                </>
-              ) : (
-                <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {isDynamicLoading
+              ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
+              : filteredSections.map((section, idx) => (
                   <SectionColumn
-                    title="Results"
-                    icon={Award}
-                    data={filteredData.results}
-                    colorTheme="red"
-                    postType="RESULT"
+                    key={idx}
+                    title={section.name}
+                    icon={section.icon}
+                    data={section.data}
+                    colorTheme={section.color}
+                    postType={section.postType}
                     isLoading={false}
                   />
-                  <SectionColumn
-                    title="Admit Cards"
-                    icon={FileText}
-                    data={filteredData.admitCards}
-                    colorTheme="blue"
-                    postType="ADMIT_CARD"
-                    isLoading={false}
-                  />
-                </>
-              )}
-            </div>
+                ))}
           </div>
 
-          {/* Bottom Grid: Answer Keys, Admissions, Scholarships */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {categoryData.isLoading ? (
-              <>
-                <SkeletonSection />
-                <SkeletonSection />
-                <SkeletonSection />
-              </>
-            ) : (
-              <>
-                <SectionColumn
-                  title="Answer Keys"
-                  icon={FileText}
-                  data={filteredData.answerKeys}
-                  colorTheme="pink"
-                  postType="ANSWER_KEY"
-                  isLoading={false}
-                />
-                <SectionColumn
-                  title="Admissions"
-                  icon={BookOpen}
-                  data={filteredData.admissions}
-                  colorTheme="purple"
-                  postType="ADMISSION"
-                  isLoading={false}
-                />
-                <SectionColumn
-                  title="Scholarships"
-                  icon={Award}
-                  data={filteredData.scholarships}
-                  colorTheme="blue"
-                  postType="SCHOLARSHIP"
-                  isLoading={false}
-                />
-              </>
-            )}
-          </div>
-
-          {/* Private Jobs Section */}
           <div
             id="private-jobs"
             className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
@@ -677,16 +485,16 @@ export default function HomeScreen() {
             </div>
 
             <div className="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-              {categoryData.isLoading ? (
+              {isPrivateLoading ? (
                 <>
                   <SkeletonPrivateJobCard />
                   <SkeletonPrivateJobCard />
                   <SkeletonPrivateJobCard />
                   <SkeletonPrivateJobCard />
                 </>
-              ) : filteredData.privateJobs.length > 0 ? (
-                filteredData.privateJobs.map((job) => (
-                  <PrivateJobCard key={job.id} job={job} />
+              ) : privateJobs.length > 0 ? (
+                privateJobs.map((job) => (
+                  <PrivateJobCard key={job._id} job={job} />
                 ))
               ) : (
                 <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
