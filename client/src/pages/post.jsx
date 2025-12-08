@@ -1,235 +1,817 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, Share2, Printer, CheckCircle2, 
-  Calendar, CreditCard, Users, ExternalLink, ChevronRight
+import {
+  ArrowLeft,
+  Share2,
+  Printer,
+  Calendar,
+  CreditCard,
+  Users,
+  ExternalLink,
+  ChevronRight,
+  FileText,
+  Award,
+  BookOpen,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Building,
+  Briefcase,
+  Circle,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
 import Header from "../components/Header";
 
-// --- Hooks ---
 const useQuery = () => {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
 };
 
-// --- Helpers ---
-const cleanHtml = (html) => {
-  if (!html) return "";
-  let clean = html.replace(/style="[^"]*"/g, ""); 
-  clean = clean.replace(/<p>&nbsp;<\/p>/g, "");
-  return clean;
+// ==================== COMPREHENSIVE DATA EXTRACTION ====================
+
+const extractRecruitmentData = (data) => {
+  const rec = data.recruitment || data;
+
+  const title = rec.title || data.title || "Recruitment Notification";
+
+  const org = rec.organization || {};
+  const organization = org.name || "";
+  const website = Array.isArray(org.website)
+    ? org.website[0]
+    : org.website || org.officialWebsite || org.url || "";
+
+  return {
+    title,
+    organization,
+    website,
+    dates: extractDates(rec.importantDates || rec.dates || {}),
+    fees: extractFees(rec.applicationFee || rec.fees || {}),
+    age: extractAge(rec.ageLimit || rec.age || {}),
+    vacancy: extractVacancy(rec.vacancyDetails || rec.vacancy || {}),
+    eligibility: extractEligibility(rec.eligibility || {}),
+    selection: rec.selectionProcess || rec.selection || [],
+    links: extractLinks(rec.importantLinks || rec.links || {}),
+    districtData: rec.districtWiseData || rec.districtData || [],
+  };
 };
 
-const extractText = (html) => {
-  return html?.replace(/<[^>]*>/g, "").trim() || "";
-};
+// ==================== DATES EXTRACTION WITH ALL VARIATIONS ====================
+const extractDates = (dates) => {
+  if (!dates || typeof dates !== "object") return [];
 
-const extractLink = (html) => {
-  const match = html?.match(/href="([^"]*)"/);
-  return match ? match[1] : null;
-};
+  const result = [];
+  const dateMapping = [
+    {
+      keys: [
+        "notificationDate",
+        "Notification Date",
+        "notificationReleaseDate",
+      ],
+      label: "Notification Date",
+    },
+    {
+      keys: [
+        "applicationStartDate",
+        "applicationStart",
+        "onlineApplicationStart",
+        "onlineApplyStartDate",
+        "onlineApplyStart",
+        "startDate",
+        "applyOnlineStartDate",
+        "applyOnlineStart",
+        "applyStartDate",
+        "Online Apply Start Date",
+        "applicationStart",
+      ],
+      label: "Application Start Date",
+    },
+    {
+      keys: [
+        "applicationLastDate",
+        "applicationEndDate",
+        "lastDateToApply",
+        "lastDateForApply",
+        "onlineApplyLastDate",
+        "onlineApplicationEnd",
+        "lastDate",
+        "applyOnlineLastDate",
+        "applyOnlineLast",
+        "applyLastDate",
+        "Online Apply Last Date",
+        "applicationEnd",
+      ],
+      label: "Last Date to Apply",
+    },
+    {
+      keys: [
+        "feePaymentLastDate",
+        "lastDateForFeePayment",
+        "payExamFeeLastDate",
+        "feeLastDate",
+        "feePaymentEnd",
+        "feePaymentLast",
+        "Last Date For Fee Payment",
+      ],
+      label: "Fee Payment Last Date",
+    },
+    {
+      keys: [
+        "correctionLastDate",
+        "correctionDate",
+        "correctionFormDates",
+        "formCorrectionDate",
+        "editModifyForm",
+      ],
+      label: "Correction Date",
+    },
+    {
+      keys: [
+        "formCompleteLastDate",
+        "formSubmissionLastDate",
+        "finalSubmitLast",
+      ],
+      label: "Form Complete Last Date",
+    },
+    {
+      keys: [
+        "examDate",
+        "preExamDate",
+        "writtenExamDate",
+        "cbtDate",
+        "tierIExamStartDate",
+        "Exam Date",
+      ],
+      label: "Exam Date",
+    },
+    {
+      keys: [
+        "admitCardDate",
+        "admitCardReleaseDate",
+        "admitCard",
+        "admitCardAvailable",
+        "admitCardStatus",
+        "Admit Card",
+      ],
+      label: "Admit Card Available",
+    },
+    {
+      keys: ["examCityDetails", "tierIExamCityDetails"],
+      label: "Exam City Details",
+    },
+    {
+      keys: [
+        "resultDate",
+        "resultDeclaredDate",
+        "resultReleaseDate",
+        "resultAnnouncement",
+        "Result Date",
+      ],
+      label: "Result Date",
+    },
+    {
+      keys: ["Answer Key"],
+      label: "Answer Key",
+    },
+    {
+      keys: ["Counselling Start On"],
+      label: "Counselling Start",
+    },
+    {
+      keys: ["Last Date for Counselling"],
+      label: "Last Date for Counselling",
+    },
+    {
+      keys: ["Dummy Admit Card"],
+      label: "Dummy Admit Card",
+    },
+    {
+      keys: ["Dummy Admit Card Correction Date"],
+      label: "Dummy Admit Card Correction",
+    },
+    {
+      keys: ["meritList"],
+      label: "Merit List",
+    },
+    {
+      keys: ["applicationStatus"],
+      label: "Application Status",
+    },
+  ];
 
-// --- IMPROVED PARSERS ---
-
-// 1. Extract Dates
-const extractDates = (data) => {
-  const source = data?.allText || [];
-  const startIdx = source.findIndex(t => t.text?.includes("Important Dates"));
-  if (startIdx === -1) return [];
-
-  const dates = [];
-  let i = startIdx + 1;
-  
-  while (i < source.length) {
-    let text = source[i].text?.trim();
-    if (!text) { i++; continue; }
-    
-    // Stop at next section
-    if (text.includes("Application Fee") || text.includes("KVS NVS")) break; 
-
-    // Match standard date labels
-    const isDateLabel = 
-      text.includes("Start Date") || 
-      text.includes("Last Date") || 
-      text.includes("Exam Date") || 
-      text.includes("Admit Card") || 
-      text.includes("Result Date") ||
-      text.includes("Correction Last Date");
-
-    if (isDateLabel) {
-       let fullEntry = text;
-       
-       // If the label ends with separator (:, -) or is just the label, grab next value
-       // "Admit Card :" -> "Before Exam"
-       if (fullEntry.trim().match(/[:\-\u2013]$/) || !fullEntry.match(/\d/)) {
-          let j = i + 1;
-          // Look ahead for value (skip empty nodes)
-          while(j < source.length && !source[j].text?.trim()) j++;
-
-          if (j < source.length) {
-             let nextText = source[j].text?.trim();
-             // Check if next text is NOT another label (e.g. "Result Date :")
-             if (nextText && !nextText.includes("Date :") && !nextText.includes("Admit Card")) {
-                fullEntry += " " + nextText;
-                i = j; // Advance main loop
-             }
-          }
-       }
-       dates.push(fullEntry);
-    } 
-    else if (text.includes("Candidates are advised")) {
-        dates.push(text);
+  dateMapping.forEach(({ keys, label }) => {
+    for (const key of keys) {
+      if (dates[key] && String(dates[key]).trim()) {
+        result.push(`${label}: ${dates[key]}`);
+        break;
+      }
     }
-    i++;
-  }
-  return dates;
+  });
+
+  return result;
 };
 
-// 2. Extract Fees
-const extractFees = (data) => {
-  const source = data?.allText || [];
-  const startIdx = source.findIndex(t => t.text?.includes("Application Fee"));
-  if (startIdx === -1) return [];
+// ==================== FEES EXTRACTION WITH ALL VARIATIONS ====================
+const extractFees = (fees) => {
+  if (!fees || typeof fees !== "object") return [];
 
-  const fees = [];
-  let i = startIdx + 1;
-  
-  while (i < source.length) {
-    let text = source[i].text?.trim();
-    if (!text) { i++; continue; }
-    
-    // Stop conditions
-    if (text.includes("Age Limit") || text.includes("Vacancy Details")) break;
-    
-    // CASE A: Headers (Post Names ending in :-)
-    if (text.match(/[:\-\u2013]$/) && !text.match(/\d+\/-/) && !text.includes("General") && !text.includes("SC")) {
-       fees.push({ type: 'header', text: text });
-    } 
-    // CASE B: Fee Rows (Category : Amount)
-    else if (text.includes("General") || text.includes("SC") || text.includes("ST") || text.includes("OBC") || text.includes("EWS")) {
-       let fullRow = text;
-       
-       // If "General / OBC :" is separate from "2800/-"
-       if (!fullRow.includes("/-") && !fullRow.match(/Rs\.?\s*\d+/i)) {
-          let j = i + 1;
-          while(j < source.length && !source[j].text?.trim()) j++; // Skip empty
-          
-          if (j < source.length) {
-             let nextText = source[j].text?.trim();
-             // Append if it looks like money
-             if (nextText && (nextText.includes("/-") || nextText.match(/^\d+$/) || nextText.match(/^\d+\/-$/))) {
-                fullRow += " " + nextText;
-                i = j;
-             }
-          }
-       }
-       fees.push({ type: 'row', text: fullRow });
-    } 
-    // CASE C: Payment Mode
-    else if (text.includes("Payment Mode") || text.includes("payment using")) {
-       fees.push({ type: 'header', text: "Payment Mode (Online):" });
-       fees.push({ type: 'list', text: "Debit Card, Credit Card, Net Banking, UPI" });
-       break; 
+  const result = [];
+
+  // Helper function for nested fee structures (KVS/NVS, DDA style)
+  const formatNestedFees = (obj, headerText) => {
+    if (!obj || typeof obj !== "object") return [];
+
+    const items = [];
+    items.push({ type: "header", text: headerText });
+
+    Object.entries(obj).forEach(([key, value]) => {
+      if (key === "paymentMode" || key === "paymentModes") return;
+
+      const formattedKey = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " / ")
+        .replace(/([a-z])([A-Z])/g, "$1 / $2")
+        .replace(/general/gi, "General")
+        .replace(/obc/gi, "OBC")
+        .replace(/ews/gi, "EWS")
+        .replace(/sc/gi, "SC")
+        .replace(/st/gi, "ST")
+        .replace(/ph/gi, "PH")
+        .replace(/esm/gi, "ESM")
+        .trim();
+
+      items.push({ type: "item", text: `${formattedKey}: ${value}` });
+    });
+
+    return items;
+  };
+
+  // Check for nested structures (KVS/NVS/DDA format)
+  const nestedKeys = [
+    {
+      key: "assistantCommissionerPrincipalVicePrincipal",
+      label: "Assistant Commissioner / Principal / Vice-Principal:",
+    },
+    {
+      key: "pgtTgtPrtOtherTeachingNonTeaching",
+      label: "PGT / TGT / PRT & Other Teaching/Non-Teaching:",
+    },
+    {
+      key: "ssaStenographerJsaLabAttendantMultiTaskingStaff",
+      label: "SSA / Stenographer / JSA / Lab Attendant / Multi-Tasking Staff:",
+    },
+  ];
+
+  let hasNestedStructure = false;
+  nestedKeys.forEach(({ key, label }) => {
+    if (fees[key]) {
+      hasNestedStructure = true;
+      result.push(...formatNestedFees(fees[key], label));
     }
-    
-    i++;
-  }
-  return fees;
-};
+  });
 
-// 3. Extract Age & Post
-const extractAgeAndPost = (data) => {
-    const source = data?.allText || [];
-    
-    // Find Age Header
-    const ageIdx = source.findIndex(t => t.text?.includes("Age Limits") || t.text?.includes("Minimum Age"));
-    let ageText = [];
-    
-    if (ageIdx !== -1) {
-        let i = ageIdx;
-        while(i < source.length && ageText.length < 6) {
-            let t = source[i].text?.trim();
-            if (t && (t.includes("Total Post") || t.includes("Vacancy Details"))) break;
-            
-            if (t && (t.includes("Minimum Age") || t.includes("Maximum Age") || t.includes("Relaxation"))) {
-                 if (t.trim().endsWith(":")) {
-                    let j = i + 1;
-                    while(j < source.length && !source[j].text?.trim()) j++;
-                    if(source[j]?.text?.trim()) {
-                       t += " " + source[j].text.trim();
-                       i = j;
-                    }
-                 }
-                 ageText.push(t);
-            } else if (t && t.includes("Age Limits As On")) {
-                 ageText.unshift(t);
-            }
-            i++;
+  // If no nested structure, handle flat fee structure
+  if (!hasNestedStructure) {
+    const feeMapping = [
+      {
+        keys: [
+          "general",
+          "general_obc_ews",
+          "generalOBC",
+          "generalOBC_EWS",
+          "generalEwsObc",
+          "generalEWS_OBC",
+          "general_obc",
+          "generalEWS_OBC",
+          "General, OBC, EWS, UR",
+          "generalObcEws",
+          "generalOBC_EWS",
+        ],
+        label: "General/OBC/EWS",
+      },
+      { keys: ["ews"], label: "EWS" },
+      { keys: ["obc"], label: "OBC" },
+      {
+        keys: [
+          "sc",
+          "sc_st",
+          "scSt",
+          "sc_st_pwd",
+          "scST",
+          "SC / ST, Divyang",
+          "scStEbc",
+          "scStEbcFemaleTransgender",
+          "scst_EBC",
+        ],
+        label: "SC/ST",
+      },
+      { keys: ["st"], label: "ST" },
+      { keys: ["ph"], label: "PH" },
+      {
+        keys: ["female", "allCategoryFemale", "femaleCandidate"],
+        label: "Female Candidates",
+      },
+      {
+        keys: ["pwd", "disabledCandidate"],
+        label: "PwD Candidates",
+      },
+      {
+        keys: ["feeDetails", "amount", "allCandidates", "forAllCandidates"],
+        label: "Application Fee",
+      },
+      { keys: ["refundAmountCbtGeneralOBC"], label: "Refund (General/OBC)" },
+      {
+        keys: ["refundAmountCbtScStEbcFemaleTransgender"],
+        label: "Refund (SC/ST/EBC/Female/Transgender)",
+      },
+    ];
+
+    feeMapping.forEach(({ keys, label }) => {
+      for (const key of keys) {
+        if (
+          fees[key] &&
+          fees[key] !== "0/-" &&
+          fees[key] !== "Rs 0/-" &&
+          fees[key] !== "₹ 0/-"
+        ) {
+          result.push({ type: "normal", text: `${label}: ${fees[key]}` });
+          break;
         }
-    }
+      }
+    });
+  }
 
-    // Find Total Post
-    const postIdx = source.findIndex(t => t.text?.includes("Total Post") || t.text?.includes("Posts"));
-    let totalPost = "See Notification";
-    if (postIdx !== -1) {
-       for(let k=0; k<3; k++) {
-          let val = source[postIdx+k]?.text?.trim();
-          if (val && (val.match(/[\d,]+\s*Posts?/i) || val.match(/^[\d,]+$/))) {
-             totalPost = val;
-             break;
-          }
-       }
+  // Handle refund details
+  const refundKeys = [
+    "refundDetails",
+    "feeRefund",
+    "refundPolicy",
+    "refundNote",
+  ];
+  for (const key of refundKeys) {
+    if (fees[key]) {
+      result.push({ type: "info", text: fees[key] });
+      break;
     }
+  }
 
-    return { ageText: ageText.length ? ageText : ["Age Limit Details Available in Notification"], totalPost };
+  // Correction charges
+  if (fees.correctionChargeFirstTime) {
+    result.push({
+      type: "normal",
+      text: `Correction Fee (1st Time): ${fees.correctionChargeFirstTime}`,
+    });
+  }
+  if (fees.correctionChargeSecondTime) {
+    result.push({
+      type: "normal",
+      text: `Correction Fee (2nd Time): ${fees.correctionChargeSecondTime}`,
+    });
+  }
+
+  // Payment modes
+  const paymentModes =
+    fees.paymentMode || fees.paymentModes || fees.paymentModeOnline;
+  if (paymentModes) {
+    if (Array.isArray(paymentModes)) {
+      result.push({
+        type: "payment",
+        text: `Payment Mode: ${paymentModes.join(", ")}`,
+      });
+    } else {
+      result.push({ type: "payment", text: `Payment Mode: ${paymentModes}` });
+    }
+  }
+
+  return result;
 };
 
+// ==================== AGE EXTRACTION WITH ALL VARIATIONS ====================
+const extractAge = (age) => {
+  if (!age || typeof age !== "object") return { text: [], relaxation: "" };
 
+  const result = [];
+
+  // Handle minimum age
+  const minAge =
+    age.minimumAge || age.minAge || age.minimum || age["Minimum Age"];
+  if (minAge) result.push(`Minimum Age: ${minAge}`);
+
+  // Handle maximum age (can be string or nested object)
+  const maxAge =
+    age.maximumAge || age.maxAge || age.maximum || age["Maximum Age"];
+  if (maxAge) {
+    if (typeof maxAge === "string") {
+      result.push(`Maximum Age: ${maxAge}`);
+    } else if (typeof maxAge === "object") {
+      // Handle nested max age (like BPSC AEDO format)
+      if (maxAge.male) result.push(`Maximum Age (Male): ${maxAge.male}`);
+      if (maxAge.female) result.push(`Maximum Age (Female): ${maxAge.female}`);
+      if (maxAge.scSt) result.push(`Maximum Age (SC/ST): ${maxAge.scSt}`);
+    }
+  }
+
+  // Handle "as on" date
+  const asOn = age.asOnDate || age.ageAsOn || age.asOn;
+  if (asOn) result.push(`Age as on: ${asOn}`);
+
+  // Handle post-wise age limits
+  const postWiseKeys = [
+    "patwari",
+    "surveyor_mali",
+    "junior_engineer",
+    "naib_tehsildar",
+    "mts_jsa",
+    "deputy_director",
+    "stenographer_gr_d",
+    "asst_security_officer",
+    "assistant_director",
+    "asst_executive_engineer",
+    "other_posts",
+    "minAge",
+  ];
+
+  postWiseKeys.forEach((key) => {
+    if (
+      age[key] &&
+      !["asOnDate", "ageRelaxation", "relaxation", "notes"].includes(key)
+    ) {
+      const formattedKey = key
+        .replace(/_/g, " ")
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+      result.push(`${formattedKey}: ${age[key]}`);
+    }
+  });
+
+  // Handle age relaxation
+  const relaxation =
+    age.ageRelaxation ||
+    age.ageRelaxationDetails ||
+    age.relaxation ||
+    age.relaxationDetails ||
+    age.notes ||
+    age.ageRelaxationNote ||
+    age.note ||
+    "";
+
+  return { text: result, relaxation };
+};
+
+// ==================== VACANCY EXTRACTION WITH ALL VARIATIONS ====================
+const extractVacancy = (vacancy) => {
+  if (!vacancy || typeof vacancy !== "object") {
+    return { total: "See Notification", positions: [] };
+  }
+
+  const total =
+    vacancy.totalPosts ||
+    vacancy.total ||
+    vacancy.totalVacancy ||
+    vacancy.posts ||
+    "See Notification";
+
+  let positions =
+    vacancy.positions ||
+    vacancy.postDetails ||
+    vacancy.details ||
+    vacancy.vacancies ||
+    [];
+
+  // Ensure positions is always an array
+  if (!Array.isArray(positions)) {
+    positions = [];
+  }
+
+  return { total, positions };
+};
+
+// ==================== ELIGIBILITY EXTRACTION WITH ALL VARIATIONS ====================
+const extractEligibility = (elig) => {
+  if (!elig) return [];
+  if (typeof elig === "string") return [{ type: "text", text: elig }];
+
+  // Check for simple description field
+  if (elig.description) {
+    return [{ type: "text", text: elig.description }];
+  }
+
+  if (
+    elig.education ||
+    elig.educationalQualification ||
+    elig.educationQualification
+  ) {
+    const text =
+      elig.education ||
+      elig.educationalQualification ||
+      elig.educationQualification;
+    return [{ type: "text", text }];
+  }
+
+  const result = [];
+
+  // Handle all eligibility key variations
+  Object.entries(elig).forEach(([key, value]) => {
+    if (!value) return;
+
+    // Skip these metadata keys
+    if (
+      [
+        "detailsLink",
+        "otherDetails",
+        "otherQualifications",
+        "other",
+        "gender",
+        "residency",
+      ].includes(key)
+    ) {
+      if (value && typeof value === "string") {
+        result.push({ type: "info", text: value });
+      }
+      return;
+    }
+
+    // Handle array values (like RRB NTPC format)
+    if (Array.isArray(value)) {
+      const formattedKey = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .trim()
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+
+      result.push({ type: "header", label: formattedKey });
+      value.forEach((item) => {
+        result.push({ type: "listItem", text: item });
+      });
+      return;
+    }
+
+    // Handle string values
+    if (typeof value === "string") {
+      const formattedKey = key
+        .replace(/_/g, " ")
+        .replace(/([A-Z])/g, " $1")
+        .trim()
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+
+      result.push({ type: "item", label: formattedKey, text: value });
+    }
+  });
+
+  return result.length > 0
+    ? result
+    : [
+        {
+          type: "text",
+          text: "Check official notification for eligibility details",
+        },
+      ];
+};
+
+// ==================== LINKS EXTRACTION WITH ALL VARIATIONS ====================
+const extractLinks = (links) => {
+  if (!links || typeof links !== "object") return [];
+
+  const result = [];
+
+  Object.entries(links).forEach(([key, value]) => {
+    if (!value) return;
+
+    // Handle string values (direct URLs)
+    if (typeof value === "string") {
+      const label = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .trim()
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+
+      result.push({ label, url: value });
+    }
+    // Handle object with text/url or text/href
+    else if (value.url && value.text) {
+      result.push({ label: value.text, url: value.url });
+    } else if (value.href && value.text) {
+      result.push({ label: value.text, url: value.href });
+    } else if (value.href) {
+      const label = key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .trim()
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ");
+
+      result.push({ label, url: value.href });
+    }
+    // Handle arrays of links (like RRB format)
+    else if (Array.isArray(value)) {
+      value.forEach((item, idx) => {
+        if (typeof item === "string") {
+          result.push({ label: `${key} ${idx + 1}`, url: item });
+        } else if (item.url || item.href) {
+          const linkUrl = item.url || item.href;
+          const linkLabel = item.text || `${key} ${idx + 1}`;
+          result.push({ label: linkLabel, url: linkUrl });
+        }
+      });
+    }
+    // Handle nested objects
+    else if (typeof value === "object" && !Array.isArray(value)) {
+      Object.entries(value).forEach(([k, v]) => {
+        if (typeof v === "string") {
+          const nestedLabel = k
+            .replace(/([A-Z])/g, " $1")
+            .replace(/_/g, " ")
+            .trim()
+            .split(" ")
+            .map(
+              (word) =>
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            )
+            .join(" ");
+
+          result.push({ label: nestedLabel, url: v });
+        }
+      });
+    }
+  });
+
+  return result;
+};
+
+// ==================== VACANCY TABLE COMPONENT ====================
+const VacancyTable = ({ positions }) => {
+  if (!positions || positions.length === 0) return null;
+
+  // Detect table structure
+  const firstPosition = positions[0];
+  const hasGroup = "group" in firstPosition;
+  const hasCategory = "category" in firstPosition;
+  const hasEligibility =
+    "eligibility" in firstPosition || "eligibilityCriteria" in firstPosition;
+
+  return (
+    <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-bottom-7 duration-700">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 flex items-center gap-3">
+        <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+          <Briefcase size={22} />
+        </div>
+        <h2 className="font-bold text-xl uppercase tracking-wide">
+          Vacancy Details
+        </h2>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="px-4 py-3 text-left text-sm font-bold text-slate-700 uppercase">
+                Post Name
+              </th>
+              {hasGroup && (
+                <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                  Group
+                </th>
+              )}
+              {hasCategory && (
+                <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                  Category
+                </th>
+              )}
+              <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                Vacancies
+              </th>
+              {hasEligibility && (
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-700 uppercase">
+                  Eligibility
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {positions.map((pos, idx) => (
+              <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
+                <td className="px-4 py-3 text-sm font-medium text-slate-800">
+                  {pos.postName || pos.name || "-"}
+                </td>
+                {hasGroup && (
+                  <td className="px-4 py-3 text-sm text-center font-semibold text-blue-600">
+                    {pos.group || "-"}
+                  </td>
+                )}
+                {hasCategory && (
+                  <td className="px-4 py-3 text-sm text-center font-semibold text-slate-700">
+                    {pos.category || "-"}
+                  </td>
+                )}
+                <td className="px-4 py-3 text-sm text-center font-bold text-green-600">
+                  {pos.noOfPost ||
+                    pos.numberOfPosts ||
+                    pos.posts ||
+                    pos.male ||
+                    pos.total ||
+                    "-"}
+                </td>
+                {hasEligibility && (
+                  <td className="px-4 py-3 text-sm text-slate-600">
+                    {pos.eligibility || pos.eligibilityCriteria || "-"}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ==================== LOADING & ERROR COMPONENTS ====================
+const LoadingSkeleton = () => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-slate-600 font-semibold">Loading...</p>
+    </div>
+  </div>
+);
+
+const ErrorScreen = ({ error, navigate }) => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/20 to-slate-50 flex items-center justify-center">
+    <div className="text-center max-w-md mx-auto px-4">
+      <AlertCircle size={64} className="text-red-500 mx-auto mb-4" />
+      <h2 className="text-2xl font-bold text-slate-800 mb-2">Error</h2>
+      <p className="text-slate-600 mb-6">{error}</p>
+      <button
+        onClick={() => navigate(-1)}
+        className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold"
+      >
+        Go Back
+      </button>
+    </div>
+  </div>
+);
+
+// ==================== MAIN COMPONENT ====================
 const PostDetails = () => {
   const [loading, setLoading] = useState(true);
-  const [postData, setPostData] = useState(null);
+  const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const query = useQuery();
   const navigate = useNavigate();
-  
-  const paramUrl = query.get("url");   
-  const paramId = query.get("id") || query.get("_id"); 
+
+  const paramUrl = query.get("url");
+  const paramId = query.get("id") || query.get("_id");
 
   useEffect(() => {
-    const fetchPostDetails = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       let fetchUrl = "";
-      let fetchOptions = {};
-      let targetScrapeUrl = null;
 
-      if (paramUrl) targetScrapeUrl = paramUrl;
-      else if (paramId && paramId.includes("http")) targetScrapeUrl = paramId;
-
-      if (targetScrapeUrl) {
-        fetchUrl = `${baseUrl}/get-post/details?url=${targetScrapeUrl}`;
-        fetchOptions = { method: "GET" };
+      if (paramUrl) {
+        fetchUrl = `${baseUrl}/get-post/details?url=${paramUrl}`;
       } else if (paramId) {
-        fetchUrl = `${baseUrl}/get-job/${paramId}`;
-        fetchOptions = { method: "GET" };
+        if (paramId.includes("http")) {
+          fetchUrl = `${baseUrl}/get-post/details?url=${paramId}`;
+        } else {
+          fetchUrl = `${baseUrl}/get-job/${paramId}`;
+        }
       } else {
-        setError("Invalid link");
+        setError("Invalid parameters");
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(fetchUrl, fetchOptions);
+        const response = await fetch(fetchUrl);
         if (!response.ok) throw new Error("Failed to fetch data");
-        const data = await response.json();
-        const validData = data.job || data.data || data;
-        
-        if (validData) setPostData(validData);
-        else throw new Error("Details unavailable");
 
+        const result = await response.json();
+        const validData = result.job || result.data || result;
+
+        if (validData) {
+          const extracted = extractRecruitmentData(validData);
+          setData(extracted);
+        } else {
+          throw new Error("No data found");
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -237,244 +819,513 @@ const PostDetails = () => {
       }
     };
 
-    fetchPostDetails();
+    fetchData();
   }, [paramUrl, paramId]);
 
-  if (loading) return <ModernSkeleton />;
-  if (error) return <ModernError error={error} navigate={navigate} retry={() => window.location.reload()} />;
-
-  const title = postData?.title || "Recruitment Notification";
-  const dates = extractDates(postData);
-  const fees = extractFees(postData);
-  const { ageText, totalPost } = extractAgeAndPost(postData);
-  const tables = postData?.tables || [];
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorScreen error={error} navigate={navigate} />;
+  if (!data)
+    return <ErrorScreen error="No data available" navigate={navigate} />;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
       <Header />
 
-      {/* --- Sticky Navigation Bar --- */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 transition-all">
-        <div className="container mx-auto px-4 max-w-6xl h-14 flex items-center justify-between text-sm">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="flex items-center gap-2 text-slate-600 hover:text-blue-700 font-semibold transition-colors"
+      {/* Header Navigation */}
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div className="container mx-auto px-4 max-w-7xl h-16 flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-slate-700 hover:text-blue-600 font-semibold transition-all hover:gap-3 group"
           >
-            <ArrowLeft size={18} /> <span className="hidden sm:inline">Back</span>
+            <ArrowLeft
+              size={20}
+              strokeWidth={2.5}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
+            <span className="hidden sm:inline">Back</span>
           </button>
-          <div className="flex gap-2">
-             <button onClick={() => window.print()} className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all">
-               <Printer size={20}/>
-             </button>
-             <button className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white text-xs font-bold uppercase rounded-full hover:bg-blue-700 hover:shadow-md transition-all">
-               <Share2 size={16}/> Share
-             </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.print()}
+              className="p-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all hover:scale-110"
+              title="Print"
+            >
+              <Printer size={20} />
+            </button>
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: data.title,
+                    url: window.location.href,
+                  });
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:scale-105 transition-all"
+            >
+              <Share2 size={18} />{" "}
+              <span className="hidden sm:inline">Share</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
-        {/* --- Hero Title --- */}
-        <div className="text-center space-y-4 max-w-4xl mx-auto">
-           <div className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider rounded-full border border-blue-100">
-              Latest Notification
-           </div>
-           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 uppercase leading-snug tracking-tight">
-             {title}
-           </h1>
-           <div className="h-1 w-24 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+      <main className="container mx-auto px-4 py-10 max-w-7xl space-y-8">
+        {/* Title Section */}
+        <div className="text-center space-y-5 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
+            <FileText size={16} />
+            Latest Notification
+          </div>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 via-blue-900 to-slate-800 uppercase leading-tight tracking-tight px-4">
+            {data.title}
+          </h1>
+          {data.organization && (
+            <div className="flex items-center justify-center gap-2 text-slate-600 text-base md:text-lg">
+              <Building size={20} className="shrink-0" />
+              <span className="font-semibold text-center">
+                {data.organization}
+              </span>
+            </div>
+          )}
+          <div className="h-1.5 w-32 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full shadow-md"></div>
         </div>
 
-        {/* --- SECTION 1: IMPORTANT DATES & FEES (Modern Split Card) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
-           
-           {/* LEFT: Important Dates */}
-           <div className="flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
-              <div className="bg-rose-900 text-white px-6 py-4 flex items-center gap-3">
-                 <div className="p-2 bg-white/10 rounded-lg"><Calendar size={20} className="text-rose-100" /></div>
-                 <h2 className="font-bold text-lg uppercase tracking-wide">Important Dates</h2>
+        {/* Important Dates & Application Fee */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
+          {/* Important Dates */}
+          {data.dates.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200">
+              <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white px-6 py-4 flex items-center gap-3">
+                <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Calendar size={22} />
+                </div>
+                <h2 className="font-bold text-xl uppercase tracking-wide">
+                  Important Dates
+                </h2>
               </div>
-              <div className="p-6 md:p-8 flex-1 bg-white">
-                 <ul className="space-y-4">
-                    {dates.length > 0 ? dates.map((date, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm sm:text-base font-medium text-slate-700 group">
-                         <div className="mt-1.5 min-w-[6px] h-1.5 bg-rose-500 rounded-full group-hover:scale-125 transition-transform"></div>
-                         <span className="leading-relaxed">{date.replace(/[:]/g, " : ")}</span>
-                      </li>
-                    )) : (
-                      <li className="text-slate-400 italic">Dates not available</li>
-                    )}
-                 </ul>
+              <div className="p-6 md:p-8">
+                <ul className="space-y-4">
+                  {data.dates.map((date, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-3 text-base font-medium text-slate-700 group"
+                    >
+                      <Clock
+                        size={18}
+                        className="text-rose-500 shrink-0 mt-1 group-hover:scale-110 transition-transform"
+                      />
+                      <span className="leading-relaxed">{date}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-           </div>
+            </div>
+          )}
 
-           {/* RIGHT: Application Fee */}
-           <div className="flex flex-col">
-              <div className="bg-rose-900 text-white px-6 py-4 flex items-center gap-3 border-l border-rose-800/20">
-                 <div className="p-2 bg-white/10 rounded-lg"><CreditCard size={20} className="text-rose-100" /></div>
-                 <h2 className="font-bold text-lg uppercase tracking-wide">Application Fee</h2>
+          {/* Application Fee */}
+          {data.fees.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200">
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-4 flex items-center gap-3">
+                <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <CreditCard size={22} />
+                </div>
+                <h2 className="font-bold text-xl uppercase tracking-wide">
+                  Application Fee
+                </h2>
               </div>
-              <div className="p-6 md:p-8 flex-1 bg-white">
-                 <ul className="space-y-3">
-                    {fees.length > 0 ? fees.map((item, idx) => {
-                       const isHeader = item.type === 'header';
-                       return (
-                         <li key={idx} className={`flex items-start gap-3 text-sm sm:text-base ${isHeader ? 'font-bold text-slate-900 mt-4 mb-1' : 'text-slate-700'}`}>
-                            {!isHeader && <div className="mt-1.5 min-w-[6px] h-1.5 bg-rose-500 rounded-full"></div>}
-                            <span className="leading-relaxed">{item.text.replace(/[:]/g, " : ")}</span>
-                         </li>
-                       );
-                    }) : (
-                       <li className="text-slate-400 italic">Fee details not available</li>
-                    )}
-                 </ul>
-              </div>
-           </div>
-        </div>
+              <div className="p-6 md:p-8">
+                <ul className="space-y-3">
+                  {data.fees.map((item, idx) => {
+                    const text = item.text || item;
+                    const isHeader = item.type === "header";
+                    const isInfo = item.type === "info";
+                    const isPayment = item.type === "payment";
+                    const isItem = item.type === "item";
 
-
-        {/* --- SECTION 2: AGE LIMIT & TOTAL POST (Modern Banner) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-0 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
-            
-            {/* Age Limit (Left Side) */}
-            <div className="flex flex-col border-b md:border-b-0 md:border-r border-slate-200">
-               <div className="bg-emerald-700 text-white px-6 py-3 flex items-center gap-3">
-                  <div className="p-1.5 bg-white/10 rounded-lg"><Users size={18} /></div>
-                  <h2 className="font-bold text-base uppercase tracking-wider">{ageText[0]?.replace(':', '') || "Age Limit Details"}</h2>
-               </div>
-               <div className="p-6 md:p-8 flex-1 bg-white">
-                  <ul className="space-y-3">
-                     {ageText.slice(1).map((line, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm sm:text-base font-semibold text-slate-800">
-                           <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
-                           <span className="leading-relaxed">{line.replace(/[:]/g, " : ")}</span>
+                    if (isHeader) {
+                      return (
+                        <li
+                          key={idx}
+                          className="font-bold text-slate-900 mt-5 first:mt-0 mb-2 text-base border-b-2 border-slate-200 pb-2"
+                        >
+                          {text}
                         </li>
-                     ))}
-                  </ul>
-               </div>
-            </div>
+                      );
+                    }
 
-            {/* Total Post (Right Side) */}
-            <div className="flex flex-col">
-               <div className="bg-orange-600 text-white text-center py-3 font-bold text-lg uppercase tracking-wider shadow-inner">
-                  Total Post
-               </div>
-               <div className="flex-1 flex flex-col items-center justify-center p-8 bg-orange-50/30">
-                  <span className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">{totalPost.replace(/\D/g, '')}</span>
-                  <span className="text-orange-600 font-bold uppercase text-sm mt-1 tracking-widest">Vacancies</span>
-               </div>
+                    if (isItem) {
+                      return (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-3 text-sm text-slate-700 pl-3"
+                        >
+                          <Circle
+                            size={8}
+                            className="text-emerald-500 fill-emerald-500 shrink-0 mt-2"
+                          />
+                          <span className="leading-relaxed font-medium">
+                            {text}
+                          </span>
+                        </li>
+                      );
+                    }
+
+                    if (isInfo) {
+                      return (
+                        <li
+                          key={idx}
+                          className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded text-sm text-slate-700 leading-relaxed mt-4"
+                        >
+                          <span className="font-semibold text-blue-700">
+                            ℹ️ Note:{" "}
+                          </span>
+                          {text}
+                        </li>
+                      );
+                    }
+
+                    if (isPayment) {
+                      return (
+                        <li
+                          key={idx}
+                          className="mt-4 pt-4 border-t-2 border-slate-200 font-semibold text-emerald-700 text-sm"
+                        >
+                          {text}
+                        </li>
+                      );
+                    }
+
+                    return (
+                      <li
+                        key={idx}
+                        className="flex items-start gap-3 text-base text-slate-700"
+                      >
+                        <CheckCircle
+                          size={18}
+                          className="text-emerald-500 shrink-0 mt-1"
+                        />
+                        <span className="leading-relaxed font-medium">
+                          {text}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
+          )}
+        </div>
+        {/* Important Links */}
+        {data.links.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-bottom-9 duration-700">
+            <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-6 py-4 flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                <ExternalLink size={22} />
+              </div>
+              <h2 className="font-bold text-xl uppercase tracking-wide">
+                Important Links
+              </h2>
+            </div>
+            <div className="p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {data.links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-200 hover:border-violet-400 hover:shadow-lg transition-all group"
+                  >
+                    <span className="text-slate-700 font-medium text-sm group-hover:text-violet-700 transition-colors">
+                      {link.label}
+                    </span>
+                    <ChevronRight
+                      size={20}
+                      className="text-violet-600 group-hover:translate-x-1 transition-transform"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Age Limit & Total Vacancy */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          {/* Age Limit */}
+          {data.age.text.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200">
+              <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-4 flex items-center gap-3">
+                <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Users size={22} />
+                </div>
+                <h2 className="font-bold text-xl uppercase tracking-wide">
+                  Age Limit
+                </h2>
+              </div>
+              <div className="p-6 md:p-8">
+                <ul className="space-y-4">
+                  {data.age.text.map((line, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-3 text-base font-semibold text-slate-800"
+                    >
+                      <CheckCircle
+                        size={20}
+                        className="text-amber-600 shrink-0 mt-0.5"
+                      />
+                      <span className="leading-relaxed">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+                {data.age.relaxation && (
+                  <div className="mt-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+                    <p className="text-sm text-slate-700 leading-relaxed">
+                      <span className="font-bold text-amber-700">
+                        📌 Note:{" "}
+                      </span>
+                      {data.age.relaxation}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Total Vacancy Card */}
+          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200">
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-center py-4 font-bold text-xl uppercase tracking-wider">
+              Total Vacancies
+            </div>
+            <div className="flex flex-col items-center justify-center p-10 bg-gradient-to-br from-indigo-50/50 to-blue-50/50 min-h-[240px]">
+              <Award size={48} className="text-indigo-600 mb-4" />
+              <span className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600 tracking-tight">
+                {data.vacancy.total}
+              </span>
+              {data.vacancy.total !== "See Notification" &&
+                data.vacancy.total !== "Not Available" && (
+                  <span className="text-indigo-600 font-bold uppercase text-sm mt-3 tracking-widest">
+                    Posts
+                  </span>
+                )}
+            </div>
+          </div>
         </div>
 
+        {/* Vacancy Table */}
+        {data.vacancy.positions.length > 0 && (
+          <VacancyTable positions={data.vacancy.positions} />
+        )}
 
-        {/* --- SECTION 3: TABLES (Modernized) --- */}
-        {tables.map((table, tIndex) => {
-           if (!table.rows || table.rows.length < 2) return null;
-           const isLinks = JSON.stringify(table).toLowerCase().includes("official website");
-
-           if (isLinks) {
-              return (
-                 <div key={tIndex} className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
-                    <div className="bg-pink-600 text-white px-6 py-4 flex items-center gap-3">
-                       <ExternalLink size={20} />
-                       <h2 className="font-bold text-xl uppercase tracking-wide">Important Links</h2>
-                    </div>
-                    <div className="divide-y divide-slate-100">
-                       {table.rows.map((row, rIndex) => {
-                          const label = extractText(row.cells[0]?.html);
-                          const link = extractLink(row.cells[1]?.html);
-                          if (!link) return null;
-                          return (
-                             <div key={rIndex} className="group flex flex-col sm:flex-row items-center hover:bg-slate-50 transition-colors duration-200 p-4 sm:px-6">
-                                <div className="flex-1 font-bold text-slate-700 text-center sm:text-left mb-3 sm:mb-0 group-hover:text-pink-700 transition-colors">
-                                   {label}
-                                </div>
-                                <div className="sm:w-auto w-full">
-                                   <a 
-                                     href={link} 
-                                     target="_blank" 
-                                     rel="noreferrer" 
-                                     className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-2.5 bg-slate-900 text-white font-bold text-sm uppercase rounded-lg hover:bg-pink-600 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
-                                   >
-                                      Click Here <ChevronRight size={16} />
-                                   </a>
-                                </div>
-                             </div>
-                          );
-                       })}
-                    </div>
-                 </div>
-              );
-           }
-
-           return (
-              <div key={tIndex} className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mt-8">
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                       <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200">
-                             {table.rows[0].cells.map((cell, c) => (
-                                <th key={c} colSpan={cell.colspan} className="p-4 text-center font-extrabold text-slate-600 uppercase text-xs tracking-wider border-r border-slate-200 last:border-0">
-                                   {extractText(cell.html)}
-                                </th>
-                             ))}
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100">
-                          {table.rows.slice(1).map((row, r) => (
-                             <tr key={r} className="hover:bg-amber-50/50 transition-colors duration-150">
-                                {row.cells.map((cell, c) => (
-                                   <td key={c} colSpan={cell.colspan} className="p-4 text-center text-sm font-medium text-slate-700 border-r border-slate-100 last:border-0 align-middle leading-relaxed">
-                                      <div dangerouslySetInnerHTML={{ __html: cleanHtml(cell.html) }} />
-                                   </td>
-                                ))}
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                 </div>
+        {/* Eligibility Criteria */}
+        {data.eligibility.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-bottom-7 duration-700">
+            <div className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-6 py-4 flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                <BookOpen size={22} />
               </div>
-           );
-        })}
+              <h2 className="font-bold text-xl uppercase tracking-wide">
+                Eligibility Criteria
+              </h2>
+            </div>
+            <div className="p-6 md:p-8">
+              <ul className="space-y-4">
+                {data.eligibility.map((item, idx) => {
+                  // Simple text item
+                  if (item.type === "text" || typeof item === "string") {
+                    const text = item.text || item;
+                    return (
+                      <li
+                        key={idx}
+                        className="flex items-start gap-3 text-base text-slate-700"
+                      >
+                        <CheckCircle
+                          size={18}
+                          className="text-purple-500 shrink-0 mt-1"
+                        />
+                        <span className="leading-relaxed">{text}</span>
+                      </li>
+                    );
+                  }
 
+                  // Header item (for grouped eligibility)
+                  if (item.type === "header") {
+                    return (
+                      <li
+                        key={idx}
+                        className="font-bold text-lg text-purple-700 mt-6 first:mt-0 mb-2 border-b-2 border-purple-200 pb-2"
+                      >
+                        {item.label}
+                      </li>
+                    );
+                  }
+
+                  // List item under header
+                  if (item.type === "listItem") {
+                    return (
+                      <li
+                        key={idx}
+                        className="flex items-start gap-3 text-sm text-slate-700 pl-6"
+                      >
+                        <Circle
+                          size={8}
+                          className="text-purple-400 fill-purple-400 shrink-0 mt-2"
+                        />
+                        <span className="leading-relaxed">{item.text}</span>
+                      </li>
+                    );
+                  }
+
+                  // Item with label
+                  if (item.type === "item") {
+                    return (
+                      <li
+                        key={idx}
+                        className="border-l-4 border-purple-200 pl-4 py-2"
+                      >
+                        <div className="font-bold text-purple-700 text-sm mb-1">
+                          {item.label}
+                        </div>
+                        <div className="text-slate-700 text-sm leading-relaxed">
+                          {item.text}
+                        </div>
+                      </li>
+                    );
+                  }
+
+                  // Info box
+                  if (item.type === "info") {
+                    return (
+                      <li
+                        key={idx}
+                        className="p-4 bg-purple-50 border-l-4 border-purple-500 rounded-lg text-sm text-slate-700 leading-relaxed mt-4"
+                      >
+                        <span className="font-semibold text-purple-700">
+                          📌 Note:{" "}
+                        </span>
+                        {item.text}
+                      </li>
+                    );
+                  }
+
+                  return null;
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Selection Process */}
+        {data.selection.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-6 py-4 flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Briefcase size={22} />
+              </div>
+              <h2 className="font-bold text-xl uppercase tracking-wide">
+                Selection Process
+              </h2>
+            </div>
+            <div className="p-6 md:p-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {data.selection.map((step, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 p-4 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 hover:shadow-md transition-all"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                      {idx + 1}
+                    </div>
+                    <span className="text-slate-700 font-medium text-sm">
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* District Wise Data */}
+        {data.districtData.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 animate-in fade-in slide-in-from-bottom-10 duration-700">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 flex items-center gap-3">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Building size={22} />
+              </div>
+              <h2 className="font-bold text-xl uppercase tracking-wide">
+                District Wise Vacancy
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-bold text-slate-700 uppercase">
+                      District Name
+                    </th>
+                    <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                      Posts
+                    </th>
+                    <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                      Last Date
+                    </th>
+                    <th className="px-4 py-3 text-center text-sm font-bold text-slate-700 uppercase">
+                      Notification
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {data.districtData.map((district, idx) => (
+                    <tr
+                      key={idx}
+                      className="hover:bg-green-50/50 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-slate-800">
+                        {district.districtName}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center font-bold text-green-600">
+                        {district.posts}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center text-slate-700">
+                        {district.lastDate}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <a
+                          href={district.notificationLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-all"
+                        >
+                          View <ExternalLink size={12} />
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Official Website Link */}
+        {data.website && (
+          <div className="text-center pb-8">
+            <a
+              href={data.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:scale-105 transition-all"
+            >
+              <ExternalLink size={20} />
+              Visit Official Website
+            </a>
+          </div>
+        )}
       </main>
     </div>
   );
 };
-
-const ModernSkeleton = () => (
-  <div className="min-h-screen bg-slate-50">
-    <Header />
-    <div className="container mx-auto px-4 py-8 space-y-8 max-w-6xl animate-pulse">
-      <div className="h-24 bg-slate-200 w-3/4 mx-auto rounded-2xl"></div>
-      <div className="grid grid-cols-2 gap-4 h-80">
-         <div className="bg-slate-200 rounded-2xl"></div>
-         <div className="bg-slate-200 rounded-2xl"></div>
-      </div>
-      <div className="h-32 bg-slate-200 rounded-2xl mt-4"></div>
-    </div>
-  </div>
-);
-
-const ModernError = ({ error, navigate, retry }) => (
-  <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 text-center max-w-md w-full">
-        <div className="inline-flex p-4 bg-red-50 rounded-full mb-6">
-           <CheckCircle2 size={40} className="text-red-500 rotate-45" />
-        </div>
-        <h2 className="text-slate-800 font-bold text-2xl mb-3">Unable to Load Post</h2>
-        <p className="text-slate-500 mb-8 leading-relaxed">{error}</p>
-        <div className="flex gap-3 justify-center">
-            <button onClick={() => navigate(-1)} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
-                Go Back
-            </button>
-            <button onClick={retry} className="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 hover:shadow-lg transition-all">
-                Retry Connection
-            </button>
-        </div>
-      </div>
-  </div>
-);
 
 export default PostDetails;

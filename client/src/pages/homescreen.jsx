@@ -35,7 +35,7 @@ const saveRecentVisit = (id) => {
     let visits = getRecentVisitIds();
     visits = visits.filter((visitId) => visitId !== id);
     visits.unshift(id);
-    visits = visits.slice(0, 20); // Fixed: assignment needed for slice to work on variable reference logic
+    visits = visits.slice(0, 10); // Fixed: assignment needed for slice to work on variable reference logic
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
   } catch (error) {
@@ -307,7 +307,7 @@ export default function HomeScreen() {
       .then((res) => res.json())
       .then((data) => setFavPosts(data?.data || []));
   }, []);
-
+console.log("favPosts:", favPosts);
   const filteredSections = useMemo(() => {
     if (!searchQuery) return dynamicSections;
     return dynamicSections.map((section) => ({
