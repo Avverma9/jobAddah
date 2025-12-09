@@ -35,7 +35,7 @@ const saveRecentVisit = (id) => {
     let visits = getRecentVisitIds();
     visits = visits.filter((visitId) => visitId !== id);
     visits.unshift(id);
-    visits = visits.slice(0, 10);
+    visits = visits.slice(0, 5);
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
   } catch (error) {
@@ -46,13 +46,9 @@ const saveRecentVisit = (id) => {
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString();
-
-  // If it's a URL, route with ?url= param
   if (val.includes("http") || val.includes("https")) {
     return `/post?url=${encodeURIComponent(val)}`;
   }
-
-  // Otherwise route with ?id= param
   return `/post?id=${val}`;
 };
 
@@ -71,26 +67,35 @@ const getCategoryConfig = (categoryName) => {
 
 const QuickCard = ({ icon: Icon, title, id, color }) => {
   const colorMap = {
-    orange: "bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/50",
-    pink: "bg-pink-50 text-pink-600 border-pink-100 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-900/50",
-    purple: "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50",
-    blue: "bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50",
-    green: "bg-green-50 text-green-600 border-green-100 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/50",
-    red: "bg-red-50 text-red-600 border-red-100 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50",
-    yellow: "bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-900/50",
-    gray: "bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-100 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700",
+    orange: "bg-orange-50/50 hover:bg-orange-100 border-orange-100 text-orange-600 dark:bg-orange-900/10 dark:border-orange-900/30 dark:text-orange-400",
+    pink: "bg-pink-50/50 hover:bg-pink-100 border-pink-100 text-pink-600 dark:bg-pink-900/10 dark:border-pink-900/30 dark:text-pink-400",
+    purple: "bg-purple-50/50 hover:bg-purple-100 border-purple-100 text-purple-600 dark:bg-purple-900/10 dark:border-purple-900/30 dark:text-purple-400",
+    blue: "bg-blue-50/50 hover:bg-blue-100 border-blue-100 text-blue-600 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-400",
+    green: "bg-emerald-50/50 hover:bg-emerald-100 border-emerald-100 text-emerald-600 dark:bg-emerald-900/10 dark:border-emerald-900/30 dark:text-emerald-400",
+    red: "bg-red-50/50 hover:bg-red-100 border-red-100 text-red-600 dark:bg-red-900/10 dark:border-red-900/30 dark:text-red-400",
+    yellow: "bg-yellow-50/50 hover:bg-yellow-100 border-yellow-100 text-yellow-600 dark:bg-yellow-900/10 dark:border-yellow-900/30 dark:text-yellow-400",
+    gray: "bg-gray-50/50 hover:bg-gray-100 border-gray-100 text-gray-600 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
   };
+
+  const activeClass = colorMap[color] || colorMap.gray;
 
   return (
     <Link
       to={getPostLink(id)}
       onClick={() => saveRecentVisit(id)}
-      className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all group ${colorMap[color] || colorMap.gray}`}
+      className={`
+        group relative flex flex-col items-center justify-center 
+        p-3 min-w-[100px] h-[100px] sm:min-w-[110px] sm:h-[110px] 
+        rounded-2xl border transition-all duration-300 ease-out
+        hover:-translate-y-1 hover:shadow-lg backdrop-blur-sm
+        ${activeClass}
+      `}
     >
-      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/80 dark:bg-gray-800/50 rounded-lg flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
-        <Icon size={20} className="sm:w-6 sm:h-6" />
+      <div className="mb-2 p-2 rounded-xl bg-white/60 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 group-hover:scale-110 transition-transform duration-300">
+        <Icon size={24} strokeWidth={2} />
       </div>
-      <span className="font-bold text-xs sm:text-sm text-center leading-tight line-clamp-2 group-hover:underline">
+      
+      <span className="text-[11px] sm:text-xs font-bold text-center leading-tight line-clamp-2 px-1">
         {title}
       </span>
     </Link>
@@ -147,7 +152,6 @@ const RecentVisitsSection = ({ data }) => {
           Recent Visits
         </h3>
       </div>
-
       <div className="flex flex-wrap gap-2 sm:gap-3">
         {data.map((job) => (
           <Link
@@ -199,62 +203,62 @@ export default function HomeScreen() {
 
         const categoryRes = await fetch(`${baseUrl}/get-sections`);
         const categoryData = await categoryRes.json();
-        
-        const categories = Array.isArray(categoryData) && categoryData.length > 0 
-            ? categoryData[0].categories 
+
+        const categories =
+          Array.isArray(categoryData) && categoryData.length > 0
+            ? categoryData[0].categories
             : [];
 
         if (categories.length === 0) {
-           setDynamicSections([]);
-           return;
+          setDynamicSections([]);
+          return;
         }
 
         const sectionPromises = categories.map(async (cat) => {
-            try {
-                const res = await fetch(`${baseUrl}/get-postlist`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ url: cat.link }),
-                });
-                const data = await res.json();
+          try {
+            const res = await fetch(`${baseUrl}/get-postlist`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ url: cat.link }),
+            });
+            const data = await res.json();
 
-                let jobs = [];
-                if (Array.isArray(data)) {
-                    const match = data.find(item => item.url === cat.link) || data[0];
-                    jobs = match?.jobs || [];
-                } else {
-                    jobs = data?.jobs || [];
-                }
-
-                const processedData = jobs
-                    .filter(job => 
-                        job.title &&
-                        !job.title.toLowerCase().includes("privacy policy") && 
-                        !job.title.toLowerCase().includes("sarkari result")
-                    )
-                    .map(job => ({ ...job, id: job.link }));
-
-                return {
-                    name: cat.name,
-                    data: processedData,
-                    ...getCategoryConfig(cat.name),
-                };
-
-            } catch (err) {
-                console.error(`Error fetching section ${cat.name}:`, err);
-                return {
-                    name: cat.name,
-                    data: [],
-                    ...getCategoryConfig(cat.name),
-                };
+            let jobs = [];
+            if (Array.isArray(data)) {
+              const match = data.find((item) => item.url === cat.link) || data[0];
+              jobs = match?.jobs || [];
+            } else {
+              jobs = data?.jobs || [];
             }
+
+            const processedData = jobs
+              .filter(
+                (job) =>
+                  job.title &&
+                  !job.title.toLowerCase().includes("privacy policy") &&
+                  !job.title.toLowerCase().includes("sarkari result")
+              )
+              .map((job) => ({ ...job, id: job.link }));
+
+            return {
+              name: cat.name,
+              data: processedData,
+              ...getCategoryConfig(cat.name),
+            };
+          } catch (err) {
+            console.error(`Error fetching section ${cat.name}:`, err);
+            return {
+              name: cat.name,
+              data: [],
+              ...getCategoryConfig(cat.name),
+            };
+          }
         });
 
         const sections = await Promise.all(sectionPromises);
         setDynamicSections(sections);
-
       } catch (error) {
         console.error("Error fetching dynamic sections:", error);
       } finally {
@@ -288,13 +292,19 @@ export default function HomeScreen() {
         const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
         const data = await response.json();
         if (data.success) {
+          const list = Array.isArray(data.reminders) ? data.reminders : [];
+          const expiresToday = list.filter((item) => item.daysLeft === 0);
+          const expiringSoon = list.filter((item) => item.daysLeft > 0);
           setReminders({
-            expiresToday: data.expiresToday || [],
-            expiringSoon: data.expiringSoon || [],
+            expiresToday,
+            expiringSoon,
             isLoading: false,
           });
+        } else {
+          setReminders((prev) => ({ ...prev, isLoading: false }));
         }
       } catch (error) {
+        console.error("Error fetching reminders:", error);
         setReminders((prev) => ({ ...prev, isLoading: false }));
       }
     };
@@ -307,7 +317,8 @@ export default function HomeScreen() {
   useEffect(() => {
     fetch(`${baseUrl}/fav-posts`)
       .then((res) => res.json())
-      .then((data) => setFavPosts(data?.data || []));
+      .then((data) => setFavPosts(data?.data || []))
+      .catch(() => {});
   }, []);
 
   const filteredSections = useMemo(() => {
@@ -322,11 +333,10 @@ export default function HomeScreen() {
 
   const recentVisitsData = useMemo(() => {
     if (recentVisitIds.length === 0) return [];
-    
-    // Combine data from dynamic sections and private jobs for lookup
+
     const allJobs = [
-        ...dynamicSections.flatMap(s => s.data), 
-        ...privateJobs.map(j => ({...j, id: j._id, title: j.postTitle}))
+      ...dynamicSections.flatMap((s) => s.data),
+      ...privateJobs.map((j) => ({ ...j, id: j._id, title: j.postTitle })),
     ];
 
     const jobMap = new Map(allJobs.map((job) => [job.id, job]));
@@ -340,36 +350,36 @@ export default function HomeScreen() {
     const link = e.target.closest("a");
     if (link && link.href) {
       const url = new URL(link.href);
-      
+
       if (url.pathname.includes("/post")) {
         const urlParam = url.searchParams.get("url");
         if (urlParam) {
-            saveRecentVisit(decodeURIComponent(urlParam));
-            return;
+          saveRecentVisit(decodeURIComponent(urlParam));
+          return;
         }
 
         const scrapedUrlEncoded = url.searchParams.get("q");
         if (scrapedUrlEncoded) {
           try {
-             const decodedUrl = atob(scrapedUrlEncoded);
-             saveRecentVisit(decodedUrl);
-          } catch(e) {}
+            const decodedUrl = atob(scrapedUrlEncoded);
+            saveRecentVisit(decodedUrl);
+          } catch (e2) {}
           return;
         }
 
         const id = url.searchParams.get("id") || url.searchParams.get("_id");
         if (id) {
-            saveRecentVisit(id);
-            return;
+          saveRecentVisit(id);
+          return;
         }
       }
     }
   };
 
   return (
-    <div 
-        className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
-        onClickCapture={handleGlobalClick}
+    <div
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
+      onClickCapture={handleGlobalClick}
     >
       <Header />
 
@@ -384,7 +394,7 @@ export default function HomeScreen() {
               <Link
                 key={i}
                 to={getPostLink(job.id)}
-                onClick={() => saveRecentVisit(job.id)} 
+                onClick={() => saveRecentVisit(job.id)}
                 className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm hover:text-yellow-200 transition-colors"
               >
                 <Bell
@@ -417,17 +427,13 @@ export default function HomeScreen() {
             />
           </div>
 
-          {/* FAV POSTS SECTION FIXED */}
           {favPosts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
                 <QuickCard
                   key={item._id}
-                  // We prioritize item.url so getPostLink generates a ?url= link (like sections),
-                  // otherwise fallback to item._id
                   id={item.url || item._id}
                   icon={Briefcase}
-                  // Title is nested inside recruitment object, fallback to other options just in case
                   title={item.recruitment?.title || item.title || item.postTitle || "Notification"}
                   color="orange"
                 />
@@ -437,9 +443,7 @@ export default function HomeScreen() {
         </div>
 
         <div className="space-y-6 sm:space-y-8">
-          {recentVisitsData.length > 0 && (
-            <RecentVisitsSection data={recentVisitsData} />
-          )}
+          {recentVisitsData.length > 0 && <RecentVisitsSection data={recentVisitsData} />}
 
           <UrgentReminderSection
             expiresToday={reminders.expiresToday}
@@ -496,9 +500,7 @@ export default function HomeScreen() {
                   <SkeletonPrivateJobCard />
                 </>
               ) : privateJobs.length > 0 ? (
-                privateJobs.map((job) => (
-                  <PrivateJobCard key={job._id} job={job} />
-                ))
+                privateJobs.map((job) => <PrivateJobCard key={job._id} job={job} />)
               ) : (
                 <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
                   No private jobs available
