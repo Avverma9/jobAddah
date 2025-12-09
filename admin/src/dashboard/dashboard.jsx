@@ -33,29 +33,14 @@ import {
   markFav,
   getSections,
   getPostlist,
-  setModel,
-  getModel,
+
 } from "../../redux/slices/job";
 import { getResults } from "../../redux/slices/resources";
 import { baseUrl } from "../../util/url";
 
 const ITEMS_PER_PAGE = 12;
 
-const FLASH_MODELS = [
-  { id: "gemini-flash-latest", label: "gemini-flash-latest (Flash Latest)" },
-  { id: "gemini-flash-lite-latest", label: "gemini-flash-lite-latest (Flash-Lite Latest)" },
-  { id: "gemini-2.5-flash", label: "gemini-2.5-flash" },
-  { id: "gemini-2.5-flash-lite", label: "gemini-2.5-flash-lite" },
-  { id: "gemini-2.0-flash", label: "gemini-2.0-flash" },
-  { id: "gemini-2.0-flash-001", label: "gemini-2.0-flash-001" },
-  { id: "gemini-2.0-flash-exp", label: "gemini-2.0-flash-exp" },
-  { id: "gemini-2.0-flash-lite", label: "gemini-2.0-flash-lite" },
-  { id: "gemini-2.0-flash-lite-001", label: "gemini-2.0-flash-lite-001" },
-  { id: "gemini-2.5-flash-image", label: "gemini-2.5-flash-image" },
-  { id: "gemini-2.5-flash-image-preview", label: "gemini-2.5-flash-image-preview" },
-  { id: "gemini-2.5-flash-preview-09-2025", label: "gemini-2.5-flash-preview-09-2025" },
-  { id: "gemini-2.5-flash-lite-preview-09-2025", label: "gemini-2.5-flash-lite-preview-09-2025" },
-];
+
 
 export default function JobAddahAdmin() {
   const dispatch = useDispatch();
@@ -80,7 +65,7 @@ export default function JobAddahAdmin() {
   });
   const stopSyncRef = useRef(false);
 
-  const [selectedModel, setSelectedModel] = useState("");
+
 
   const {
     stats,
@@ -97,16 +82,10 @@ export default function JobAddahAdmin() {
     dispatch(getSections());
     dispatch(getPrivateJob());
     dispatch(getResults());
-    dispatch(getModel());
+  
   }, [dispatch]);
 
-  useEffect(() => {
-    if (currentModel) {
-      setSelectedModel(currentModel);
-    } else if (!currentModel && FLASH_MODELS[0]) {
-      setSelectedModel(FLASH_MODELS[0].id);
-    }
-  }, [currentModel]);
+
 
   const sectionTabs = useMemo(() => {
     if (!sections?.[0]?.categories) return [];
@@ -298,17 +277,6 @@ export default function JobAddahAdmin() {
     stopSyncRef.current = true;
   };
 
-  const handleSetModel = async () => {
-    if (!selectedModel || isSettingModel) return;
-
-    const toastId = toast.loading("Setting model...");
-    try {
-      await dispatch(setModel(selectedModel)).unwrap();
-      toast.success("Model set successfully!", { id: toastId });
-    } catch (err) {
-      toast.error(err?.message || "Failed to set model", { id: toastId });
-    }
-  };
 
   return (
     <div className="space-y-8 font-sans text-slate-800 pb-10 min-h-screen bg-slate-50/50 p-6">
@@ -329,55 +297,7 @@ export default function JobAddahAdmin() {
         </button>
       </div>
 
-      <div className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-            Model Selector
-          </p>
-          <h2 className="text-sm font-bold text-slate-900 mt-1">
-            Choose Gemini Flash / Flash-Lite model
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Uses <code className="font-mono text-[10px]">GET /get-model</code> and{" "}
-            <code className="font-mono text-[10px]">POST /set-model</code>.
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Current API model:{" "}
-            <span className="font-semibold">
-              {currentModel || "Not set yet"}
-            </span>
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-[220px]"
-            disabled={isSettingModel}
-          >
-            {FLASH_MODELS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleSetModel}
-            disabled={isSettingModel || !selectedModel}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSettingModel ? (
-              <>
-                <Loader2 size={14} className="animate-spin" /> Saving...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={14} /> Save Model
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+     
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

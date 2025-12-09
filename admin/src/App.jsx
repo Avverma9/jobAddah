@@ -1,17 +1,18 @@
-import { Route, Routes, Navigate, Outlet } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import LoginPage from './component/login';
-import Dashboard from './dashboard/dashboard';
-import CreateJob from './pages/CreateJob';
-import JobEdit from './component/JobEdit';
-import Layout from './dashboard/Layout';
-import AllJobs from './pages/AllJobs';
-import AllAdmitCards from './pages/AllAdmitCards';
-import AllResults from './pages/AllResults';
-import AllExams from './pages/AllExams';
-import AllAnswerKeys from './pages/AllAnswerKeys';
-import MenuItemsPage from './pages/admin/MenuItems';
-import ManageUsers from './pages/admin/ManageUsers';
+import { Route, Routes, Navigate, Outlet } from "react-router-dom";
+import { useSelector } from "react-redux";
+import LoginPage from "./component/login";
+import Dashboard from "./dashboard/dashboard";
+import CreateJob from "./pages/CreateJob";
+import JobEdit from "./component/JobEdit";
+import Layout from "./dashboard/Layout";
+import AllJobs from "./pages/AllJobs";
+import AllAdmitCards from "./pages/AllAdmitCards";
+import AllResults from "./pages/AllResults";
+import AllExams from "./pages/AllExams";
+import AllAnswerKeys from "./pages/AllAnswerKeys";
+import MenuItemsPage from "./pages/admin/MenuItems";
+import ManageUsers from "./pages/admin/ManageUsers";
+import ModelSelector from "./pages/admin/Ai-integration";
 
 const ProtectedRoute = () => {
   const { isAuthenticated } = useSelector((state) => state.user);
@@ -36,7 +37,8 @@ function App() {
           <Route path="/dashboard/exams" element={<AllExams />} />
           <Route path="/dashboard/answer-keys" element={<AllAnswerKeys />} />
           <Route path="/admin-menu-items" element={<MenuItemsPage />} />
-            <Route path="/admin-manage/users" element={<ManageUsers />} />
+          <Route path="/admin-manage/users" element={<ManageUsers />} />
+          <Route path="/ai-integrate" element={<ModelSelector />} />
         </Route>
       </Route>
     </Routes>

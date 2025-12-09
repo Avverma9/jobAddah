@@ -5,9 +5,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Post = require("../models/jobs");
 const postList = require("../models/postList");
 const Section = require("../models/section");
-const GeminiModel = require("../controller/gemini-model");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const GeminiModel = require("../models/ai/gemini-model");
+const ApiKey = require("../models/ai/ai-apiKey");
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -25,12 +24,19 @@ const ensureProtocol = (inputUrl) => {
 
 const formatWithAI = async (scrapedData) => {
   try {
-    const modelName = await GeminiModel.findOne().sort({ createdAt: -1 });
-    if (!modelName) {
+    const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
+    if (!apiKeyData) {
+      throw new Error("No API key configured in the database");
+    }
+
+    const modelNameData = await GeminiModel.findOne().sort({ createdAt: -1 });
+    if (!modelNameData) {
       throw new Error("No Gemini model configured in the database");
     }
+
+    const genAI = new GoogleGenerativeAI(apiKeyData.apiKey);
     const model = genAI.getGenerativeModel({
-      model: modelName.modelName,
+      model: modelNameData.modelName,
       generationConfig: { responseMimeType: "application/json" },
     });
 
@@ -284,7 +290,6 @@ const scrapper = async (req, res) => {
       }
     });
 
-    console.log("Formatting data with AI...");
     const formattedData = await formatWithAI(scrapedData);
 
     if (!formattedData) {

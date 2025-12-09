@@ -18,7 +18,7 @@ const {
   getallPost,
   getDocsById,
   getPrivateJob,
-  getExpiringJobsReminder,
+ 
   getJobsSmartByState,
 
   deleteAllJobs,
@@ -44,7 +44,7 @@ router.get("/exams", getExams); // Fetch Upcoming Exams
 router.delete("/delete-all-jobs", verifyToken, authorizeRoles("admin", "super_admin"), deleteAllJobs); // Delete All Jobs
 router.get("/answer-keys", getAnswerKeys); // Fetch Answer Keys
 router.get("/get-all", getallPost);
-router.get("/reminders/expiring-jobs", getExpiringJobsReminder);
+
 router.get("/smart-by-state", getJobsSmartByState); // General Jobs Listing
 router.get("/jobs/:id", getDocsById);
 // 2. Get Single Post Details

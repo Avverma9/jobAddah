@@ -99,27 +99,6 @@ export const getPostlist = createAsyncThunk(
   }
 );
 
-// ✅ GET /get-model -> { success, modelName }
-export const getModel = createAsyncThunk(
-  "job/getModel",
-  async () => {
-    const { data } = await api.get("/get-model");
-    return data;
-  }
-);
-
-// ✅ POST /set-model
-export const setModel = createAsyncThunk(
-  "job/setModel",
-  async (modelName, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post("/set-model", { modelName });
-      return { ...(data || {}), modelName };
-    } catch (err) {
-      return rejectWithValue(err.response?.data || { message: "Failed to set model" });
-    }
-  }
-);
 
 const initialState = {
   jobs: [],
@@ -242,28 +221,6 @@ const jobSlice = createSlice({
     builder.addCase(getPostlist.fulfilled, (state, action) => {
       state.postlist = action.payload || { success: false, count: 0, jobs: [] };
     });
-
-    // /get-model
-    builder.addCase(getModel.fulfilled, (state, action) => {
-      state.currentModel = action.payload?.modelName || null;
-    });
-
-    // /set-model
-    builder
-      .addCase(setModel.pending, (state) => {
-        state.isSettingModel = true;
-        state.message = null;
-      })
-      .addCase(setModel.fulfilled, (state, action) => {
-        state.isSettingModel = false;
-        state.currentModel = action.payload?.modelName || null;
-        state.message = action.payload?.message || "Model set successfully";
-      })
-      .addCase(setModel.rejected, (state, action) => {
-        state.isSettingModel = false;
-        state.message =
-          action.payload?.message || action.error?.message || "Failed to set model";
-      });
   },
 });
 

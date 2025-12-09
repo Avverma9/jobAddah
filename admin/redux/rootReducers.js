@@ -5,6 +5,7 @@ import jobReducer from "./slices/job";
 import uiReducer from "./slices/ui";
 import resourceReducer from "./slices/resources";
 
+import aiReducer from "./slices/ai";
 
 const rootReducer = combineReducers({
   // Add your slice reducers here
@@ -13,6 +14,7 @@ const rootReducer = combineReducers({
   job: jobReducer,
   ui: uiReducer,
   resource: resourceReducer,
+  ai: aiReducer,
 });
 
 export default rootReducer;
