@@ -138,29 +138,60 @@ export const extractFees = (fees) => {
   if (!fees || typeof fees !== "object") return [];
 
   const result = [];
+  const handledKeys = new Set();
 
-  // 1. Handle Array-based Fee Categories (KVS/NVS style)
+  const isDummyValue = (v) => {
+    if (v == null) return true;
+    if (typeof v !== "string") return false;
+    const val = v.toLowerCase();
+    return (
+      val.includes("will be updated") ||
+      val.includes("available soon") ||
+      val.includes("notified soon") ||
+      val.includes("notify later")
+    );
+  };
+
+  const specialKeyMap = {
+    generalEWSBCEBCJharkhandDomicile: "Gen/EWS/BC/EBC (Jharkhand)",
+    scStJharkhandDomicile: "SC/ST (Jharkhand)",
+    allCategoryOtherState: "Other State Candidates",
+    generalEwsObcCreamyLayer: "Gen/EWS/OBC (Creamy)",
+    ewsObcNonCreamyLayer: "EWS/OBC (Non‑Creamy)",
+    ewsObcNonCreamy: "EWS/OBC (Non‑Creamy)",
+  };
+
+  const formatFeeKey = (key) => {
+    if (specialKeyMap[key]) return specialKeyMap[key];
+    return key
+      .replace(/_/g, " / ")
+      .replace(/([a-z])([A-Z])/g, "$1 / $2")
+      .replace(/general/gi, "General")
+      .replace(/obc/gi, "OBC")
+      .replace(/ews/gi, "EWS")
+      .replace(/sc/gi, "SC")
+      .replace(/st/gi, "ST")
+      .replace(/ph/gi, "PH")
+      .replace(/female/gi, "Female")
+      .replace(/pwd/gi, "PwD")
+      .trim();
+  };
+
   if (fees.feeCategories && Array.isArray(fees.feeCategories)) {
     fees.feeCategories.forEach((catItem) => {
       if (catItem.category) {
         result.push({ type: "header", text: catItem.category });
       }
       Object.entries(catItem).forEach(([key, value]) => {
-        if (key !== "category") {
-          const formattedKey = key.replace(/_/g, " / ").replace(/([A-Z])/g, " $1").trim();
-          result.push({ type: "item", text: `${formattedKey}: ${value}` });
-        }
+        if (key === "category") return;
+        if (isDummyValue(value)) return;
+        const formattedKey = formatFeeKey(key);
+        result.push({ type: "item", text: `${formattedKey}: ${value}` });
       });
     });
-    // Handle payment mode if present in sibling key
-    if (fees.paymentMode) {
-       const modes = Array.isArray(fees.paymentMode) ? fees.paymentMode.join(", ") : fees.paymentMode;
-       result.push({ type: "payment", text: `Payment Mode: ${modes}` });
-    }
-    return result;
+    handledKeys.add("feeCategories");
   }
 
-  // 2. Handle Nested Object Structure (HSSC, UPDELED, UPPSC style)
   const nestedKeys = [
     { key: "withPPP_Aadhaar", label: "With PPP/Aadhaar:" },
     { key: "withoutPPP_Aadhaar", label: "Without PPP/Aadhaar:" },
@@ -168,88 +199,124 @@ export const extractFees = (fees) => {
     { key: "paper1", label: "Paper I Only:" },
     { key: "bothPapers", label: "Both Paper I & II:" },
     { key: "categories", label: "Application Fee:" },
+    { key: "feeDetails", label: "Fee Details:" },
   ];
 
   let hasNested = false;
+
   nestedKeys.forEach(({ key, label }) => {
-    if (fees[key]) {
+    if (fees[key] && typeof fees[key] === "object" && !Array.isArray(fees[key])) {
       hasNested = true;
+      handledKeys.add(key);
       result.push({ type: "header", text: label });
       Object.entries(fees[key]).forEach(([subKey, subValue]) => {
-        const formattedKey = subKey.replace(/_/g, " / ").replace(/([A-Z])/g, " $1").trim();
+        if (subValue == null || isDummyValue(subValue)) return;
+        const formattedKey = formatFeeKey(subKey);
         result.push({ type: "item", text: `${formattedKey}: ${subValue}` });
       });
     }
   });
 
+  Object.entries(fees).forEach(([key, val]) => {
+    if (handledKeys.has(key)) return;
+    if (!val || typeof val !== "object" || Array.isArray(val)) return;
+    if (/paymentmode/i.test(key)) return;
+    hasNested = true;
+    handledKeys.add(key);
+    result.push({ type: "header", text: `${formatFeeKey(key)}:` });
+    Object.entries(val).forEach(([subKey, subVal]) => {
+      if (subVal == null || isDummyValue(subVal)) return;
+      const formattedKey = formatFeeKey(subKey);
+      result.push({ type: "item", text: `${formattedKey}: ${subVal}` });
+    });
+  });
+
   if (hasNested) {
-     // Check for payment mode at root level even if nested fees exist
-     const pMode = fees.paymentMode || fees.paymentModes || fees.paymentModeOnline || fees.Payment_Mode_Online_Methods || fees["Payment Mode"] || fees["Payment Mode (Online)"];
-     if (pMode) {
-        const modes = Array.isArray(pMode) ? pMode.join(", ") : pMode;
-        result.push({ type: "payment", text: `Payment Mode: ${modes}` });
-     }
-     return result;
+    const paymentKeys = [
+      "paymentMode",
+      "paymentModes",
+      "paymentModeOnline",
+      "paymentModeOnlineMethods",
+      "PaymentModeOnlineMethods",
+      "PaymentModeOnline",
+      "Payment_Mode_Online_Methods",
+      "Payment Mode",
+      "Payment Mode (Online)",
+    ];
+    const modesSet = new Set();
+    paymentKeys.forEach((k) => {
+      const v = fees[k];
+      if (!v) return;
+      if (Array.isArray(v)) v.forEach((m) => modesSet.add(m));
+      else modesSet.add(v);
+    });
+    if (modesSet.size > 0) {
+      const modes = Array.from(modesSet).join(", ");
+      result.push({ type: "payment", text: `Payment Mode: ${modes}` });
+    }
+    return result;
   }
 
-  // 3. Handle Flat Fee Structure (Most Common)
-  const feeKeys = [
-    "General/OBC", "SC/ST", "PH", "General/ OBC/ EWS", "SC/ ST/ Female", "PH Candidates",
-    "generalEWSBCEBCJharkhandDomicile", "scStJharkhandDomicile", "allCategoryOtherState",
-    "general", "obc", "ews", "sc", "st", "ph", "female", "generalOBC_EWS", "scStFemale",
-    "generalEwsObc", "scStPh", "generalObcEws", "scStEbc", "scStPwbdExServiceman",
-    "generalEwsObcCreamyLayer", "ewsObcNonCreamyLayer", "ewsObcNonCreamy",
-    "General_OBC_EWS", "SC_ST_PH_ESM", "general_obc_ews", "sc_st", "sc_st_pwd",
-    "General_EWS_OBC", "SC_ST_PH", "All_Category_Female", "generalOtherState", "mpReserveCategory",
-    "scSt_femaleBihar", "exServiceCandidates", "scst_EBC", "allCandidates", "forAllCandidates",
-    "feeDetails", "otherStateCandidates", "chhattisgarhDomicileAllCategories", "correctionCharge",
-    "correctionChargeFirstTime", "correctionChargeSecondTime", "applicationEditModificationCharge",
-    "portalCharge", "firstTimeLateFeeCharge", "secondTimeLateFeeCharge", "General/OBC", "SC/ST", "PH"
+  const flatSkipKeys = new Set([
+    "feeCategories",
+    "paymentMode",
+    "paymentModes",
+    "paymentModeOnline",
+    "paymentModeOnlineMethods",
+    "PaymentModeOnlineMethods",
+    "PaymentModeOnline",
+    "Payment_Mode_Online_Methods",
+    "Payment Mode",
+    "Payment Mode (Online)",
+  ]);
+
+  Object.entries(fees).forEach(([key, value]) => {
+    if (flatSkipKeys.has(key)) return;
+    if (value == null) return;
+    if (typeof value === "object") return;
+    if (isDummyValue(value)) return;
+    result.push({ type: "normal", text: `${formatFeeKey(key)}: ${value}` });
+  });
+
+  const refundKeys = [
+    "refundDetails",
+    "feeRefund",
+    "refundNote",
+    "refundAmountCbtGeneralOBC",
+    "refundAmountCbtScStEbcFemaleTransgender",
   ];
-
-  // Helper to format keys
-  const formatFeeKey = (key) => {
-      // Custom mapping for complex keys
-      if (key === 'generalEWSBCEBCJharkhandDomicile') return 'Gen/EWS/BC/EBC (Jharkhand)';
-      if (key === 'scStJharkhandDomicile') return 'SC/ST (Jharkhand)';
-      if (key === 'allCategoryOtherState') return 'Other State Candidates';
-      if (key === 'generalEwsObcCreamyLayer') return 'Gen/EWS/OBC (Creamy)';
-      if (key === 'ewsObcNonCreamyLayer' || key === 'ewsObcNonCreamy') return 'EWS/OBC (Non-Creamy)';
-      
-      return key
-        .replace(/_/g, " / ")
-        .replace(/([a-z])([A-Z])/g, "$1 / $2") // Split CamelCase
-        .replace(/general/gi, "General")
-        .replace(/obc/gi, "OBC")
-        .replace(/ews/gi, "EWS")
-        .replace(/sc/gi, "SC")
-        .replace(/st/gi, "ST")
-        .replace(/ph/gi, "PH")
-        .replace(/female/gi, "Female")
-        .replace(/pwd/gi, "PwD")
-        .trim();
-  };
-
-  feeKeys.forEach(key => {
-      if (fees[key] !== undefined && fees[key] !== null) {
-          result.push({ type: "normal", text: `${formatFeeKey(key)}: ${fees[key]}` });
-      }
-  });
-  
-  // Refund Keys
-  ["refundDetails", "feeRefund", "refundNote", "refundAmountCbtGeneralOBC", "refundAmountCbtScStEbcFemaleTransgender"].forEach(key => {
-      if (fees[key]) result.push({ type: "info", text: `Refund: ${fees[key]}` });
+  refundKeys.forEach((key) => {
+    if (fees[key] && !isDummyValue(fees[key])) {
+      result.push({ type: "info", text: `Refund: ${fees[key]}` });
+    }
   });
 
-  // Payment Modes
-  const paymentModes = fees.paymentMode || fees.paymentModes || fees.paymentModeOnline || fees.Payment_Mode_Online_Methods || fees["Payment Mode"] || fees["Payment Mode (Online)"];
-  if (paymentModes) {
-    const modes = Array.isArray(paymentModes) ? paymentModes.join(", ") : paymentModes;
+  const paymentKeys = [
+    "paymentMode",
+    "paymentModes",
+    "paymentModeOnline",
+    "paymentModeOnlineMethods",
+    "PaymentModeOnlineMethods",
+    "PaymentModeOnline",
+    "Payment_Mode_Online_Methods",
+    "Payment Mode",
+    "Payment Mode (Online)",
+  ];
+  const modesSet = new Set();
+  paymentKeys.forEach((k) => {
+    const v = fees[k];
+    if (!v) return;
+    if (Array.isArray(v)) v.forEach((m) => modesSet.add(m));
+    else modesSet.add(v);
+  });
+  if (modesSet.size > 0) {
+    const modes = Array.from(modesSet).join(", ");
     result.push({ type: "payment", text: `Payment Mode: ${modes}` });
   }
 
   return result;
 };
+
 
 // --- AGE EXTRACTION ---
 export const extractAge = (age) => {
@@ -324,47 +391,158 @@ export const extractVacancy = (vacancy) => {
   }
 
   const total =
-    vacancy.totalPosts || vacancy.total || vacancy.totalVacancy ||
-    vacancy.posts || "See Notification";
+    vacancy.totalPosts ||
+    vacancy.total ||
+    vacancy.totalVacancy ||
+    vacancy.posts ||
+    vacancy.totalPost ||
+    vacancy.totalSeat ||
+    "See Notification";
 
   let positions =
-    vacancy.positions || vacancy.postDetails || vacancy.details ||
-    vacancy.vacancies || [];
+    vacancy.positions ||
+    vacancy.postDetails ||
+    vacancy.details ||
+    vacancy.vacancies ||
+    vacancy.postWiseDetails ||
+    [];
 
   if (!Array.isArray(positions)) {
     positions = [];
   }
 
-  // Normalize position objects for the table
-  const normalizedPositions = positions.map(pos => {
-      // Find Name
-      const name = pos.postName || pos.name || pos.tradeName || pos.positionName || "Various Post";
-      
-      // Find Count/Total
-      let count = pos.total || pos.posts || pos.numberOfPosts || pos.noOfPost || pos.count || pos.noOfPosts || "-";
-      
-      // Handle nested category counts (e.g., SSC GD, UP Home Guard)
-      if (typeof count === 'object' || pos.categoryWise || pos.categories) {
-          const cats = count.categoryWise || pos.categoryWise || pos.categories || count; // Fallback if count is the object
-          if (typeof cats === 'object') {
-             // Create a string representation: "Gen: 10, OBC: 5..."
-             count = Object.entries(cats)
-               .map(([k, v]) => `${k}: ${v}`)
-               .join(", ");
-          }
-      }
-      
-      // Find Group/Category
-      const group = pos.group || pos.category || "-";
-      
-      // Find Eligibility
-      const eligibility = pos.eligibility || pos.eligibilityCriteria || pos.qualification || pos.education || "-";
+  const formatText = (text) => {
+    if (!text) return "-";
+    if (Array.isArray(text)) return text.join(", ");
+    return String(text);
+  };
 
-      return { name, count, group, eligibility };
+  const buildCategoryLikeString = (pos) => {
+    const cats = pos.categoryWise || pos.categories || pos.categorywise;
+
+    if (cats) {
+      if (Array.isArray(cats)) {
+        const parts = cats
+          .map((c) => {
+            const cat =
+              c.category ||
+              c.cat ||
+              c.name ||
+              c.type ||
+              c.group ||
+              c.label;
+            const val =
+              c.posts ||
+              c.post ||
+              c.count ||
+              c.total ||
+              c.numberOfPosts ||
+              c.noOfPost ||
+              c.noOfPosts;
+            if (!cat || val == null) return null;
+            return `${cat}: ${val}`;
+          })
+          .filter(Boolean);
+        if (parts.length) return parts.join(", ");
+      } else if (typeof cats === "object") {
+        const parts = Object.entries(cats)
+          .map(([k, v]) => `${k}: ${v}`)
+          .filter(Boolean);
+        if (parts.length) return parts.join(", ");
+      } else {
+        return String(cats);
+      }
+    }
+
+    const flatCatEntries = Object.entries(pos).filter(([k, v]) => {
+      if (typeof v !== "number") return false;
+      const key = k.toLowerCase();
+      if (key === "male" || key === "female") return false;
+      return /^(gen|general|obc|ews|sc|st|ebc|bc|ur|other|others|pwd|ph|third|category)/.test(
+        key
+      );
+    });
+
+    if (flatCatEntries.length) {
+      return flatCatEntries.map(([k, v]) => `${k}: ${v}`).join(", ");
+    }
+
+    return null;
+  };
+
+  const normalizedPositions = positions.map((pos) => {
+    const name =
+      pos.postName ||
+      pos.name ||
+      pos.tradeName ||
+      pos.positionName ||
+      pos.postTitle ||
+      pos.title ||
+      "Various Post";
+
+    let count =
+      pos.total ||
+      pos.posts ||
+      pos.numberOfPosts ||
+      pos.noOfPost ||
+      pos.noOfPosts ||
+      pos.count ||
+      pos.totalPosts ||
+      null;
+
+    let genderStr = null;
+    if (pos.male != null || pos.female != null) {
+      const parts = [];
+      if (pos.male != null) parts.push(`Male: ${pos.male}`);
+      if (pos.female != null) parts.push(`Female: ${pos.female}`);
+      genderStr = parts.join(", ");
+    }
+
+    const catStr = buildCategoryLikeString(pos);
+
+    if (!count && genderStr) {
+      count = genderStr;
+    } else if (count && genderStr) {
+      count = `${count} (${genderStr})`;
+    }
+
+    if (!count && catStr) {
+      count = catStr;
+    } else if (count && catStr) {
+      count = `${count} (${catStr})`;
+    }
+
+    if (count == null) count = "-";
+
+    const group =
+      pos.group ||
+      pos.category ||
+      pos.type ||
+      pos.level ||
+      "-";
+
+    const eligibility =
+      pos.eligibility ||
+      pos.eligibilityCriteria ||
+      pos.qualification ||
+      pos.education ||
+      pos.educationalQualification ||
+      pos.criteria ||
+      pos.details ||
+      "-";
+
+    return {
+      name: formatText(name),
+      count: formatText(count),
+      group: formatText(group),
+      eligibility: formatText(eligibility),
+    };
   });
 
   return { total, positions: normalizedPositions };
 };
+
+
 
 // --- ELIGIBILITY EXTRACTION ---
 export const extractEligibility = (elig) => {
@@ -417,49 +595,135 @@ export const extractEligibility = (elig) => {
   return result.length > 0 ? result : [{ type: "text", text: "Check official notification for full details." }];
 };
 
-// --- LINKS EXTRACTION ---
 export const extractLinks = (links) => {
   if (!links || typeof links !== "object") return [];
 
   const result = [];
 
+  const isPlaceholder = (str) => {
+    const s = String(str).trim().toLowerCase();
+    if (!s) return true;
+    return (
+      s === "#" ||
+      s === "-" ||
+      s.includes("link activate soon") ||
+      s.includes("coming soon") ||
+      s.includes("update soon") ||
+      s.includes("available soon") ||
+      s.includes("notify later")
+    );
+  };
+
+  const isLikelyUrl = (str) => {
+    if (!str) return false;
+    const s = String(str).trim();
+    if (!s || isPlaceholder(s)) return false;
+    if (/^(https?:\/\/|www\.)/i.test(s)) return true;
+    if (/^https?[a-z0-9]/i.test(s) && s.includes(".")) return true;
+    if (s.includes("/") && !s.includes(" ")) return true;
+    if (s.includes(".pdf")) return true;
+    return false;
+  };
+
+  const formatLabel = (key) => {
+    let label = key
+      .replace(/([A-Z])/g, " $1")
+      .replace(/_/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/url|link|href|text/gi, "")
+      .trim();
+    if (!label) label = "Link";
+    return label.replace(/\s+/g, " ").trim();
+  };
+
+  const normalizeClickHereLabel = (baseLabel, textLabel) => {
+    if (!textLabel) return baseLabel;
+    const s = String(textLabel).trim();
+    if (/^click here/i.test(s)) return baseLabel;
+    return s;
+  };
+
+  const pushStringUrl = (label, value) => {
+    const parts = String(value).trim().split(/\s+/);
+    const urls = parts.filter(isLikelyUrl);
+    urls.forEach((u, idx) => {
+      result.push({
+        label: urls.length > 1 ? `${label} (${idx + 1})` : label,
+        url: u,
+      });
+    });
+  };
+
   Object.entries(links).forEach(([key, value]) => {
     if (!value) return;
 
-    // Format Label
-    const label = key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/_/g, " ")
-        .replace(/([a-z])([A-Z])/g, "$1 $2")
-        .replace(/url|link|href/gi, "") // Remove 'link' or 'url' from label
-        .trim();
+    const baseLabel = formatLabel(key);
 
-    // 1. Value is String (Direct URL)
+    // 1) Value is plain string
     if (typeof value === "string") {
-      result.push({ label, url: value });
-    } 
-    // 2. Value is Object with text/url (e.g., {text: "Click Here", url: "..."})
-    else if (value.url || value.href) {
-      const linkLabel = value.text && value.text.length < 50 ? value.text : label; // Use text if short, else key
-      result.push({ label: linkLabel === "Click Here" ? label : linkLabel, url: value.url || value.href });
+      if (isLikelyUrl(value)) {
+        pushStringUrl(baseLabel, value);
+      }
+      return;
     }
-    // 3. Value is Array of Objects (e.g., Download Result: [{text: Link1...}, {text: Link2...}])
-    else if (Array.isArray(value)) {
+
+    // 2) Value is Object with url/href (e.g. {text, url} / {text, href})
+    if (!Array.isArray(value) && (value.url || value.href)) {
+      const rawUrl = value.url || value.href;
+      if (!isLikelyUrl(rawUrl)) return;
+      const linkLabel = normalizeClickHereLabel(
+        baseLabel,
+        value.name || value.text
+      );
+      result.push({ label: linkLabel, url: rawUrl });
+      return;
+    }
+
+    // 3) Value is Array (UPSSSC PET style / district lists)
+    if (Array.isArray(value)) {
       value.forEach((item, idx) => {
-        const itemLabel = item.name || item.text || item.districtName || `Link ${idx + 1}`;
-        const itemUrl = item.url || item.href || item.notificationLink;
-        if (itemUrl) {
-            result.push({ label: `${label} (${itemLabel})`, url: itemUrl });
+        if (!item) return;
+
+        if (typeof item === "string") {
+          if (isLikelyUrl(item)) {
+            const lbl = `${baseLabel} (${idx + 1})`;
+            pushStringUrl(lbl, item);
+          }
+          return;
+        }
+
+        const itemUrl =
+          item.url || item.href || item.notificationLink || item.link;
+        if (!isLikelyUrl(itemUrl)) return;
+
+        const itemLabelRaw =
+          item.name || item.text || item.districtName || `Link ${idx + 1}`;
+        const itemLabel = normalizeClickHereLabel(baseLabel, itemLabelRaw);
+        result.push({ label: `${baseLabel} (${itemLabel})`, url: itemUrl });
+      });
+      return;
+    }
+
+    // 4) Nested object: { eng: 'url', hindi: 'url' } OR { key: {text,url} }
+    if (typeof value === "object") {
+      Object.entries(value).forEach(([k, v]) => {
+        const subKeyLabel = formatLabel(k);
+
+        if (typeof v === "string") {
+          if (!isLikelyUrl(v)) return;
+          const lbl = `${baseLabel} - ${subKeyLabel}`;
+          pushStringUrl(lbl, v);
+        } else if (v && typeof v === "object") {
+          const u = v.url || v.href;
+          if (!isLikelyUrl(u)) return;
+          const textLbl = normalizeClickHereLabel(
+            subKeyLabel || baseLabel,
+            v.name || v.text
+          );
+          const lbl = `${baseLabel} - ${textLbl}`;
+          result.push({ label: lbl, url: u });
         }
       });
-    }
-    // 4. Value is Nested Object (e.g., officialNotification: {english: url, hindi: url})
-    else if (typeof value === "object") {
-        Object.entries(value).forEach(([k, v]) => {
-            if (typeof v === "string") {
-                result.push({ label: `${label} - ${k}`, url: v });
-            }
-        });
     }
   });
 
