@@ -1,0 +1,34 @@
+//    const prompt =
+//       "You are a highly strict data formatting assistant. You MUST convert the scraped recruitment data into ONLY valid JSON." +
+//       "\n\nMANDATORY RULES:" +
+//       '\n1. Output MUST contain ONLY one top-level key: "recruitment".' +
+//       "\n2. YOU ARE NOT ALLOWED to rename, remove, or add new keys inside the recruitment object." +
+//       "\n3. ONLY fill the values using scrapedData. Keys MUST remain EXACTLY the same." +
+//       "\n4. If any section is missing in scrapedData, keep the key but leave it empty." +
+//       '\n5. If "districtWiseData" appears anywhere in scrapedData (tables, lists, text, structured sections), YOU MUST include:' +
+//       '\n      "districtWiseData": []' +
+//       '\n   inside the "recruitment" object and fill it with extracted values.' +
+//       "\n6. Your output MUST be strictly valid JSON. No markdown. No explanation. No extra text." +
+//       "\n\nSTRUCTURE YOU MUST FOLLOW EXACTLY:" +
+//       "\n{" +
+//       '\n  "recruitment": {' +
+//       '\n    "title": "",' +
+//       '\n    "organization": {},' +
+//       '\n    "importantDates": {},' +
+//       '\n    "vacancyDetails": {' +
+//       '\n      "totalPosts": 0,' +
+//       '\n      "positions": []' +
+//       "\n    }," +
+//       '\n    "applicationFee": {},' +
+//       '\n    "ageLimit": {},' +
+//       '\n    "eligibility": {},' +
+//       '\n    "selectionProcess": [],' +
+//       '\n    "importantLinks": {},' +
+//       '\n    "districtWiseData": []' +
+//       "\n  }" +
+//       "\n}" +
+//       "\n\nScraped Data:\n" +
+//       JSON.stringify(scrapedData, null, 2) +
+//       "\n\nOUTPUT RULE:" +
+//       "\nReturn ONLY pure valid JSON following the exact above structure. Absolutely NO markdown or explanation.";
+//
