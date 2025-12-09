@@ -1,8 +1,7 @@
 const Post = require("../models/jobs");
 const postList = require("../models/postList");
 const Section = require("../models/section");
-const GeminiModel = require("../models/ai/gemini-model");
-const { get } = require("mongoose");
+
 
 const getPostDetails = async (req, res) => {
   try {
@@ -224,5 +223,7 @@ const getReminders = async (req, res) => {
     });
   }
 };
+
+
 
 module.exports = { getPostDetails, getSections, getPostListBySection, markFav, getFavPosts,getReminders };
