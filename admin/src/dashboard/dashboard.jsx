@@ -1,9 +1,7 @@
-// src/pages/admin/JobAddahAdmin.jsx
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-
 import {
   FileText,
   Briefcase,
@@ -25,7 +23,6 @@ import {
   Play,
   Square,
 } from "lucide-react";
-
 import {
   getStats,
   getPrivateJob,
@@ -33,14 +30,11 @@ import {
   markFav,
   getSections,
   getPostlist,
-
 } from "../../redux/slices/job";
 import { getResults } from "../../redux/slices/resources";
 import { baseUrl } from "../../util/url";
 
 const ITEMS_PER_PAGE = 12;
-
-
 
 export default function JobAddahAdmin() {
   const dispatch = useDispatch();
@@ -65,7 +59,10 @@ export default function JobAddahAdmin() {
   });
   const stopSyncRef = useRef(false);
 
-
+  const [selectedLinks, setSelectedLinks] = useState(new Set());
+  const [selectAllOnPage, setSelectAllOnPage] = useState(false);
+  const [dbStatusMap, setDbStatusMap] = useState({});
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const {
     stats,
@@ -73,8 +70,6 @@ export default function JobAddahAdmin() {
     privateJobs,
     sections,
     postlist,
-    isSettingModel,
-    currentModel,
   } = useSelector((state) => state.job);
 
   useEffect(() => {
@@ -82,10 +77,7 @@ export default function JobAddahAdmin() {
     dispatch(getSections());
     dispatch(getPrivateJob());
     dispatch(getResults());
-  
   }, [dispatch]);
-
-
 
   const sectionTabs = useMemo(() => {
     if (!sections?.[0]?.categories) return [];
@@ -114,6 +106,8 @@ export default function JobAddahAdmin() {
     setActiveLink(link);
     setCurrentPage(1);
     setSearchQuery("");
+    setSelectedLinks(new Set());
+    setSelectAllOnPage(false);
     dispatch(getPostlist(`?url=${encodeURIComponent(link)}`));
   };
 
@@ -153,6 +147,7 @@ export default function JobAddahAdmin() {
       if (res.ok) {
         toast.success(`${activeTab} posts updated!`, { id: toastId });
         dispatch(getPostlist(`?url=${encodeURIComponent(activeLink)}`));
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         throw new Error("Failed");
       }
@@ -165,8 +160,10 @@ export default function JobAddahAdmin() {
 
   const filteredData = useMemo(() => {
     let jobs = [];
-
-    if (Array.isArray(postlist) && postlist.every((item) => item.title && item.link)) {
+    if (
+      Array.isArray(postlist) &&
+      postlist.every((item) => item.title && item.link)
+    ) {
       jobs = postlist;
     } else if (Array.isArray(postlist)) {
       const currentSection = postlist.find(
@@ -196,8 +193,6 @@ export default function JobAddahAdmin() {
 
   const handleToggleFav = useCallback(
     (e, id, fav) => {
-      // Logic moved to ListItem for better local state handling,
-      // but Redux dispatch remains here if needed directly.
       if (id) {
         dispatch(markFav({ id, fav: !fav }));
       }
@@ -209,13 +204,20 @@ export default function JobAddahAdmin() {
     if (id) {
       dispatch(deleteJob(id));
       setConfirmDelete(null);
+      setRefreshTrigger((prev) => prev + 1);
     }
   };
 
+  const handleRefreshList = useCallback(() => {
+    if (activeLink) {
+      dispatch(getPostlist(`?url=${encodeURIComponent(activeLink)}`));
+      setRefreshTrigger((prev) => prev + 1);
+    }
+  }, [activeLink, dispatch]);
+
   const totalCount = (stats?.jobs || 0) + (privateJobs?.data?.length || 0);
 
-  const handleStartBulkSync = async () => {
-    const itemsToSync = filteredData;
+  const runBulkSync = async (itemsToSync, label) => {
     if (itemsToSync.length === 0) {
       toast.error("No items to sync");
       return;
@@ -230,7 +232,7 @@ export default function JobAddahAdmin() {
       failed: 0,
     });
     setBulkProgress(0);
-    toast.success("Bulk Sync Started - Please wait...");
+    toast.success(`${label} Started - Please wait...`);
 
     for (let i = 0; i < itemsToSync.length; i++) {
       if (stopSyncRef.current) {
@@ -267,16 +269,98 @@ export default function JobAddahAdmin() {
     }
 
     setIsBulkSyncing(false);
-    if (!stopSyncRef.current) toast.success("Bulk Sync Completed!");
+    if (!stopSyncRef.current) toast.success(`${label} Completed!`);
+    
+    setRefreshTrigger((prev) => prev + 1);
+    
     if (activeLink) {
       dispatch(getPostlist(`?url=${encodeURIComponent(activeLink)}`));
     }
+  };
+
+  const handleStartBulkSyncAll = async () => {
+    await runBulkSync(filteredData, "Bulk Sync All");
+  };
+
+  const handleSyncSelected = async () => {
+    const itemsToSync = filteredData.filter((item) => {
+      const linkUrl = item.link || item.url;
+      return linkUrl && selectedLinks.has(linkUrl);
+    });
+
+    if (itemsToSync.length === 0) {
+      toast.error("No selected items to sync");
+      return;
+    }
+    await runBulkSync(itemsToSync, "Sync Selected");
+  };
+
+  const handleSyncMissingOnly = async () => {
+    const itemsToSync = filteredData.filter((item) => {
+      const linkUrl = item.link || item.url;
+      if (!linkUrl) return false;
+      const status = dbStatusMap[linkUrl];
+      return status === "missing";
+    });
+
+    if (itemsToSync.length === 0) {
+      toast.error("No missing items to sync");
+      return;
+    }
+    await runBulkSync(itemsToSync, "Sync Missing Only");
   };
 
   const handleStopBulkSync = () => {
     stopSyncRef.current = true;
   };
 
+  const handleToggleSelectOne = (linkUrl) => {
+    setSelectedLinks((prev) => {
+      const next = new Set(prev);
+      if (next.has(linkUrl)) next.delete(linkUrl);
+      else next.add(linkUrl);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllOnPage = () => {
+    const pageLinks = paginatedData
+      .map((item) => item.link || item.url)
+      .filter(Boolean);
+
+    setSelectedLinks((prev) => {
+      const next = new Set(prev);
+      const allSelected = pageLinks.every((l) => next.has(l));
+      if (allSelected) {
+        pageLinks.forEach((l) => next.delete(l));
+        setSelectAllOnPage(false);
+      } else {
+        pageLinks.forEach((l) => next.add(l));
+        setSelectAllOnPage(true);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const pageLinks = paginatedData
+      .map((item) => item.link || item.url)
+      .filter(Boolean);
+    if (pageLinks.length === 0) {
+      setSelectAllOnPage(false);
+      return;
+    }
+    const allSelected = pageLinks.every((l) => selectedLinks.has(l));
+    setSelectAllOnPage(allSelected);
+  }, [paginatedData, selectedLinks]);
+
+  const handleStatusChange = useCallback((linkUrl, status) => {
+    if (!linkUrl) return;
+    setDbStatusMap((prev) => ({
+      ...prev,
+      [linkUrl]: status,
+    }));
+  }, []);
 
   return (
     <div className="space-y-8 font-sans text-slate-800 pb-10 min-h-screen bg-slate-50/50 p-6">
@@ -296,8 +380,6 @@ export default function JobAddahAdmin() {
           <Plus size={18} /> New Posting
         </button>
       </div>
-
-     
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -341,8 +423,8 @@ export default function JobAddahAdmin() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="relative w-full md:w-auto">
+              <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full md:w-64">
                   <Search
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     size={16}
@@ -353,26 +435,48 @@ export default function JobAddahAdmin() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search titles..."
                     disabled={isBulkSyncing}
-                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg w-full md:w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                    className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all disabled:bg-slate-50 disabled:text-slate-400"
                   />
                 </div>
 
-                {isBulkSyncing ? (
-                  <button
-                    onClick={handleStopBulkSync}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg font-bold text-xs hover:bg-red-100 transition-colors animate-pulse"
-                  >
-                    <Square size={14} fill="currentColor" /> STOP
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStartBulkSync}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors"
-                    title="Sync all items one by one"
-                  >
-                    <Play size={14} fill="currentColor" /> Sync All
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isBulkSyncing ? (
+                    <button
+                      onClick={handleStopBulkSync}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg font-bold text-xs hover:bg-red-100 transition-colors animate-pulse"
+                    >
+                      <Square size={14} fill="currentColor" /> STOP
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleStartBulkSyncAll}
+                        className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors"
+                        title="Sync all items one by one"
+                      >
+                        <Play size={14} fill="currentColor" /> Sync All
+                      </button>
+
+                      <button
+                        onClick={handleSyncSelected}
+                        disabled={selectedLinks.size === 0}
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg font-bold text-xs hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Sync only selected items"
+                      >
+                        <Play size={14} fill="currentColor" /> Sync Selected (
+                        {selectedLinks.size})
+                      </button>
+
+                      <button
+                        onClick={handleSyncMissingOnly}
+                        className="flex items-center gap-2 px-3 py-2 bg-yellow-50 text-yellow-700 border border-yellow-100 rounded-lg font-bold text-xs hover:bg-yellow-100 transition-colors"
+                        title="Sync only items that are not present in DB"
+                      >
+                        <Play size={14} fill="currentColor" /> Sync Missing Only
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -475,21 +579,46 @@ export default function JobAddahAdmin() {
                     : ""
                 }`}
               >
-                {paginatedData.map((item, i) => (
-                  <ListItem
-                    key={item._id || item.id || item.link || item.url || i}
-                    item={item}
-                    onToggleFav={handleToggleFav}
-                    onEdit={() =>
-                      navigate(`/dashboard/job-edit/${item._id}`, {
-                        state: { data: item },
-                      })
-                    }
-                    onDelete={() =>
-                      item._id && setConfirmDelete({ id: item._id })
-                    }
-                  />
-                ))}
+                <div className="flex items-center px-6 py-2 bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
+                  <div className="w-10 flex justify-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectAllOnPage}
+                      onChange={handleToggleSelectAllOnPage}
+                    />
+                  </div>
+                  <div className="flex-1 pl-2">Title</div>
+                  <div className="w-40 text-right pr-2">Actions</div>
+                </div>
+
+                {paginatedData.map((item, i) => {
+                  const linkUrl = item.link || item.url || "";
+                  const isSelected = selectedLinks.has(linkUrl);
+
+                  return (
+                    <ListItem
+                      key={item._id || item.id || item.link || item.url || i}
+                      item={item}
+                      onToggleFav={handleToggleFav}
+                      onEdit={() =>
+                        navigate(`/dashboard/job-edit/${item._id}`, {
+                          state: { data: item },
+                        })
+                      }
+                      onDelete={() =>
+                        item._id && setConfirmDelete({ id: item._id })
+                      }
+                      isSelected={isSelected}
+                      onToggleSelect={() =>
+                        linkUrl && handleToggleSelectOne(linkUrl)
+                      }
+                      onStatusChange={handleStatusChange}
+                      onSyncSuccess={handleRefreshList}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <EmptyState type={activeTab || "this"} />
@@ -521,213 +650,229 @@ export default function JobAddahAdmin() {
   );
 }
 
-const ListItem = React.memo(({ item, onEdit, onDelete, onToggleFav }) => {
-  const title = item.title || item.postTitle || "Untitled";
-  const linkUrl = item.link || item.url || "#";
-  const initialId = item._id || item.id;
-  
-  // Local states to handle immediate updates even if parent list doesn't refresh
-  const [fetchedId, setFetchedId] = useState(null);
-  const [localFav, setLocalFav] = useState(!!item.fav);
-  
-  const activeId = initialId || fetchedId;
-  const hasId = !!activeId;
+const ListItem = React.memo(
+  ({
+    item,
+    onEdit,
+    onDelete,
+    onToggleFav,
+    isSelected,
+    onToggleSelect,
+    onStatusChange,
+    onSyncSuccess,
+    refreshTrigger,
+  }) => {
+    const title = item.title || item.postTitle || "Untitled";
+    const linkUrl = item.link || item.url || "#";
+    const initialId = item._id || item.id;
 
-  // Update localFav if prop changes
-  useEffect(() => {
-    setLocalFav(!!item.fav);
-  }, [item.fav]);
+    const [fetchedId, setFetchedId] = useState(null);
+    const [localFav, setLocalFav] = useState(!!item.fav);
 
-  let hostname = "N/A";
-  try {
-    if (linkUrl && linkUrl !== "#") {
-      hostname = new URL(linkUrl).hostname.replace("www.", "");
-    }
-  } catch (e) {
-    hostname = "Invalid URL";
-  }
+    const activeId = initialId || fetchedId;
+    const hasId = !!activeId;
 
-  const [dbStatus, setDbStatus] = useState("loading");
+    useEffect(() => {
+      setLocalFav(!!item.fav);
+    }, [item.fav]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const checkDbStatus = async () => {
-      if (!linkUrl || linkUrl === "#") {
-        if (isMounted) setDbStatus("idle");
-        return;
+    let hostname = "N/A";
+    try {
+      if (linkUrl && linkUrl !== "#") {
+        hostname = new URL(linkUrl).hostname.replace("www.", "");
       }
-      try {
-        const res = await fetch(
-          `${baseUrl}/get-post/details?url=${encodeURIComponent(linkUrl)}`
-        );
-        if (isMounted) {
-          if (res.ok) {
-            setDbStatus("present");
-            try {
-              const data = await res.json();
-              const foundId = data._id || data.id || data.data?._id || data.job?._id;
-              if (foundId) setFetchedId(foundId);
-              
-              // Sync fav status from DB immediately
-              if (data.fav !== undefined) setLocalFav(!!data.fav);
-              else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
-              else if (data.job?.fav !== undefined) setLocalFav(!!data.job.fav);
+    } catch (e) {
+      hostname = "Invalid URL";
+    }
 
-            } catch (err) {
-              console.error(err);
+    const [dbStatus, setDbStatus] = useState("loading");
+
+    useEffect(() => {
+      let isMounted = true;
+      const checkDbStatus = async () => {
+        if (!linkUrl || linkUrl === "#") {
+          if (isMounted) {
+            setDbStatus("idle");
+            onStatusChange(linkUrl, "idle");
+          }
+          return;
+        }
+        try {
+          const res = await fetch(
+            `${baseUrl}/get-post/details?url=${encodeURIComponent(linkUrl)}`
+          );
+          if (isMounted) {
+            if (res.ok) {
+              setDbStatus("present");
+              onStatusChange(linkUrl, "present");
+              try {
+                const data = await res.json();
+                const foundId =
+                  data._id || data.id || data.data?._id || data.job?._id;
+                if (foundId) setFetchedId(foundId);
+
+                if (data.fav !== undefined) setLocalFav(!!data.fav);
+                else if (data.data?.fav !== undefined)
+                  setLocalFav(!!data.data.fav);
+                else if (data.job?.fav !== undefined)
+                  setLocalFav(!!data.job.fav);
+              } catch (err) {
+                console.error(err);
+              }
+            } else {
+              setDbStatus("missing");
+              onStatusChange(linkUrl, "missing");
             }
-          } else {
+          }
+        } catch (error) {
+          if (isMounted) {
             setDbStatus("missing");
+            onStatusChange(linkUrl, "missing");
           }
         }
-      } catch (error) {
-        if (isMounted) setDbStatus("missing");
-      }
-    };
-    checkDbStatus();
-    return () => {
-      isMounted = false;
-    };
-  }, [linkUrl]);
+      };
+      checkDbStatus();
+      return () => {
+        isMounted = false;
+      };
+    }, [linkUrl, onStatusChange, refreshTrigger]);
 
-  const handleScrape = async () => {
-    const isUpdate = dbStatus === "present";
-    setDbStatus("scraping");
-    const toastId = toast.loading(isUpdate ? "Updating..." : "Syncing...");
-    try {
-      const res = await fetch(`${baseUrl}/scrapper/scrape-complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: linkUrl }),
-      });
-      if (res.ok) {
-        toast.success(isUpdate ? "Updated!" : "Synced!", { id: toastId });
-        setDbStatus("present");
-        try {
-          const data = await res.json();
-          const newId = data._id || data.id || data.data?._id || data.job?._id;
-          if (newId) setFetchedId(newId);
-          
-          // Sync fav status after scrape
-          if (data.fav !== undefined) setLocalFav(!!data.fav);
-          else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
+    const handleScrape = async () => {
+      const isUpdate = dbStatus === "present";
+      setDbStatus("scraping");
+      onStatusChange(linkUrl, "scraping");
+      const toastId = toast.loading(isUpdate ? "Updating..." : "Syncing...");
+      try {
+        const res = await fetch(`${baseUrl}/scrapper/scrape-complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: linkUrl }),
+        });
+        if (res.ok) {
+          toast.success(isUpdate ? "Updated!" : "Synced!", { id: toastId });
+          setDbStatus("present");
+          onStatusChange(linkUrl, "present");
+          if (onSyncSuccess) onSyncSuccess();
+          try {
+            const data = await res.json();
+            const newId =
+              data._id || data.id || data.data?._id || data.job?._id;
+            if (newId) setFetchedId(newId);
 
-        } catch (err) {
+            if (data.fav !== undefined) setLocalFav(!!data.fav);
+            else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
+          } catch (err) {
             console.error(err);
+          }
+        } else {
+          throw new Error("Failed");
         }
-      } else {
-        throw new Error("Failed");
+      } catch (error) {
+        toast.error("Error", { id: toastId });
+        setDbStatus(isUpdate ? "present" : "missing");
+        onStatusChange(linkUrl, isUpdate ? "present" : "missing");
       }
-    } catch (error) {
-      toast.error("Error", { id: toastId });
-      setDbStatus(isUpdate ? "present" : "missing");
-    }
-  };
+    };
 
-  const handleLocalToggle = (e) => {
-    e.stopPropagation();
-    if (activeId) {
-        setLocalFav(!localFav); // Optimistic update
+    const handleLocalToggle = (e) => {
+      e.stopPropagation();
+      if (activeId) {
+        setLocalFav(!localFav);
         onToggleFav(e, activeId, localFav);
-    }
-  };
+      }
+    };
 
-  return (
-    <div className="group flex justify-between items-center px-6 py-4 hover:bg-slate-50 transition-colors">
-      <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="shrink-0">
-          {dbStatus === "loading" || dbStatus === "scraping" ? (
-            <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-blue-600">
-              <Loader2 size={20} className="animate-spin" />
+    return (
+      <div className="group flex justify-between items-center px-6 py-4 hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-10 flex justify-center shrink-0">
+            {linkUrl && linkUrl !== "#" && (
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                checked={!!isSelected}
+                onChange={onToggleSelect}
+              />
+            )}
+          </div>
+
+          <div className="shrink-0">
+            {dbStatus === "loading" || dbStatus === "scraping" ? (
+              <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-blue-600">
+                <Loader2 size={20} className="animate-spin" />
+              </div>
+            ) : dbStatus === "present" ? (
+              <button
+                onClick={handleScrape}
+                className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600 border border-green-100 hover:bg-green-100 hover:scale-105 transition-all"
+                title="Update"
+              >
+                <RefreshCcw size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={handleScrape}
+                className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 border border-red-100 hover:bg-red-100 hover:scale-105 transition-all"
+                title="Sync"
+              >
+                <XCircle size={20} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col min-w-0 pr-4">
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-semibold text-slate-800 hover:text-blue-600 truncate block"
+            >
+              {title}
+            </a>
+            <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <Briefcase size={10} /> {hostname}
+              </span>
+              {dbStatus === "missing" && (
+                <span className="text-red-500 font-medium">• Not in DB</span>
+              )}
+              {dbStatus === "present" && (
+                <span className="text-green-600 font-medium">• Synced</span>
+              )}
             </div>
-          ) : dbStatus === "present" ? (
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleLocalToggle}
+            disabled={!hasId}
+            className="p-2 rounded-md hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={hasId ? "Toggle favourite" : "Sync to enable favourite"}
+          >
+            <Star
+              size={16}
+              className={
+                localFav
+                  ? "fill-yellow-400 text-yellow-400"
+                  : "text-slate-400"
+              }
+            />
+          </button>
+
+          {!hasId && dbStatus === "missing" && (
             <button
               onClick={handleScrape}
-              className="h-10 w-10 rounded-lg bg-green-50 flex items-center justify-center text-green-600 border border-green-100 hover:bg-green-100 hover:scale-105 transition-all"
-              title="Update"
+              className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-xs font-bold hover:bg-blue-100 transition-colors"
             >
-              <RefreshCcw size={20} />
-            </button>
-          ) : (
-            <button
-              onClick={handleScrape}
-              className="h-10 w-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 border border-red-100 hover:bg-red-100 hover:scale-105 transition-all"
-              title="Sync"
-            >
-              <XCircle size={20} />
+              <DownloadCloud size={14} /> Sync
             </button>
           )}
         </div>
-
-        <div className="flex flex-col min-w-0 pr-4">
-          <a
-            href={linkUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm font-semibold text-slate-800 hover:text-blue-600 truncate block"
-          >
-            {title}
-          </a>
-          <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-            <span className="flex items-center gap-1">
-              <Briefcase size={10} /> {hostname}
-            </span>
-            {dbStatus === "missing" && (
-              <span className="text-red-500 font-medium">• Not in DB</span>
-            )}
-            {dbStatus === "present" && (
-              <span className="text-green-600 font-medium">• Synced</span>
-            )}
-          </div>
-        </div>
       </div>
-
-      <div className="flex items-center gap-1">
-        <button
-          onClick={handleLocalToggle}
-          disabled={!hasId}
-          className="p-2 rounded-md hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          title={hasId ? "Toggle favourite" : "Sync to enable favourite"}
-        >
-          <Star
-            size={16}
-            className={
-              localFav
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-slate-400"
-            }
-          />
-        </button>
-
-        {/* {hasId && !localFav && (
-          <>
-            <button
-              onClick={onEdit}
-              className="p-2 rounded-md hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
-            >
-              <Edit2 size={16} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-2 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-            >
-              <Trash2 size={16} />
-            </button>
-          </>
-        )} */}
-
-        {!hasId && dbStatus === "missing" && (
-          <button
-            onClick={handleScrape}
-            className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-xs font-bold hover:bg-blue-100 transition-colors"
-          >
-            <DownloadCloud size={14} /> Sync
-          </button>
-        )}
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
