@@ -44,7 +44,7 @@ export const extractDates = (dates) => {
       keys: [
         "applicationStartDate", "applicationStart", "onlineApplicationStart", "onlineApplyStartDate", 
         "onlineApplyStart", "startDate", "applyOnlineStartDate", "applyOnlineStart", "applyStartDate", 
-        "Online Apply Start Date", "applicationBeginDate", "Apply_Start_Date", "startingDate", "startingDate2", "startingDate3"
+        "Online Apply Start Date", "applicationBeginDate", "Apply_Start_Date","apply_start_date", "startingDate","startingDate2", "startingDate3"
       ],
       label: "Application Start",
     },
@@ -52,7 +52,7 @@ export const extractDates = (dates) => {
       keys: [
         "applicationLastDate", "applicationEndDate", "lastDateToApply", "lastDateForApply", 
         "onlineApplyLastDate", "onlineApplicationEnd", "lastDate", "applyOnlineLastDate", 
-        "applyOnlineLast", "applyLastDate", "Online Apply Last Date", "applicationEnd", 
+        "applyOnlineLast", "applyLastDate", "Online Apply Last Date", "applicationEnd", "apply_last_date",
         "Apply_Last_Date", "lastDateOfRegistration", "lastDateToApplyOnline", "lastDate2", "lastDate3", "onlineApplicationLastDate"
       ],
       label: "Application Deadline",
@@ -61,7 +61,7 @@ export const extractDates = (dates) => {
       keys: [
         "feePaymentLastDate", "lastDateForFeePayment", "payExamFeeLastDate", "feeLastDate", 
         "feePaymentEnd", "feePaymentLast", "Last Date For Fee Payment", "lastDateOfFeePayment", 
-        "Fee_Payment_Last_Date", "feePaymentLastDate2", "feePaymentLastDate3", "payExamFeesLastDate"
+        "Fee_Payment_Last_Date",  "fee_payment_last_date","feePaymentLastDate2", "feePaymentLastDate3", "payExamFeesLastDate"
       ],
       label: "Fee Payment Deadline",
     },
@@ -114,7 +114,7 @@ export const extractDates = (dates) => {
     { keys: ["Counselling Start On"], label: "Counselling Start" },
     { keys: ["Last Date for Counselling"], label: "Counselling End" },
     { keys: ["Dummy Admit Card Correction Date"], label: "Dummy Admit Card Correction" },
-    { keys: ["meritList", "meritListDate"], label: "Merit List Date" },
+    { keys: ["meritList",  "merit_list_date", "meritListDate"], label: "Merit List Date" },
     { keys: ["applicationStatus", "Application_Status_Date"], label: "Application Status" },
     { keys: ["photoSignatureReuploadWindow", "reUploadPhotoSign"], label: "Photo/Sign Re-upload" },
     { keys: ["slotBookingDate"], label: "Slot Booking" },
@@ -404,7 +404,7 @@ export const extractVacancy = (vacancy) => {
     vacancy.postDetails ||
     vacancy.details ||
     vacancy.vacancies ||
-    vacancy.postWiseDetails ||
+    vacancy.postWiseDetails || vacancy.trade_name ||
     [];
 
   if (!Array.isArray(positions)) {
@@ -477,7 +477,7 @@ export const extractVacancy = (vacancy) => {
       pos.tradeName ||
       pos.positionName ||
       pos.postTitle ||
-      pos.title ||
+      pos.title || pos.trade_name ||
       "Various Post";
 
     let count =
@@ -487,7 +487,7 @@ export const extractVacancy = (vacancy) => {
       pos.noOfPost ||
       pos.noOfPosts ||
       pos.count ||
-      pos.totalPosts ||
+      pos.totalPosts || pos.number_of_posts || pos.details ||
       null;
 
     let genderStr = null;
