@@ -373,9 +373,13 @@ export default function Header() {
                 ].map((nav) => (
                   <a
                     key={nav}
-                    href={`/view-all?type=${nav
-                      .toUpperCase()
-                      .replace(" ", "_")}`}
+                    href={
+                      nav === "Private Jobs"
+                        ? "/not-available"
+                        : `/view-all?type=${nav
+                            .toUpperCase()
+                            .replace(" ", "_")}`
+                    }
                     className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-rose-50 dark:hover:bg-gray-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
                   >
                     {nav}
@@ -453,7 +457,11 @@ export default function Header() {
                   "Admission"].map((nav) => (
                 <a
                   key={nav}
-                  href={`/${nav.toUpperCase().replace(" ", "-")}`}
+                  href={
+                    nav === "Private Jobs"
+                      ? "/not-available"
+                      : `/${nav.toUpperCase().replace(" ", "-")}`
+                  }
                   className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-gray-800 hover:text-rose-600 dark:hover:text-rose-400"
                 >
                   {nav}

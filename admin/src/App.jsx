@@ -13,6 +13,7 @@ import AllAnswerKeys from "./pages/AllAnswerKeys";
 import MenuItemsPage from "./pages/admin/MenuItems";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ModelSelector from "./pages/admin/Ai-integration";
+import Scrapper from "./pages/admin/Ai-scrapper";
 
 const ProtectedRoute = () => {
   const { isAuthenticated } = useSelector((state) => state.user);
@@ -33,12 +34,15 @@ function App() {
           <Route path="/dashboard/job-edit/:id" element={<JobEdit />} />
           <Route path="/dashboard/all-jobs" element={<AllJobs />} />
           <Route path="/dashboard/admit-cards" element={<AllAdmitCards />} />
+          
           <Route path="/dashboard/results" element={<AllResults />} />
           <Route path="/dashboard/exams" element={<AllExams />} />
           <Route path="/dashboard/answer-keys" element={<AllAnswerKeys />} />
           <Route path="/admin-menu-items" element={<MenuItemsPage />} />
           <Route path="/admin-manage/users" element={<ManageUsers />} />
           <Route path="/ai-integrate" element={<ModelSelector />} />
+          <Route path="/govt-scrapper" element={<Scrapper />} />
+
         </Route>
       </Route>
     </Routes>

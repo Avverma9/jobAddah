@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchSidebarItems } from '../../redux/slices/sidebar';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, LogOut } from 'lucide-react';
-import { logout } from '../../redux/slices/user';
+import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchSidebarItems } from "../../redux/slices/sidebar";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ChevronDown, ChevronRight, LogOut } from "lucide-react";
+import { logout } from "../../redux/slices/user";
 
-export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen }) {
+export default function Sidebar({
+  sidebarOpen,
+  mobileMenuOpen,
+  setMobileMenuOpen,
+}) {
   const dispatch = useDispatch();
   const sidebarData = useSelector((state) => state.sidebar?.data);
   const [expandedItems, setExpandedItems] = useState({});
@@ -19,36 +23,38 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   const buildSidebarTree = (state) => {
     if (!state) return [];
 
-    // Accept multiple shapes
     let list = [];
     if (Array.isArray(state)) list = state;
     else if (state.items && Array.isArray(state.items)) list = state.items;
     else if (state.item) list = [state.item];
     else if (state._id) list = [state];
 
-    // Sort by order
     list = list.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    // If items already have nested children arrays, return sorted
-    const hasNestedChildren = list.some((it) => Array.isArray(it.children) && it.children.length > 0);
+    const hasNestedChildren = list.some(
+      (it) => Array.isArray(it.children) && it.children.length > 0
+    );
     if (hasNestedChildren) {
       return list.map((it) => ({
         ...it,
-        children: (it.children || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0))
+        children: (it.children || [])
+          .slice()
+          .sort((a, b) => (a.order || 0) - (b.order || 0)),
       }));
     }
 
-    // Otherwise build tree by parent references
     const map = {};
     list.forEach((it) => (map[it._id || it.key] = { ...it, children: [] }));
     const roots = [];
-    
+
     list.forEach((it) => {
       const id = it._id || it.key;
       const parent = it.parent;
-      
+
       if (parent) {
-        const parentEntry = list.find((x) => x._id === parent || x.key === parent);
+        const parentEntry = list.find(
+          (x) => x._id === parent || x.key === parent
+        );
         if (parentEntry) {
           const pid = parentEntry._id || parentEntry.key;
           if (map[pid]) {
@@ -67,7 +73,6 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
   const sidebarItems = useMemo(() => buildSidebarTree(sidebarData), [sidebarData]);
 
-  // Auto-expand active parent items
   useEffect(() => {
     if (!sidebarItems?.length) return;
 
@@ -86,13 +91,12 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
     sidebarItems.forEach((i) => checkActive(i));
 
-    // Update only if changed
     const keysA = Object.keys(expandedItems).sort();
     const keysB = Object.keys(newExpanded).sort();
-    const isSame = 
+    const isSame =
       keysA.length === keysB.length &&
       keysA.every((k) => newExpanded[k] === expandedItems[k]);
-      
+
     if (!isSame) {
       setExpandedItems(newExpanded);
     }
@@ -105,45 +109,32 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
     }));
   };
 
-  // ✅ Fixed icon renderer - handles Font Awesome 4, 5, 6 and Remix Icons
   const renderIcon = (item) => {
-    let iconClass = item.icon || '';
+    let iconClass = item.icon || "";
 
-    if (item.iconType === 'font' && iconClass) {
-      // Handle Remix Icons (ri-*)
-      if (iconClass.startsWith('ri-')) {
-        return <i className={iconClass} style={{ fontSize: '20px' }} />;
+    if (item.iconType === "font" && iconClass) {
+      if (iconClass.startsWith("ri-")) {
+        return <i className={iconClass} style={{ fontSize: "20px" }} />;
       }
 
-      // Handle Font Awesome - normalize to FA6 format
-      // FA4: "fa fa-briefcase" → "fa-solid fa-briefcase"
-      // FA5: "fas fa-briefcase" → "fa-solid fa-briefcase"
-      // FA6: "fa-solid fa-briefcase" → keep as is
-      
-      if (iconClass.startsWith('fa fa-')) {
-        // FA4 format: "fa fa-briefcase"
-        iconClass = iconClass.replace('fa fa-', 'fa-solid fa-');
-      } else if (iconClass.startsWith('fas fa-')) {
-        // FA5 format: "fas fa-briefcase"
-        iconClass = iconClass.replace('fas fa-', 'fa-solid fa-');
-      } else if (iconClass.startsWith('far fa-')) {
-        // FA5 regular: "far fa-briefcase"
-        iconClass = iconClass.replace('far fa-', 'fa-regular fa-');
-      } else if (iconClass.startsWith('fab fa-')) {
-        // FA5 brands: "fab fa-briefcase"
-        iconClass = iconClass.replace('fab fa-', 'fa-brands fa-');
-      } else if (!iconClass.startsWith('fa-')) {
-        // No prefix, assume solid
+      if (iconClass.startsWith("fa fa-")) {
+        iconClass = iconClass.replace("fa fa-", "fa-solid fa-");
+      } else if (iconClass.startsWith("fas fa-")) {
+        iconClass = iconClass.replace("fas fa-", "fa-solid fa-");
+      } else if (iconClass.startsWith("far fa-")) {
+        iconClass = iconClass.replace("far fa-", "fa-regular fa-");
+      } else if (iconClass.startsWith("fab fa-")) {
+        iconClass = iconClass.replace("fab fa-", "fa-brands fa-");
+      } else if (!iconClass.startsWith("fa-")) {
         iconClass = `fa-solid ${iconClass}`;
       }
 
       return <i className={iconClass} />;
     }
 
-    // Fallback: first letter of label
     return (
       <span className="text-sm font-semibold">
-        {item.label?.charAt(0)?.toUpperCase() || '?'}
+        {item.label?.charAt(0)?.toUpperCase() || "?"}
       </span>
     );
   };
@@ -151,11 +142,11 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
   const NavItem = ({ item, isOpen, onClick }) => {
     const active = item.route === location.pathname;
     const base = `group flex items-center rounded-lg px-3 py-2.5 transition-all duration-200 ${
-      !isOpen ? 'justify-center' : ''
+      !isOpen ? "justify-center" : ""
     }`;
     const state = active
-      ? 'bg-blue-600 text-white'
-      : 'text-slate-400 hover:bg-slate-800 hover:text-white';
+      ? "bg-blue-600 text-white"
+      : "text-slate-400 hover:bg-slate-800 hover:text-white";
 
     const content = (
       <>
@@ -164,7 +155,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         </div>
         <span
           className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
-            isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 ml-0'
+            isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 ml-0"
           }`}
         >
           {item.label}
@@ -189,8 +180,8 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
         <div
           onClick={onToggle}
           className={`group flex items-center justify-between cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white ${
-            expanded ? 'bg-slate-800 text-white' : ''
-          } ${!isOpen ? 'justify-center' : ''}`}
+            expanded ? "bg-slate-800 text-white" : ""
+          } ${!isOpen ? "justify-center" : ""}`}
         >
           <div className="flex items-center min-w-0">
             <div className="shrink-0 h-5 w-5 flex items-center justify-center">
@@ -198,7 +189,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
             </div>
             <span
               className={`ml-3 text-sm font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 ml-0'
+                isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 ml-0"
               }`}
             >
               {item.label}
@@ -214,7 +205,7 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
         <div
           className={`overflow-hidden transition-all duration-300 ${
-            expanded && isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+            expanded && isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <div className="mt-1 ml-4 border-l border-slate-700 pl-3 space-y-1">
@@ -227,10 +218,11 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
   const SubItem = ({ item, onClick }) => {
     const isActive = item.route === location.pathname;
-    const base = 'flex items-center gap-2 cursor-pointer rounded px-2 py-2 text-sm transition-colors';
+    const base =
+      "flex items-center gap-2 cursor-pointer rounded px-2 py-2 text-sm transition-colors";
     const state = isActive
-      ? 'bg-slate-800 text-white'
-      : 'text-slate-500 hover:bg-slate-800 hover:text-blue-400';
+      ? "bg-slate-800 text-white"
+      : "text-slate-500 hover:bg-slate-800 hover:text-blue-400";
 
     const content = (
       <>
@@ -252,17 +244,55 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
     );
   };
 
+  const renderNode = (item, level = 0) => {
+    const key = item._id || item.key;
+
+    if (item.children?.length > 0) {
+      return (
+        <CollapsibleItem
+          key={key}
+          item={item}
+          isOpen={sidebarOpen}
+          expanded={expandedItems[key]}
+          onToggle={() => handleToggle(key)}
+        >
+          {item.children.map((child) => renderNode(child, level + 1))}
+        </CollapsibleItem>
+      );
+    }
+
+    if (level === 0) {
+      return (
+        <NavItem
+          key={key}
+          item={item}
+          isOpen={sidebarOpen}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      );
+    }
+
+    return (
+      <SubItem
+        key={key}
+        item={item}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+    );
+  };
+
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-slate-900 text-slate-300 transition-all duration-300 ${
-        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:static lg:translate-x-0 ${sidebarOpen ? 'w-64' : 'lg:w-20 w-64'}`}
+        mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+      } lg:static lg:translate-x-0 ${
+        sidebarOpen ? "w-64" : "lg:w-20 w-64"
+      }`}
     >
-      {/* Header */}
       <div className="flex h-20 items-center justify-start px-4 border-b border-slate-800 bg-slate-950 shadow-sm">
         <div
           className={`flex items-center gap-3 transition-all ${
-            !sidebarOpen ? 'justify-center w-full -ml-2' : ''
+            !sidebarOpen ? "justify-center w-full -ml-2" : ""
           }`}
         >
           <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-pink-500 to-orange-500 flex items-center justify-center shadow-lg">
@@ -271,85 +301,46 @@ export default function Sidebar({ sidebarOpen, mobileMenuOpen, setMobileMenuOpen
 
           <div
             className={`flex flex-col transition-all ${
-              sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 -translate-x-10 overflow-hidden'
+              sidebarOpen
+                ? "opacity-100 w-auto"
+                : "opacity-0 w-0 -translate-x-10 overflow-hidden"
             }`}
           >
             <h1 className="text-2xl font-bold flex">
               <span className="text-pink-500">Job</span>
               <span className="text-orange-500">Addah</span>
             </h1>
-            <span className="text-[9px] text-slate-500 tracking-widest">THE NO.1 JOB PORTAL</span>
+            <span className="text-[9px] text-slate-500 tracking-widest">
+              THE NO.1 JOB PORTAL
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-        {/* Debug view for development */}
-        {sidebarItems.length === 0 && sidebarData && process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-slate-400 p-3 bg-slate-800 rounded mb-2">
-            <div className="font-semibold mb-1">Debug: Raw API Data</div>
-            <pre className="overflow-auto max-h-40 text-[10px]">
-              {JSON.stringify(sidebarData, null, 2)}
-            </pre>
-          </div>
-        )}
-
-        {/* Render menu items */}
-        {sidebarItems.map((item) => {
-          if (item.children?.length > 0) {
-            return (
-              <CollapsibleItem
-                key={item._id || item.key}
-                item={item}
-                isOpen={sidebarOpen}
-                expanded={expandedItems[item._id || item.key]}
-                onToggle={() => handleToggle(item._id || item.key)}
-              >
-                {item.children.map((child) => (
-                  <SubItem
-                    key={child._id || child.key}
-                    item={child}
-                    onClick={() => setMobileMenuOpen(false)}
-                  />
-                ))}
-              </CollapsibleItem>
-            );
-          }
-
-          return (
-            <NavItem
-              key={item._id || item.key}
-              item={item}
-              isOpen={sidebarOpen}
-              onClick={() => setMobileMenuOpen(false)}
-            />
-          );
-        })}
-
-        {/* Empty state */}
         {sidebarItems.length === 0 && !sidebarData && (
           <div className="text-center py-8 text-slate-500 text-sm">
             No menu items available
           </div>
         )}
+
+        {sidebarItems.map((item) => renderNode(item, 0))}
       </nav>
 
-      {/* Logout Button */}
       <div className="border-t border-slate-800 p-4">
         <button
           className={`flex items-center gap-3 w-full text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg px-3 py-2.5 transition-all ${
-            !sidebarOpen ? 'justify-center' : ''
+            !sidebarOpen ? "justify-center" : ""
           }`}
           onClick={async () => {
             await dispatch(logout());
-            navigate('/');
+            navigate("/");
           }}
         >
           <LogOut size={20} className="shrink-0" />
           <span
             className={`text-sm font-medium transition-all ${
-              sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'
+              sidebarOpen ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
             }`}
           >
             Logout

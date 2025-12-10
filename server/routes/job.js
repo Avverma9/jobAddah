@@ -23,7 +23,7 @@ const {
 
   deleteAllJobs,
 } = require("../controller/jobs");
-const { getPostDetails } = require("../controller/posts");
+const { getGovPostDetails } = require("../controller/govtpost");
 
 // ==================================================================
 // 🟢 PUBLIC ROUTES (Accessible by Everyone - No Login Required)
@@ -99,7 +99,7 @@ router.delete(
   deleteAllPosts
 );
 
-router.get("/scraped-data", getPostDetails);
+router.get("/scraped-data", getGovPostDetails);
 
 
 module.exports = router;

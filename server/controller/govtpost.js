@@ -1,7 +1,7 @@
 // controllers/postController.js (ya jo bhi file ka naam hai)
 
-const Post = require("../models/jobs");
-const postList = require("../models/postList");
+const Post = require("../models/govtpost");
+const govPostList = require("../models/postList");
 const Section = require("../models/section");
 const encrypt = require("../utils/decoder"); // pehle decoder likha tha, ab sahi
 
@@ -11,7 +11,7 @@ const sendEncrypted = (res, statusCode, payload) => {
   return res.status(statusCode).json(encryptedPayload);
 };
 
-const getPostDetails = async (req, res) => {
+const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
     if (!url) {
@@ -57,7 +57,7 @@ const getPostDetails = async (req, res) => {
 };
 
 
-const getSections = async (req, res) => {
+const getGovJobSections = async (req, res) => {
   try {
     const getData = await Section.find().sort({ createdAt: -1 });
 
@@ -74,10 +74,10 @@ const getSections = async (req, res) => {
   }
 };
 
-const getPostListBySection = async (req, res) => {
+const getGovPostListBySection = async (req, res) => {
   try {
     const url = req.params.url;
-    const getData = await postList.find({ section: url }).sort({
+    const getData = await govPostList.find({ section: url }).sort({
       createdAt: -1,
     });
 
@@ -362,14 +362,69 @@ const fixAllUrls = async (req, res) => {
   }
 };
 
+const findByTitle = async (req, res) => {
+  try {
+    const { title } = req.query;
+
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        error: "Title is required",
+      });
+    }
+
+    // Prepare safe regex
+    const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Cursor Query (streaming)
+    const cursor = Post.find(
+      {
+        "recruitment.title": { $regex: new RegExp(safeTitle, "i") }
+      },
+      {
+        _id: 1,
+        url: 1,                 // ✅ FIX → url added
+        recruitment: 1,
+        updatedAt: 1,
+        fav: 1
+      }
+    )
+      .lean()
+      .cursor();
+
+    // Streaming Response
+    res.setHeader("Content-Type", "application/json");
+    res.write(`{"success": true, "data": [`);
+
+    let first = true;
+
+    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
+      if (!first) res.write(",");
+      res.write(JSON.stringify(doc));
+      first = false;
+    }
+
+    res.write("]}");
+    res.end();
+
+  } catch (err) {
+    console.error("Stream error:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Server error",
+    });
+  }
+};
+
 
 
 module.exports = {
-  getPostDetails,
-  getSections,
-  getPostListBySection,
+  getGovPostDetails,
+  getGovJobSections,
+  getGovPostListBySection,
   markFav,
   getFavPosts,
   getReminders,
-  fixAllUrls
+  fixAllUrls,
+  findByTitle
 };

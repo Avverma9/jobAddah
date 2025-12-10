@@ -103,9 +103,7 @@ const PostDetails = () => {
         <div className="bg-white dark:bg-gray-900 shadow-sm border border-slate-300 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header section */}
           <div className="border-b border-slate-300 dark:border-gray-700 p-6 text-center bg-white dark:bg-gray-900">
-            <div className="inline-block px-3 py-1 mb-3 text-xs font-bold tracking-wider text-blue-700 dark:text-blue-300 uppercase bg-blue-50 dark:bg-blue-900/30 rounded-full">
-              Latest Notification
-            </div>
+         
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-gray-100 leading-tight mb-2">
               {data.title}
             </h1>

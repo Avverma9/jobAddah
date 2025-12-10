@@ -2,8 +2,8 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Post = require("../models/jobs");
-const postList = require("../models/postList");
+const Post = require("../models/govtpost");
+const govPostList = require("../models/postList");
 const Section = require("../models/section");
 const GeminiModel = require("../models/ai/gemini-model");
 const ApiKey = require("../models/ai/ai-apiKey");
@@ -463,7 +463,7 @@ const scrapeCategory = async (req, res) => {
 
     const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
 
-    await postList.findOneAndUpdate(
+    await govPostList.findOneAndUpdate(
       { url: categoryUrl },
       { $set: { url: categoryUrl, jobs: uniqueJobs } },
       { upsert: true, new: true }

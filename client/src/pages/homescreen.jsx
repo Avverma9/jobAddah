@@ -8,7 +8,6 @@ import {
   Briefcase,
   BookOpen,
   TrendingUp,
-  Building2,
   List,
   CheckCircle,
 } from "lucide-react";
@@ -17,11 +16,13 @@ import Header from "../components/Header";
 import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
-import { decryptResponse, encodeBase64Url, parseApiResponse } from "../../util/encode-decode";
+import {
+  decryptResponse,
+  encodeBase64Url,
+  parseApiResponse,
+} from "../../util/encode-decode";
 
 const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
-
-
 
 const getRecentVisitIds = () => {
   try {
@@ -41,8 +42,6 @@ const saveRecentVisit = (id) => {
     visits = visits.slice(0, 5);
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
-
-    // fire-and-forget
     fetch(`${baseUrl}/log-visit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,35 +57,32 @@ const saveRecentVisit = (id) => {
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString();
-
-  // agar http/https hai to always base64 + url param
   if (val.startsWith("http://") || val.startsWith("https://")) {
     const encoded = encodeBase64Url(val);
     return `/post?url=${encoded}`;
   }
-
-  // baaki sab ke liye id param
   return `/post?id={${val}}`.replace("{", "").replace("}", "");
 };
 
-const getCategoryConfig = (categoryName) => {
-  if (!categoryName) return { icon: FileText, color: "gray", postType: "JOB" };
-  const name = categoryName.toLowerCase();
-  if (name.includes("latest job"))
-    return { icon: Bell, color: "green", postType: "JOB" };
-  if (name.includes("admit card"))
-    return { icon: FileText, color: "blue", postType: "ADMIT_CARD" };
-  if (name.includes("result"))
-    return { icon: Award, color: "red", postType: "RESULT" };
-  if (name.includes("answer key"))
-    return { icon: CheckCircle, color: "pink", postType: "ANSWER_KEY" };
-  if (name.includes("admission"))
-    return { icon: BookOpen, color: "purple", postType: "ADMISSION" };
-  if (name.includes("syllabus"))
-    return { icon: List, color: "orange", postType: "SYLLABUS" };
-  if (name.includes("scholarship"))
-    return { icon: Award, color: "yellow", postType: "SCHOLARSHIP" };
-  return { icon: FileText, color: "gray", postType: "JOB" };
+const getCategoryConfig = (categoryName = "") => {
+  if (!categoryName) {
+    return {
+      icon: FileText,
+      color: "gray",
+      postType: "JOB",
+      name: "",
+    };
+  }
+
+  const formattedName =
+    categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+
+  return {
+    icon: FileText,      // default icon
+    color: "gray",       // default color
+    postType: "JOB",     // default type
+    name: formattedName, // 👈 THIS IS WHAT YOU WANTED
+  };
 };
 
 const QuickCard = ({ icon: Icon, title, id, color }) => {
@@ -122,7 +118,6 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
       <div className="mb-2 p-2 rounded-xl bg-white/60 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 group-hover:scale-110 transition-transform duration-300">
         <Icon size={24} strokeWidth={2} />
       </div>
-
       <span className="text-[11px] sm:text-xs font-bold text-center leading-tight line-clamp-2 px-1">
         {title}
       </span>
@@ -167,9 +162,18 @@ const SkeletonPrivateJobCard = () => (
   </div>
 );
 
+const SearchResultsSkeleton = () => (
+  <div className="space-y-1.5 sm:space-y-2">
+    {[1, 2, 3, 4].map((i) => (
+      <div key={i} className="relative overflow-hidden rounded-lg">
+        <div className="h-9 sm:h-10 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 shimmer" />
+      </div>
+    ))}
+  </div>
+);
+
 const RecentVisitsSection = ({ data }) => {
   if (!data || data?.length === 0) return null;
-
   return (
     <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 px-1">
@@ -202,20 +206,57 @@ const RecentVisitsSection = ({ data }) => {
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const [favPosts, setFavPosts] = useState([]);
   const [recentVisitIds, setRecentVisitIds] = useState([]);
   const [dynamicSections, setDynamicSections] = useState([]);
   const [isDynamicLoading, setIsDynamicLoading] = useState(true);
   const [privateJobs, setPrivateJobs] = useState([]);
   const [isPrivateLoading, setIsPrivateLoading] = useState(true);
-
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [reminders, setReminders] = useState({
     expiresToday: [],
     expiringSoon: [],
     isLoading: true,
   });
 
-  // recent visits sync
+  useEffect(() => {
+    if (!searchQuery) {
+      setIsTyping(false);
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+    setIsTyping(true);
+    const typingTimeout = setTimeout(() => {
+      setIsTyping(false);
+    }, 400);
+    return () => clearTimeout(typingTimeout);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    const delay = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const res = await fetch(
+          `${baseUrl}/find-by-title?title=${encodeURIComponent(searchQuery)}`
+        );
+        const payload = await parseApiResponse(res);
+        const results = payload?.data ?? payload;
+        const finalRes = Array.isArray(results) ? results : [];
+        setSearchResults(finalRes);
+      } catch (err) {
+        console.error("Search error:", err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 1000);
+    return () => clearTimeout(delay);
+  }, [searchQuery]);
+
   useEffect(() => {
     const loadVisits = () => {
       setRecentVisitIds(getRecentVisitIds());
@@ -226,26 +267,21 @@ export default function HomeScreen() {
       window.removeEventListener("recent-visits-updated", loadVisits);
   }, []);
 
-  // dynamic sections
   useEffect(() => {
     const fetchDynamicData = async () => {
       try {
         setIsDynamicLoading(true);
-
         const categoryRes = await fetch(`${baseUrl}/get-sections`);
         const categoryPayload = await parseApiResponse(categoryRes);
-
         const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
         const categories =
           Array.isArray(sectionDocs) && sectionDocs?.length > 0
             ? sectionDocs[0]?.categories || []
             : [];
-
         if (categories?.length === 0) {
           setDynamicSections([]);
           return;
         }
-
         const sectionPromises = categories.map(async (cat) => {
           try {
             const res = await fetch(`${baseUrl}/get-postlist`, {
@@ -255,10 +291,8 @@ export default function HomeScreen() {
               },
               body: JSON.stringify({ url: cat.link }),
             });
-
             const payload = await parseApiResponse(res);
             const base = payload?.data ?? payload;
-
             let jobs = [];
             if (Array.isArray(base)) {
               const match =
@@ -267,7 +301,6 @@ export default function HomeScreen() {
             } else {
               jobs = base?.jobs || [];
             }
-
             const processedData = (jobs || [])
               .filter(
                 (job) =>
@@ -276,7 +309,6 @@ export default function HomeScreen() {
                   !job.title.toLowerCase().includes("sarkari result")
               )
               .map((job) => ({ ...job, id: job.link }));
-
             return {
               name: cat.name,
               data: processedData,
@@ -291,7 +323,6 @@ export default function HomeScreen() {
             };
           }
         });
-
         const sections = await Promise.all(sectionPromises);
         setDynamicSections(sections);
       } catch (error) {
@@ -300,17 +331,14 @@ export default function HomeScreen() {
         setIsDynamicLoading(false);
       }
     };
-
     fetchDynamicData();
   }, []);
 
-  // private jobs
   useEffect(() => {
     const fetchPrivateJobs = async () => {
       try {
         const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
         const payload = await parseApiResponse(res);
-
         const base = payload?.data ?? payload;
         const jobs = Array.isArray(base) ? base : base?.data || [];
         setPrivateJobs(jobs || []);
@@ -320,17 +348,14 @@ export default function HomeScreen() {
         setIsPrivateLoading(false);
       }
     };
-
     fetchPrivateJobs();
   }, []);
 
-  // reminders
   useEffect(() => {
     const fetchReminders = async () => {
       try {
         const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
         const data = await parseApiResponse(response);
-
         if (data?.success) {
           const list = Array.isArray(data.reminders) ? data.reminders : [];
           const expiresToday = list.filter((item) => item.daysLeft === 0);
@@ -348,44 +373,32 @@ export default function HomeScreen() {
         setReminders((prev) => ({ ...prev, isLoading: false }));
       }
     };
-
     fetchReminders();
     const interval = setInterval(fetchReminders, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // fav posts
-// fav posts
-useEffect(() => {
-  const fetchFavPosts = async () => {
-    try {
-      const res = await fetch(`${baseUrl}/fav-posts`);
-      const payload = await parseApiResponse(res);
-
-      // normalize all possible shapes:
-      // 1) { success, count, data: [...] }
-      // 2) { data: [...] }
-      // 3) [...] directly
-      let fav = [];
-
-      if (Array.isArray(payload)) {
-        fav = payload;
-      } else if (Array.isArray(payload?.data)) {
-        fav = payload.data;
-      } else if (Array.isArray(payload?.data?.data)) {
-        fav = payload.data.data;
+  useEffect(() => {
+    const fetchFavPosts = async () => {
+      try {
+        const res = await fetch(`${baseUrl}/fav-posts`);
+        const payload = await parseApiResponse(res);
+        let fav = [];
+        if (Array.isArray(payload)) {
+          fav = payload;
+        } else if (Array.isArray(payload?.data)) {
+          fav = payload.data;
+        } else if (Array.isArray(payload?.data?.data)) {
+          fav = payload.data.data;
+        }
+        setFavPosts(fav);
+      } catch (error) {
+        console.error("Error fetching fav posts:", error);
+        setFavPosts([]);
       }
-
-      setFavPosts(fav);
-    } catch (error) {
-      console.error("Error fetching fav posts:", error);
-      setFavPosts([]);
-    }
-  };
-
-  fetchFavPosts();
-}, []);
-
+    };
+    fetchFavPosts();
+  }, []);
 
   const filteredSections = useMemo(() => {
     if (!searchQuery) return dynamicSections;
@@ -399,14 +412,11 @@ useEffect(() => {
 
   const recentVisitsData = useMemo(() => {
     if (recentVisitIds?.length === 0) return [];
-
     const allJobs = [
       ...dynamicSections.flatMap((s) => s.data),
       ...privateJobs.map((j) => ({ ...j, id: j._id, title: j.postTitle })),
     ];
-
     const jobMap = new Map(allJobs.map((job) => [job.id, job]));
-
     return recentVisitIds
       .map((id) => jobMap.get(id))
       .filter((job) => job !== undefined);
@@ -415,32 +425,25 @@ useEffect(() => {
   const handleGlobalClick = (e) => {
     const link = e.target.closest("a");
     if (!link || !link.href) return;
-
     const url = new URL(link.href);
-
     if (!url.pathname.includes("/post")) return;
-
-    // 1) naye base64-url param
     const urlParam = url.searchParams.get("url");
     if (urlParam) {
-      // base64 string hi store karni hai
       saveRecentVisit(urlParam);
       return;
     }
-
-    // 2) purana scraped 'q' param (agar kahin use ho raha ho)
     const scrapedUrlEncoded = url.searchParams.get("q");
     if (scrapedUrlEncoded) {
       saveRecentVisit(scrapedUrlEncoded);
       return;
     }
-
-    // 3) sirf numeric / mongo id wale cases
     const id = url.searchParams.get("id") || url.searchParams.get("_id");
     if (id) {
       saveRecentVisit(id);
     }
   };
+
+  const showSearchSkeleton = searchQuery.length > 0 && (isTyping || isSearching);
 
   return (
     <div
@@ -449,7 +452,6 @@ useEffect(() => {
     >
       <Header />
 
-      {/* Top marquee bar */}
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-blue-700 to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-blue-600 to-transparent z-10" />
@@ -483,7 +485,6 @@ useEffect(() => {
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
-        {/* Search + Quick favorites */}
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
@@ -496,6 +497,39 @@ useEffect(() => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 dark:text-white"
             />
+            {searchQuery.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-80 overflow-y-auto">
+                <div className="p-2 sm:p-3">
+                  {showSearchSkeleton ? (
+                    <SearchResultsSkeleton />
+                  ) : searchResults.length === 0 ? (
+                    <p className="text-gray-500 text-sm py-1.5 px-1">
+                      No results found.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {searchResults.map((item) => (
+                        <Link
+                          key={item._id || item.id}
+                          to={getPostLink(item?.url)}
+                          onClick={() => saveRecentVisit(item._id || item.id)}
+                          className="block px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                        >
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            {item.recruitment?.title ||
+                              item.title ||
+                              "Untitled Post"}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.recruitment?.date || ""}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {favPosts?.length > 0 && (
@@ -529,7 +563,6 @@ useEffect(() => {
             isLoading={reminders.isLoading}
           />
 
-          {/* Dynamic sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {isDynamicLoading
               ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
@@ -544,51 +577,6 @@ useEffect(() => {
                     isLoading={false}
                   />
                 ))}
-          </div>
-
-          {/* Private jobs section */}
-          <div
-            id="private-jobs"
-            className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
-          >
-            <div className="flex flex-col md:flex-row md:items-center justify-between bg-slate-900 dark:bg-slate-800 text-white p-4 sm:p-6 gap-3 sm:gap-4">
-              <div>
-                <div className="flex items-center gap-2 font-bold text-base sm:text-2xl mb-0.5 sm:mb-1 dark:text-gray-100">
-                  <div className="p-1.5 sm:p-2 bg-purple-500 rounded-lg">
-                    <Building2 size={18} className="sm:w-6 sm:h-6" />
-                  </div>
-                  MNC & Private Jobs
-                </div>
-                <p className="text-slate-400 dark:text-slate-300 text-xs sm:text-sm">
-                  Top private companies hiring now. Apply directly.
-                </p>
-              </div>
-              <Link
-                to="/private-jobs"
-                className="bg-white/10 hover:bg-white/20 text-white px-3 sm:px-5 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold transition-colors border border-white/10 inline-block whitespace-nowrap"
-              >
-                View All
-              </Link>
-            </div>
-
-            <div className="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-              {isPrivateLoading ? (
-                <>
-                  <SkeletonPrivateJobCard />
-                  <SkeletonPrivateJobCard />
-                  <SkeletonPrivateJobCard />
-                  <SkeletonPrivateJobCard />
-                </>
-              ) : privateJobs?.length > 0 ? (
-                privateJobs.map((job) => (
-                  <PrivateJobCard key={job._id} job={job} />
-                ))
-              ) : (
-                <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
-                  No private jobs available
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </main>
@@ -612,6 +600,14 @@ useEffect(() => {
         }
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
+        }
+        .shimmer {
+          background-size: 200% 100%;
+          animation: shimmer 1.2s linear infinite;
+        }
+        @keyframes shimmer {
+          0% { background-position: 100% 0; }
+          100% { background-position: -100% 0; }
         }
       `}</style>
     </div>

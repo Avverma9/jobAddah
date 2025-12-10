@@ -1,4 +1,4 @@
-const Post = require("../models/jobs");
+const Post = require("../models/govtpost");
 
 // --- Helper: Standard Response Formatter ---
 const formatResponse = (data) => ({
