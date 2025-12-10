@@ -404,8 +404,14 @@ export const extractVacancy = (vacancy) => {
     vacancy.postDetails ||
     vacancy.details ||
     vacancy.vacancies ||
-    vacancy.postWiseDetails || vacancy.trade_name ||
+    vacancy.postWiseDetails ||
+    vacancy.trade_name ||
     [];
+
+  // NEW: if positions is a single string, wrap it
+  if (typeof positions === "string") {
+    positions = [positions];
+  }
 
   if (!Array.isArray(positions)) {
     positions = [];
@@ -470,14 +476,47 @@ export const extractVacancy = (vacancy) => {
     return null;
   };
 
-  const normalizedPositions = positions.map((pos) => {
+  const normalizedPositions = positions.map((rawPos) => {
+    // Handle plain string position like:
+    // "UP Police Radio Cadre Assistant Operator (Total 44 posts: General 20, OBC 11, EWS 4, SC 9, ST 0)"
+    if (typeof rawPos === "string") {
+      const str = rawPos.trim();
+
+      // Name before first "(" if present, else whole string
+      let name = str;
+      let details = "";
+      const parenIndex = str.indexOf("(");
+      if (parenIndex !== -1) {
+        name = str.slice(0, parenIndex).trim();
+        details = str.slice(parenIndex + 1, str.lastIndexOf(")")).trim();
+      }
+
+      // Try to extract simple category counts from details
+      // e.g. "Total 44 posts: General 20, OBC 11, EWS 4, SC 9, ST 0"
+      let catSummary = "";
+      if (details) {
+        const afterColon = details.split(":").slice(1).join(":").trim();
+        catSummary = afterColon || details;
+      }
+
+      return {
+        name: formatText(name || "Various Post"),
+        count: formatText(catSummary || "See Notification"),
+        group: "-",
+        eligibility: "-"
+      };
+    }
+
+    const pos = rawPos || {};
+
     const name =
       pos.postName ||
       pos.name ||
       pos.tradeName ||
       pos.positionName ||
       pos.postTitle ||
-      pos.title || pos.trade_name ||
+      pos.title ||
+      pos.trade_name ||
       "Various Post";
 
     let count =
@@ -487,7 +526,9 @@ export const extractVacancy = (vacancy) => {
       pos.noOfPost ||
       pos.noOfPosts ||
       pos.count ||
-      pos.totalPosts || pos.number_of_posts || pos.details ||
+      pos.totalPosts ||
+      pos.number_of_posts ||
+      pos.details ||
       null;
 
     let genderStr = null;
@@ -535,12 +576,13 @@ export const extractVacancy = (vacancy) => {
       name: formatText(name),
       count: formatText(count),
       group: formatText(group),
-      eligibility: formatText(eligibility),
+      eligibility: formatText(eligibility)
     };
   });
 
   return { total, positions: normalizedPositions };
 };
+
 
 
 
@@ -738,36 +780,45 @@ export const VacancyTable = ({ positions }) => {
   if (!positions || positions.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-        <Briefcase size={18} className="text-blue-600" />
-        <h3 className="font-bold text-slate-800">Vacancy Details</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Post Name</th>
-              <th className="px-4 py-3 font-semibold text-center">Group/Cat</th>
-              <th className="px-4 py-3 font-semibold text-center">Total</th>
-              <th className="px-4 py-3 font-semibold">Eligibility</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {positions.map((pos, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3 font-medium text-slate-800">{pos.name}</td>
-                <td className="px-4 py-3 text-center text-slate-600">{pos.group}</td>
-                <td className="px-4 py-3 text-center font-bold text-blue-600 max-w-[150px] break-words">
-                  {pos.count}
-                </td>
-                <td className="px-4 py-3 text-slate-600 max-w-xs">{pos.eligibility}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 overflow-hidden mt-6">
+  <div className="bg-slate-50 dark:bg-gray-800 px-4 py-3 border-b border-slate-200 dark:border-gray-700 flex items-center gap-2">
+    <Briefcase size={18} className="text-blue-600" />
+  </div>
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm text-left bg-white dark:bg-gray-900">
+      <thead className="text-xs text-slate-500 dark:text-gray-300 uppercase bg-slate-50 dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700">
+        <tr>
+          <th className="px-4 py-3 font-semibold">Post Name</th>
+          <th className="px-4 py-3 font-semibold text-center">Group/Cat</th>
+          <th className="px-4 py-3 font-semibold text-center">Total</th>
+          <th className="px-4 py-3 font-semibold">Eligibility</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
+        {positions.map((pos, idx) => (
+          <tr
+            key={idx}
+            className="hover:bg-slate-50/50 dark:hover:bg-gray-800"
+          >
+            <td className="px-4 py-3 font-medium text-slate-800 dark:text-gray-200">
+              {pos.name}
+            </td>
+            <td className="px-4 py-3 text-center text-slate-600 dark:text-gray-300">
+              {pos.group}
+            </td>
+            <td className="px-4 py-3 text-center font-bold text-blue-600 dark:text-blue-400 max-w-[150px] break-words">
+              {pos.count}
+            </td>
+            <td className="px-4 py-3 text-slate-600 dark:text-gray-300 max-w-xs">
+              {pos.eligibility}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
+
   );
 };
 

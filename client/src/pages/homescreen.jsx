@@ -17,8 +17,11 @@ import Header from "../components/Header";
 import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
+import { decryptResponse, encodeBase64Url, parseApiResponse } from "../../util/encode-decode";
 
 const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
+
+
 
 const getRecentVisitIds = () => {
   try {
@@ -38,6 +41,15 @@ const saveRecentVisit = (id) => {
     visits = visits.slice(0, 5);
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
+
+    // fire-and-forget
+    fetch(`${baseUrl}/log-visit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: id }),
+    }).catch((error) => {
+      console.error("Failed to log visit on server:", error);
+    });
   } catch (error) {
     console.error(error);
   }
@@ -46,34 +58,50 @@ const saveRecentVisit = (id) => {
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString();
-  if (val.includes("http") || val.includes("https")) {
-    return `/post?url=${encodeURIComponent(val)}`;
+
+  // agar http/https hai to always base64 + url param
+  if (val.startsWith("http://") || val.startsWith("https://")) {
+    const encoded = encodeBase64Url(val);
+    return `/post?url=${encoded}`;
   }
-  return `/post?id=${val}`;
+
+  // baaki sab ke liye id param
+  return `/post?id={${val}}`.replace("{", "").replace("}", "");
 };
 
 const getCategoryConfig = (categoryName) => {
   if (!categoryName) return { icon: FileText, color: "gray", postType: "JOB" };
   const name = categoryName.toLowerCase();
-  if (name.includes("latest job")) return { icon: Bell, color: "green", postType: "JOB" };
-  if (name.includes("admit card")) return { icon: FileText, color: "blue", postType: "ADMIT_CARD" };
-  if (name.includes("result")) return { icon: Award, color: "red", postType: "RESULT" };
-  if (name.includes("answer key")) return { icon: CheckCircle, color: "pink", postType: "ANSWER_KEY" };
-  if (name.includes("admission")) return { icon: BookOpen, color: "purple", postType: "ADMISSION" };
-  if (name.includes("syllabus")) return { icon: List, color: "orange", postType: "SYLLABUS" };
-  if (name.includes("scholarship")) return { icon: Award, color: "yellow", postType: "SCHOLARSHIP" };
+  if (name.includes("latest job"))
+    return { icon: Bell, color: "green", postType: "JOB" };
+  if (name.includes("admit card"))
+    return { icon: FileText, color: "blue", postType: "ADMIT_CARD" };
+  if (name.includes("result"))
+    return { icon: Award, color: "red", postType: "RESULT" };
+  if (name.includes("answer key"))
+    return { icon: CheckCircle, color: "pink", postType: "ANSWER_KEY" };
+  if (name.includes("admission"))
+    return { icon: BookOpen, color: "purple", postType: "ADMISSION" };
+  if (name.includes("syllabus"))
+    return { icon: List, color: "orange", postType: "SYLLABUS" };
+  if (name.includes("scholarship"))
+    return { icon: Award, color: "yellow", postType: "SCHOLARSHIP" };
   return { icon: FileText, color: "gray", postType: "JOB" };
 };
 
 const QuickCard = ({ icon: Icon, title, id, color }) => {
   const colorMap = {
-    orange: "bg-orange-50/50 hover:bg-orange-100 border-orange-100 text-orange-600 dark:bg-orange-900/10 dark:border-orange-900/30 dark:text-orange-400",
+    orange:
+      "bg-orange-50/50 hover:bg-orange-100 border-orange-100 text-orange-600 dark:bg-orange-900/10 dark:border-orange-900/30 dark:text-orange-400",
     pink: "bg-pink-50/50 hover:bg-pink-100 border-pink-100 text-pink-600 dark:bg-pink-900/10 dark:border-pink-900/30 dark:text-pink-400",
-    purple: "bg-purple-50/50 hover:bg-purple-100 border-purple-100 text-purple-600 dark:bg-purple-900/10 dark:border-purple-900/30 dark:text-purple-400",
+    purple:
+      "bg-purple-50/50 hover:bg-purple-100 border-purple-100 text-purple-600 dark:bg-purple-900/10 dark:border-purple-900/30 dark:text-purple-400",
     blue: "bg-blue-50/50 hover:bg-blue-100 border-blue-100 text-blue-600 dark:bg-blue-900/10 dark:border-blue-900/30 dark:text-blue-400",
-    green: "bg-emerald-50/50 hover:bg-emerald-100 border-emerald-100 text-emerald-600 dark:bg-emerald-900/10 dark:border-emerald-900/30 dark:text-emerald-400",
+    green:
+      "bg-emerald-50/50 hover:bg-emerald-100 border-emerald-100 text-emerald-600 dark:bg-emerald-900/10 dark:border-emerald-900/30 dark:text-emerald-400",
     red: "bg-red-50/50 hover:bg-red-100 border-red-100 text-red-600 dark:bg-red-900/10 dark:border-red-900/30 dark:text-red-400",
-    yellow: "bg-yellow-50/50 hover:bg-yellow-100 border-yellow-100 text-yellow-600 dark:bg-yellow-900/10 dark:border-yellow-900/30 dark:text-yellow-400",
+    yellow:
+      "bg-yellow-50/50 hover:bg-yellow-100 border-yellow-100 text-yellow-600 dark:bg-yellow-900/10 dark:border-yellow-900/30 dark:text-yellow-400",
     gray: "bg-gray-50/50 hover:bg-gray-100 border-gray-100 text-gray-600 dark:bg-gray-800/30 dark:border-gray-700 dark:text-gray-400",
   };
 
@@ -94,7 +122,7 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
       <div className="mb-2 p-2 rounded-xl bg-white/60 dark:bg-white/5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 group-hover:scale-110 transition-transform duration-300">
         <Icon size={24} strokeWidth={2} />
       </div>
-      
+
       <span className="text-[11px] sm:text-xs font-bold text-center leading-tight line-clamp-2 px-1">
         {title}
       </span>
@@ -140,7 +168,7 @@ const SkeletonPrivateJobCard = () => (
 );
 
 const RecentVisitsSection = ({ data }) => {
-  if (!data || data.length === 0) return null;
+  if (!data || data?.length === 0) return null;
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
@@ -187,29 +215,33 @@ export default function HomeScreen() {
     isLoading: true,
   });
 
+  // recent visits sync
   useEffect(() => {
     const loadVisits = () => {
       setRecentVisitIds(getRecentVisitIds());
     };
     loadVisits();
     window.addEventListener("recent-visits-updated", loadVisits);
-    return () => window.removeEventListener("recent-visits-updated", loadVisits);
+    return () =>
+      window.removeEventListener("recent-visits-updated", loadVisits);
   }, []);
 
+  // dynamic sections
   useEffect(() => {
     const fetchDynamicData = async () => {
       try {
         setIsDynamicLoading(true);
 
         const categoryRes = await fetch(`${baseUrl}/get-sections`);
-        const categoryData = await categoryRes.json();
+        const categoryPayload = await parseApiResponse(categoryRes);
 
+        const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
         const categories =
-          Array.isArray(categoryData) && categoryData.length > 0
-            ? categoryData[0].categories
+          Array.isArray(sectionDocs) && sectionDocs?.length > 0
+            ? sectionDocs[0]?.categories || []
             : [];
 
-        if (categories.length === 0) {
+        if (categories?.length === 0) {
           setDynamicSections([]);
           return;
         }
@@ -223,17 +255,20 @@ export default function HomeScreen() {
               },
               body: JSON.stringify({ url: cat.link }),
             });
-            const data = await res.json();
+
+            const payload = await parseApiResponse(res);
+            const base = payload?.data ?? payload;
 
             let jobs = [];
-            if (Array.isArray(data)) {
-              const match = data.find((item) => item.url === cat.link) || data[0];
+            if (Array.isArray(base)) {
+              const match =
+                base.find((item) => item.url === cat.link) || base[0];
               jobs = match?.jobs || [];
             } else {
-              jobs = data?.jobs || [];
+              jobs = base?.jobs || [];
             }
 
-            const processedData = jobs
+            const processedData = (jobs || [])
               .filter(
                 (job) =>
                   job.title &&
@@ -269,13 +304,16 @@ export default function HomeScreen() {
     fetchDynamicData();
   }, []);
 
+  // private jobs
   useEffect(() => {
     const fetchPrivateJobs = async () => {
       try {
         const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-        const data = await res.json();
-        const jobs = Array.isArray(data) ? data : data.data || [];
-        setPrivateJobs(jobs);
+        const payload = await parseApiResponse(res);
+
+        const base = payload?.data ?? payload;
+        const jobs = Array.isArray(base) ? base : base?.data || [];
+        setPrivateJobs(jobs || []);
       } catch (error) {
         console.error("Error fetching private jobs:", error);
       } finally {
@@ -286,12 +324,14 @@ export default function HomeScreen() {
     fetchPrivateJobs();
   }, []);
 
+  // reminders
   useEffect(() => {
     const fetchReminders = async () => {
       try {
         const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
-        const data = await response.json();
-        if (data.success) {
+        const data = await parseApiResponse(response);
+
+        if (data?.success) {
           const list = Array.isArray(data.reminders) ? data.reminders : [];
           const expiresToday = list.filter((item) => item.daysLeft === 0);
           const expiringSoon = list.filter((item) => item.daysLeft > 0);
@@ -314,12 +354,38 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    fetch(`${baseUrl}/fav-posts`)
-      .then((res) => res.json())
-      .then((data) => setFavPosts(data?.data || []))
-      .catch(() => {});
-  }, []);
+  // fav posts
+// fav posts
+useEffect(() => {
+  const fetchFavPosts = async () => {
+    try {
+      const res = await fetch(`${baseUrl}/fav-posts`);
+      const payload = await parseApiResponse(res);
+
+      // normalize all possible shapes:
+      // 1) { success, count, data: [...] }
+      // 2) { data: [...] }
+      // 3) [...] directly
+      let fav = [];
+
+      if (Array.isArray(payload)) {
+        fav = payload;
+      } else if (Array.isArray(payload?.data)) {
+        fav = payload.data;
+      } else if (Array.isArray(payload?.data?.data)) {
+        fav = payload.data.data;
+      }
+
+      setFavPosts(fav);
+    } catch (error) {
+      console.error("Error fetching fav posts:", error);
+      setFavPosts([]);
+    }
+  };
+
+  fetchFavPosts();
+}, []);
+
 
   const filteredSections = useMemo(() => {
     if (!searchQuery) return dynamicSections;
@@ -332,7 +398,7 @@ export default function HomeScreen() {
   }, [dynamicSections, searchQuery]);
 
   const recentVisitsData = useMemo(() => {
-    if (recentVisitIds.length === 0) return [];
+    if (recentVisitIds?.length === 0) return [];
 
     const allJobs = [
       ...dynamicSections.flatMap((s) => s.data),
@@ -348,31 +414,31 @@ export default function HomeScreen() {
 
   const handleGlobalClick = (e) => {
     const link = e.target.closest("a");
-    if (link && link.href) {
-      const url = new URL(link.href);
+    if (!link || !link.href) return;
 
-      if (url.pathname.includes("/post")) {
-        const urlParam = url.searchParams.get("url");
-        if (urlParam) {
-          saveRecentVisit(decodeURIComponent(urlParam));
-          return;
-        }
+    const url = new URL(link.href);
 
-        const scrapedUrlEncoded = url.searchParams.get("q");
-        if (scrapedUrlEncoded) {
-          try {
-            const decodedUrl = atob(scrapedUrlEncoded);
-            saveRecentVisit(decodedUrl);
-          } catch (e2) {}
-          return;
-        }
+    if (!url.pathname.includes("/post")) return;
 
-        const id = url.searchParams.get("id") || url.searchParams.get("_id");
-        if (id) {
-          saveRecentVisit(id);
-          return;
-        }
-      }
+    // 1) naye base64-url param
+    const urlParam = url.searchParams.get("url");
+    if (urlParam) {
+      // base64 string hi store karni hai
+      saveRecentVisit(urlParam);
+      return;
+    }
+
+    // 2) purana scraped 'q' param (agar kahin use ho raha ho)
+    const scrapedUrlEncoded = url.searchParams.get("q");
+    if (scrapedUrlEncoded) {
+      saveRecentVisit(scrapedUrlEncoded);
+      return;
+    }
+
+    // 3) sirf numeric / mongo id wale cases
+    const id = url.searchParams.get("id") || url.searchParams.get("_id");
+    if (id) {
+      saveRecentVisit(id);
     }
   };
 
@@ -383,13 +449,17 @@ export default function HomeScreen() {
     >
       <Header />
 
+      {/* Top marquee bar */}
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-blue-700 to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-blue-600 to-transparent z-10" />
         <div className="animate-marquee whitespace-nowrap flex gap-8 sm:gap-10 items-center px-3 sm:px-4">
           {isDynamicLoading ? (
-            <span className="text-[11px] sm:text-sm">Loading latest updates...</span>
-          ) : filteredSections.length > 0 && filteredSections[0]?.data?.length > 0 ? (
+            <span className="text-[11px] sm:text-sm">
+              Loading latest updates...
+            </span>
+          ) : filteredSections?.length > 0 &&
+            filteredSections[0]?.data?.length > 0 ? (
             filteredSections[0].data.slice(0, 5).map((job, i) => (
               <Link
                 key={i}
@@ -413,6 +483,7 @@ export default function HomeScreen() {
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
+        {/* Search + Quick favorites */}
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
@@ -427,14 +498,19 @@ export default function HomeScreen() {
             />
           </div>
 
-          {favPosts.length > 0 && (
+          {favPosts?.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => (
                 <QuickCard
                   key={item._id}
                   id={item.url || item._id}
                   icon={Briefcase}
-                  title={item.recruitment?.title || item.title || item.postTitle || "Notification"}
+                  title={
+                    item.recruitment?.title ||
+                    item.title ||
+                    item.postTitle ||
+                    "Notification"
+                  }
                   color="orange"
                 />
               ))}
@@ -443,7 +519,9 @@ export default function HomeScreen() {
         </div>
 
         <div className="space-y-6 sm:space-y-8">
-          {recentVisitsData.length > 0 && <RecentVisitsSection data={recentVisitsData} />}
+          {recentVisitsData?.length > 0 && (
+            <RecentVisitsSection data={recentVisitsData} />
+          )}
 
           <UrgentReminderSection
             expiresToday={reminders.expiresToday}
@@ -451,6 +529,7 @@ export default function HomeScreen() {
             isLoading={reminders.isLoading}
           />
 
+          {/* Dynamic sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {isDynamicLoading
               ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
@@ -467,6 +546,7 @@ export default function HomeScreen() {
                 ))}
           </div>
 
+          {/* Private jobs section */}
           <div
             id="private-jobs"
             className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden"
@@ -499,8 +579,10 @@ export default function HomeScreen() {
                   <SkeletonPrivateJobCard />
                   <SkeletonPrivateJobCard />
                 </>
-              ) : privateJobs.length > 0 ? (
-                privateJobs.map((job) => <PrivateJobCard key={job._id} job={job} />)
+              ) : privateJobs?.length > 0 ? (
+                privateJobs.map((job) => (
+                  <PrivateJobCard key={job._id} job={job} />
+                ))
               ) : (
                 <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center p-6 sm:p-8 text-gray-400 dark:text-gray-500 text-xs sm:text-sm">
                   No private jobs available

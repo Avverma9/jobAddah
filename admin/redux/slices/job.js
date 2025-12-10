@@ -86,7 +86,7 @@ export const markFav = createAsyncThunk(
 export const getSections = createAsyncThunk(
   "job/getSections",
   async () => {
-    const { data } = await api.get("/get-sections");
+    const { data } = await api.get("/dashboard/get-sections");
     return data;
   }
 );
@@ -94,7 +94,7 @@ export const getSections = createAsyncThunk(
 export const getPostlist = createAsyncThunk(
   "job/getPostlist",
   async (url) => {
-    const { data } = await api.post(`/get-postlist${url}`);
+    const { data } = await api.post(`/dashboard/get-postlist${url}`);
     return data;
   }
 );

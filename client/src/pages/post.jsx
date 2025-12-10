@@ -19,6 +19,14 @@ import {
   LoadingSkeleton,
   VacancyTable,
 } from "./post-helper";
+import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
+
+// ✅ Common handler: encrypted OR normal JSON
+const parseApiResponse = async (res) => {
+  const json = await res.json();
+  if (json && json.iv && json.data) return decryptResponse(json);
+  return json;
+};
 
 const useQuery = () => {
   const { search } = useLocation();
@@ -49,7 +57,7 @@ const PostDetails = () => {
         if (paramId.includes("http")) {
           fetchUrl = `${baseUrl}/get-post/details?url=${paramId}`;
         } else {
-          fetchUrl = `${baseUrl}/get-job/${paramId}`;
+          fetchUrl = `${baseUrl}/get-post/details?url=${paramId}`;
         }
       } else {
         setError("Invalid parameters");
@@ -61,8 +69,10 @@ const PostDetails = () => {
         const response = await fetch(fetchUrl);
         if (!response.ok) throw new Error("Failed to fetch data");
 
-        const result = await response.json();
-        const validData = result.job || result.data || result;
+        // ✅ encrypted → decrypt | normal → return
+        const result = await parseApiResponse(response);
+
+        const validData = result?.data || result?.job || result;
 
         if (validData) {
           const extracted = extractRecruitmentData(validData);
