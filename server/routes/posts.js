@@ -6,6 +6,7 @@ const {
   markFav,
   getFavPosts,
   getReminders,
+  fixAllUrls,
 } = require("../controller/posts");
 const { verifyToken, authorizeRoles } = require("../middleware/auth");
 const router = express.Router();
@@ -20,5 +21,6 @@ router.put(
 ); // Mark/Unmark Favorite Post
 router.get("/fav-posts", getFavPosts); // Fetch Favorite Posts
 router.get("/reminders/expiring-jobs", getReminders);
+router.post("/fix-all-urls", fixAllUrls);
 
 module.exports = router;

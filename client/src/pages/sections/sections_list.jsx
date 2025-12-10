@@ -1,8 +1,172 @@
-import { AlertCircle, Briefcase, Calendar, ChevronDown, ChevronRight, MapPin, TrendingUp } from "lucide-react";
-import { useEffect } from "react";
-import { useRef, useState } from "react";
+import {
+  AlertCircle,
+  Briefcase,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  MapPin,
+  TrendingUp,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+// --- Helper Function to Strip Domain ---
+const stripDomain = (url) => {
+  if (!url) return "";
+  try {
+    const stringUrl = url.toString();
+    // Only attempt to parse if it looks like a full URL
+    if (stringUrl.startsWith("http")) {
+      const urlObj = new URL(stringUrl);
+      return urlObj.pathname; // Returns "/railway-rrc..."
+    }
+    return url;
+  } catch (e) {
+    return url;
+  }
+};
+
+// --- ListItem Component ---
+const ListItem = ({
+  item,
+  colorTheme,
+  showTrending = false,
+  showUrgent = false,
+}) => {
+  // Theme logic
+  const getThemeColors = () => {
+    switch (colorTheme) {
+      case "red":
+        return {
+          text: "text-rose-600",
+          bg: "bg-rose-50",
+          border: "border-rose-100",
+          btn: "bg-rose-600 hover:bg-rose-700",
+        };
+      case "blue":
+        return {
+          text: "text-blue-600",
+          bg: "bg-blue-50",
+          border: "border-blue-100",
+          btn: "bg-blue-600 hover:bg-blue-700",
+        };
+      case "green":
+        return {
+          text: "text-emerald-600",
+          bg: "bg-emerald-50",
+          border: "border-emerald-100",
+          btn: "bg-emerald-600 hover:bg-emerald-700",
+        };
+      case "orange":
+        return {
+          text: "text-orange-600",
+          bg: "bg-orange-50",
+          border: "border-orange-100",
+          btn: "bg-orange-600 hover:bg-orange-700",
+        };
+      case "pink":
+        return {
+          text: "text-pink-600",
+          bg: "bg-pink-50",
+          border: "border-pink-100",
+          btn: "bg-pink-600 hover:bg-pink-700",
+        };
+      case "purple":
+        return {
+          text: "text-purple-600",
+          bg: "bg-purple-50",
+          border: "border-purple-100",
+          btn: "bg-purple-600 hover:bg-purple-700",
+        };
+      default:
+        return {
+          text: "text-gray-600",
+          bg: "bg-gray-50",
+          border: "border-gray-100",
+          btn: "bg-gray-600 hover:bg-gray-700",
+        };
+    }
+  };
+
+  const theme = getThemeColors();
+
+  // Clean the ID (remove domain)
+  const cleanId = stripDomain(item.id);
+
+  const handleViewDetails = () => {
+    // Assuming incrementVisitCount is available globally or imported context
+    // If it's passed as a prop, make sure to add it to ListItem props
+    if (typeof incrementVisitCount === "function") {
+      incrementVisitCount(item.id);
+    }
+  };
+
+  return (
+    <Link
+      to={`/post?_id=${cleanId}`} // FIX: Using cleanId here
+      onClick={handleViewDetails}
+      className="group block border-b border-gray-100 dark:border-gray-700 last:border-0 p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <div className="flex justify-between items-start gap-2">
+            <h3 className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2">
+              {item.title}
+            </h3>
+            <div className="flex items-center gap-1 shrink-0">
+              {showUrgent && (
+                <span className="text-[9px] sm:text-[10px] font-bold bg-red-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse">
+                  <AlertCircle size={8} /> URGENT
+                </span>
+              )}
+              {showTrending && (
+                <span className="text-[9px] sm:text-[10px] font-bold bg-orange-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                  <TrendingUp size={8} /> HOT
+                </span>
+              )}
+              {item.isNew && (
+                <span className="text-[9px] sm:text-[10px] font-bold bg-red-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
+                  NEW
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 mt-1.5">
+            {item.lastDate && (
+              <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                <Calendar size={10} />
+                <span>
+                  Last Date:{" "}
+                  <span className="font-medium text-red-500">
+                    {item.lastDate}
+                  </span>
+                </span>
+              </div>
+            )}
+            {item.totalPosts > 0 && (
+              <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                <Briefcase size={10} />
+                <span>
+                  Posts:{" "}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {item.totalPosts}
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        <ChevronRight
+          size={16}
+          className="mt-0.5 text-gray-400 group-hover:text-gray-600 transition-transform group-hover:translate-x-0.5 shrink-0"
+        />
+      </div>
+    </Link>
+  );
+};
+
+// --- SectionColumn Component ---
 export const SectionColumn = ({
   title,
   icon: Icon,
@@ -86,135 +250,6 @@ export const SectionColumn = ({
     "Lakshadweep",
     "Puducherry",
   ];
-const ListItem = ({
-  item,
-  colorTheme,
-  showTrending = false,
-  showUrgent = false,
-}) => {
-  const getThemeColors = () => {
-    switch (colorTheme) {
-      case "red":
-        return {
-          text: "text-rose-600",
-          bg: "bg-rose-50",
-          border: "border-rose-100",
-          btn: "bg-rose-600 hover:bg-rose-700",
-        };
-      case "blue":
-        return {
-          text: "text-blue-600",
-          bg: "bg-blue-50",
-          border: "border-blue-100",
-          btn: "bg-blue-600 hover:bg-blue-700",
-        };
-      case "green":
-        return {
-          text: "text-emerald-600",
-          bg: "bg-emerald-50",
-          border: "border-emerald-100",
-          btn: "bg-emerald-600 hover:bg-emerald-700",
-        };
-      case "orange":
-        return {
-          text: "text-orange-600",
-          bg: "bg-orange-50",
-          border: "border-orange-100",
-          btn: "bg-orange-600 hover:bg-orange-700",
-        };
-      case "pink":
-        return {
-          text: "text-pink-600",
-          bg: "bg-pink-50",
-          border: "border-pink-100",
-          btn: "bg-pink-600 hover:bg-pink-700",
-        };
-      case "purple":
-        return {
-          text: "text-purple-600",
-          bg: "bg-purple-50",
-          border: "border-purple-100",
-          btn: "bg-purple-600 hover:bg-purple-700",
-        };
-      default:
-        return {
-          text: "text-gray-600",
-          bg: "bg-gray-50",
-          border: "border-gray-100",
-          btn: "bg-gray-600 hover:bg-gray-700",
-        };
-    }
-  };
-
-  const theme = getThemeColors();
-
-  const handleViewDetails = () => {
-    incrementVisitCount(item.id);
-  };
-
-  return (      <Link
-        to={`/post?_id=${item.id}`}
-        onClick={handleViewDetails}
-        className="group block border-b border-gray-100 dark:border-gray-700 last:border-0 p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-      >
-        <div className="flex items-start gap-3">
-          <div className="flex-1">
-            <div className="flex justify-between items-start gap-2">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug line-clamp-2">
-              {item.title}
-            </h3>
-            <div className="flex items-center gap-1 shrink-0">
-              {showUrgent && (
-                <span className="text-[9px] sm:text-[10px] font-bold bg-red-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5 animate-pulse">
-                  <AlertCircle size={8} /> URGENT
-                </span>
-              )}
-              {showTrending && (
-                <span className="text-[9px] sm:text-[10px] font-bold bg-orange-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                  <TrendingUp size={8} /> HOT
-                </span>
-              )}
-              {item.isNew && (
-                <span className="text-[9px] sm:text-[10px] font-bold bg-red-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
-                  NEW
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 mt-1.5">
-            {item.lastDate && (
-              <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                <Calendar size={10} />
-                <span>
-                  Last Date:{" "}
-                  <span className="font-medium text-red-500">
-                    {item.lastDate}
-                  </span>
-                </span>
-              </div>
-            )}
-            {item.totalPosts > 0 && (
-              <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-                <Briefcase size={10} />
-                <span>
-                  Posts:{" "}
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {item.totalPosts}
-                  </span>
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-        <ChevronRight
-          size={16}
-          className="mt-0.5 text-gray-400 group-hover:text-gray-600 transition-transform group-hover:translate-x-0.5 shrink-0"
-        />
-      </div>
-    </Link>
-  );
-};
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">

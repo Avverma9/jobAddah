@@ -1,29 +1,76 @@
+// controllers/postController.js (ya jo bhi file ka naam hai)
+
 const Post = require("../models/jobs");
 const postList = require("../models/postList");
 const Section = require("../models/section");
+const encrypt = require("../utils/decoder"); // pehle decoder likha tha, ab sahi
 
+// Common helper: sari responses yahin se encrypt ho ke jayengi
+const sendEncrypted = (res, statusCode, payload) => {
+  const encryptedPayload = encrypt(payload);
+  return res.status(statusCode).json(encryptedPayload);
+};
 
 const getPostDetails = async (req, res) => {
   try {
-    const url = req.query.url;
-    const getData = await Post.findOne({ url: url }).sort({ createdAt: -1 });
-    if(getData === null){
-      return res.status(404).json({ error: "Post not found" });
+    let url = req.query.url;
+    if (!url) {
+      return sendEncrypted(res, 400, {
+        success: false,
+        error: "URL is required",
+      });
     }
 
-    res.json(getData);
+    // --- Strip domain if full URL is passed ---
+    try {
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        const parsed = new URL(url);
+        url = parsed.pathname; // "/new-result/"
+      }
+    } catch (e) {
+      // if URL constructor fails, keep original value
+    }
+
+    // Normalize path (remove double slashes, leading slashes, etc.)
+    url = url.trim();
+
+    const getData = await Post.findOne({ url }).sort({ createdAt: -1 });
+
+    if (!getData) {
+      return sendEncrypted(res, 404, {
+        success: false,
+        error: "Post not found",
+      });
+    }
+
+    return sendEncrypted(res, 200, {
+      success: true,
+      data: getData,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return sendEncrypted(res, 500, {
+      success: false,
+      error: err.message || "Internal server error",
+    });
   }
 };
+
 
 const getSections = async (req, res) => {
   try {
     const getData = await Section.find().sort({ createdAt: -1 });
 
-    res.json(getData);
+    return sendEncrypted(res, 200, {
+      success: true,
+      count: getData.length,
+      data: getData,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return sendEncrypted(res, 500, {
+      success: false,
+      error: err.message || "Internal server error",
+    });
   }
 };
 
@@ -34,9 +81,16 @@ const getPostListBySection = async (req, res) => {
       createdAt: -1,
     });
 
-    res.json(getData);
+    return sendEncrypted(res, 200, {
+      success: true,
+      count: getData.length,
+      data: getData,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return sendEncrypted(res, 500, {
+      success: false,
+      error: err.message || "Internal server error",
+    });
   }
 };
 
@@ -48,27 +102,55 @@ const markFav = async (req, res) => {
     if (fav === true) {
       const favCount = await Post.countDocuments({ fav: true });
       if (favCount >= 8) {
-        return res.status(400).json({ success: false, message: "You can mark only 8 posts as favorite" });
+        return sendEncrypted(res, 400, {
+          success: false,
+          message: "You can mark only 8 posts as favorite",
+        });
       }
     }
 
-    const updatedPost = await Post.findByIdAndUpdate(id, { fav }, { new: true });
-    if (!updatedPost) return res.status(404).json({ success: false, message: "Post not found" });
+    const updatedPost = await Post.findByIdAndUpdate(
+      id,
+      { fav },
+      { new: true }
+    );
 
-    res.json({ success: true, data: updatedPost });
+    if (!updatedPost) {
+      return sendEncrypted(res, 404, {
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    return sendEncrypted(res, 200, {
+      success: true,
+      data: updatedPost,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendEncrypted(res, 500, {
+      success: false,
+      message: err.message || "Internal server error",
+    });
   }
 };
 
 const getFavPosts = async (req, res) => {
   try {
     const favPosts = await Post.find({ fav: true }).sort({ createdAt: -1 });
-    res.json({ success: true, count: favPosts.length, data: favPosts });
+
+    return sendEncrypted(res, 200, {
+      success: true,
+      count: favPosts.length,
+      data: favPosts,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return sendEncrypted(res, 500, {
+      success: false,
+      message: err.message || "Internal server error",
+    });
   }
 };
+
 const getReminders = async (req, res) => {
   try {
     const today = new Date();
@@ -204,20 +286,20 @@ const getReminders = async (req, res) => {
       }
     }
 
-    reminders.sort((a, b) => a.daysLeft - b.daysLeft);
+    const sortedReminders = reminders.sort((a, b) => a.daysLeft - b.daysLeft);
 
-    res.json({
+    return sendEncrypted(res, 200, {
       success: true,
-      count: reminders.length,
-      reminders,
+      count: sortedReminders.length,
+      reminders: sortedReminders,
       message:
-        reminders.length === 0
+        sortedReminders.length === 0
           ? "No reminders within 2 days"
-          : `Found ${reminders.length} reminders`,
+          : `Found ${sortedReminders.length} reminders`,
     });
   } catch (error) {
     console.error("Error fetching reminders:", error);
-    res.status(500).json({
+    return sendEncrypted(res, 500, {
       success: false,
       message: error.message || "Failed to fetch reminders",
     });
@@ -226,4 +308,68 @@ const getReminders = async (req, res) => {
 
 
 
-module.exports = { getPostDetails, getSections, getPostListBySection, markFav, getFavPosts,getReminders };
+function stripDomain(url) {
+  if (!url) return url;
+
+  try {
+    const parsed = new URL(url);
+    let path = parsed.pathname.trim();
+
+    // ensure always starts & ends with "/"
+    if (!path.startsWith("/")) path = "/" + path;
+    if (!path.endsWith("/")) path = path + "/";
+
+     return path;
+  } catch (err) {
+    // maybe already slug -> normalize
+    let clean = url.trim();
+    if (!clean.startsWith("/")) clean = "/" + clean;
+    if (!clean.endsWith("/")) clean = clean + "/";
+    return clean;
+  }
+}
+
+
+const fixAllUrls = async (req, res) => {
+  try {
+    const posts = await Post.find({});
+    let updatedCount = 0;
+
+    for (let post of posts) {
+      const original = post.url;
+      const cleaned = stripDomain(original);
+
+      if (original !== cleaned) {
+        await Post.updateOne(
+          { _id: post._id },
+          { $set: { url: cleaned } }
+        );
+        updatedCount++;
+      }
+    }
+
+    return res.json({
+      success: true,
+      updated: updatedCount,
+      message: "All URLs normalized successfully",
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+
+
+module.exports = {
+  getPostDetails,
+  getSections,
+  getPostListBySection,
+  markFav,
+  getFavPosts,
+  getReminders,
+  fixAllUrls
+};
