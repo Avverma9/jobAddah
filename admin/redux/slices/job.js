@@ -2,29 +2,20 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../util/api";
 
-export const getJobs = createAsyncThunk(
-  "job/getJobs",
-  async () => {
-    const { data } = await api.get("/get-jobs");
-    return Array.isArray(data?.data) ? data.data : [];
-  }
-);
+export const getJobs = createAsyncThunk("job/getJobs", async () => {
+  const { data } = await api.get("/get-jobs");
+  return Array.isArray(data?.data) ? data.data : [];
+});
 
-export const getPrivateJob = createAsyncThunk(
-  "job/getPrivateJob",
-  async () => {
-    const { data } = await api.get("/get-private-jobs");
-    return Array.isArray(data?.data) ? data.data : [];
-  }
-);
+export const getPrivateJob = createAsyncThunk("job/getPrivateJob", async () => {
+  const { data } = await api.get("/get-private-jobs");
+  return Array.isArray(data?.data) ? data.data : [];
+});
 
-export const createJob = createAsyncThunk(
-  "job/createJob",
-  async (jobData) => {
-    const { data } = await api.post("/add-job", jobData);
-    return data;
-  }
-);
+export const createJob = createAsyncThunk("job/createJob", async (jobData) => {
+  const { data } = await api.post("/add-job", jobData);
+  return data;
+});
 
 export const bulkInsert = createAsyncThunk(
   "job/bulkInsert",
@@ -50,64 +41,60 @@ export const updateJob = createAsyncThunk(
   }
 );
 
-export const deleteJob = createAsyncThunk(
-  "job/deleteJob",
-  async (id) => {
-    const { data } = await api.delete(`/jobs/${id}`);
-    return { id, ...data };
-  }
-);
+export const deleteJob = createAsyncThunk("job/deleteJob", async (id) => {
+  const { data } = await api.delete(`/jobs/${id}`);
+  return { id, ...data };
+});
 
-export const getJobById = createAsyncThunk(
-  "job/getJobById",
-  async (id) => {
-    const { data } = await api.get(`/jobs/${id}`);
-    return data;
-  }
-);
+export const getJobById = createAsyncThunk("job/getJobById", async (id) => {
+  const { data } = await api.get(`/jobs/${id}`);
+  return data;
+});
 
-export const getStats = createAsyncThunk(
-  "job/getStats",
-  async () => {
-    const { data } = await api.get("/admin/stats");
-    return data?.stats;
-  }
-);
+export const getStats = createAsyncThunk("job/getStats", async () => {
+  const { data } = await api.get("/admin/stats");
+  return data?.stats;
+});
 
 // ⭐ mark/unmark favourite – same API, fav param se toggle
-export const markFav = createAsyncThunk(
-  "job/markFav",
-  async ({ id, fav }) => {
-    const { data } = await api.put(`/mark-fav/${id}`, { fav });
-    return data; // expected: { data: updatedJob } ya direct updatedJob
-  }
-);
+export const markFav = createAsyncThunk("job/markFav", async ({ id, fav }) => {
+  const { data } = await api.put(`/mark-fav/${id}`, { fav });
+  return data; // expected: { data: updatedJob } ya direct updatedJob
+});
 
-export const getSections = createAsyncThunk(
-  "job/getSections",
-  async () => {
-    const { data } = await api.get("/dashboard/get-sections");
+export const getSections = createAsyncThunk("job/getSections", async () => {
+  const { data } = await api.get("/dashboard/get-sections");
+  // yahan sirf data.data return karo
+  return Array.isArray(data?.data) ? data.data : [];
+});
+
+export const getPostlist = createAsyncThunk("job/getPostlist", async (url) => {
+  const { data } = await api.post(`/dashboard/get-postlist${url}`);
+  return data;
+});
+
+export const getSite = createAsyncThunk("/dashboard/getSite", async () => {
+  const { data } = await api.get("/dashboard/get-site");
+  return data;
+});
+
+export const setSite = createAsyncThunk(
+  "/dashboard/setSite",
+  async (siteData) => {
+    const { data } = await api.post("/dashboard/set-site", siteData);
     return data;
   }
 );
-
-export const getPostlist = createAsyncThunk(
-  "job/getPostlist",
-  async (url) => {
-    const { data } = await api.post(`/dashboard/get-postlist${url}`);
-    return data;
-  }
-);
-
 
 const initialState = {
   jobs: [],
   currentJob: null,
   stats: null,
+  site: null,
   privateJobs: { data: [] },
   message: null,
   sections: [],
-  postlist: { success: false, count: 0, jobs: [] },
+  postlist: [],
 
   // model related
   isSettingModel: false,
@@ -125,11 +112,15 @@ const jobSlice = createSlice({
       state.currentJob = null;
     },
     removeLocalJobs: (state, action) => {
-      const ids = Array.isArray(action.payload) ? action.payload : [action.payload];
+      const ids = Array.isArray(action.payload)
+        ? action.payload
+        : [action.payload];
       state.jobs = state.jobs.filter((j) => !ids.includes(j._id || j.id));
     },
     restoreJobs: (state, action) => {
-      const items = Array.isArray(action.payload) ? action.payload : [action.payload];
+      const items = Array.isArray(action.payload)
+        ? action.payload
+        : [action.payload];
       state.jobs = [...items, ...state.jobs];
     },
     resetJobState: () => initialState,
@@ -180,7 +171,12 @@ const jobSlice = createSlice({
     builder.addCase(getStats.fulfilled, (state, action) => {
       state.stats = action.payload;
     });
-
+    builder.addCase(getSite.fulfilled, (state, action) => {
+      state.site = action.payload;
+    });
+    builder.addCase(setSite.fulfilled, (state) => {
+      state.message = "New site Updated";
+    });
     // ⭐ fav update state.jobs + state.postlist
     builder.addCase(markFav.fulfilled, (state, action) => {
       const updated = action.payload?.data || action.payload;
@@ -215,11 +211,19 @@ const jobSlice = createSlice({
     });
 
     builder.addCase(getSections.fulfilled, (state, action) => {
-      state.sections = Array.isArray(action.payload) ? action.payload : [];
+      state.sections = action.payload; // ab ye array hoga
     });
 
     builder.addCase(getPostlist.fulfilled, (state, action) => {
-      state.postlist = action.payload || { success: false, count: 0, jobs: [] };
+      // payload = { success, count, data: [...] }
+      if (Array.isArray(action.payload?.data)) {
+        state.postlist = action.payload.data; // <-- yahi chahiye component ko
+      } else if (Array.isArray(action.payload?.jobs)) {
+        // agar kabhi backend se direct jobs aa jaye
+        state.postlist = action.payload.jobs;
+      } else {
+        state.postlist = [];
+      }
     });
   },
 });

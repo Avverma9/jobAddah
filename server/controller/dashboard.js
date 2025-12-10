@@ -1,16 +1,16 @@
-const postList = require("../models/postList");
-const Post = require("../models/jobs");
+const govPostList = require("../models/postList");
+const Post = require("../models/govtpost");
 const Section = require("../models/section");
-
+const Site = require("../models/scrapperSite");
 
 // ======================
-// 1️⃣  getPostListBySection
+// 1️⃣  getGovPostListBySection
 // ======================
-const getPostListBySection = async (req, res) => {
+const getGovPostListBySection = async (req, res) => {
   try {
     const url = req.params.url;
 
-    const getData = await postList.find({ section: url }).sort({
+    const getData = await govPostList.find({ section: url }).sort({
       createdAt: -1,
     });
 
@@ -27,11 +27,10 @@ const getPostListBySection = async (req, res) => {
   }
 };
 
-
 // ======================
-// 2️⃣  getSections
+// 2️⃣  getGovJobSections
 // ======================
-const getSections = async (req, res) => {
+const getGovJobSections = async (req, res) => {
   try {
     const getData = await Section.find().sort({ createdAt: -1 });
 
@@ -48,11 +47,10 @@ const getSections = async (req, res) => {
   }
 };
 
-
 // ======================
-// 3️⃣  getPostDetails (with domain stripping)
+// 3️⃣  getGovPostDetails (with domain stripping)
 // ======================
-const getPostDetails = async (req, res) => {
+const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
     if (!url) {
@@ -87,7 +85,6 @@ const getPostDetails = async (req, res) => {
       success: true,
       data: getData,
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -96,10 +93,59 @@ const getPostDetails = async (req, res) => {
   }
 };
 
+// Create or Update Site URL
+const setGovSite = async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "Valid URL is required",
+      });
+    }
+
+    // Always maintain only one site document
+    const updated = await Site.findOneAndUpdate(
+      {}, // always update the first doc
+      { url }, // update fields
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    console.error("setGovSite error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// Get Site URL
+const getGovSlice = async (req, res) => {
+  try {
+    const site = await Site.findOne();
+
+    return res.status(200).json(site);
+  } catch (err) {
+    console.error("getGovSlice error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
 
 // EXPORT MULTIPLE CONTROLLERS
 module.exports = {
-  getPostListBySection,
-  getSections,
-  getPostDetails
+  getGovPostListBySection,
+  getGovJobSections,
+  getGovPostDetails,
+  setGovSite,
+  getGovSlice,
 };

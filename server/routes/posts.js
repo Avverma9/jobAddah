@@ -1,18 +1,19 @@
 const express = require("express");
 const {
-  getSections,
-  getPostListBySection,
-  getPostDetails,
+  getGovJobSections,
+  getGovPostListBySection,
+  getGovPostDetails,
   markFav,
   getFavPosts,
   getReminders,
   fixAllUrls,
-} = require("../controller/posts");
+  findByTitle,
+} = require("../controller/govtpost");
 const { verifyToken, authorizeRoles } = require("../middleware/auth");
 const router = express.Router();
-router.get("/get-sections", getSections);
-router.post("/get-postlist", getPostListBySection);
-router.get("/get-post/details", getPostDetails);
+router.get("/get-sections", getGovJobSections);
+router.post("/get-postlist", getGovPostListBySection);
+router.get("/get-post/details", getGovPostDetails);
 router.put(
   "/mark-fav/:id",
   verifyToken,
@@ -22,5 +23,6 @@ router.put(
 router.get("/fav-posts", getFavPosts); // Fetch Favorite Posts
 router.get("/reminders/expiring-jobs", getReminders);
 router.post("/fix-all-urls", fixAllUrls);
+router.get("/find-by-title", findByTitle);
 
 module.exports = router;

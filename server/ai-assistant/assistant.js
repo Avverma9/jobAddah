@@ -1,6 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
-const Post = require("../models/jobs");
+const Post = require("../models/govtpost");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Use flash model for speed, pro for better reasoning if needed

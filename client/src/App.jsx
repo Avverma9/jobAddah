@@ -6,6 +6,7 @@ import PrivateJobs from "./pages/private-jobs";
 import Footer from "./components/footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ConsentBanner from './components/ConsentBanner';
+import NotAvailable from "./pages/NotAvailable";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={<HomeScreen />} />
         <Route path="/post" element={<PostDetail />} />
         <Route path="/view-all" element={<ViewAll />} />
+        <Route path="/not-available" element={<NotAvailable />} />
         <Route path="/private-jobs" element={<PrivateJobs />} />
         <Route path="/home" element={<HomeScreen />} />
         <Route path="/result" element={<HomeScreen />} />
