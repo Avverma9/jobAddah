@@ -12,7 +12,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { baseUrl } from "../../util/baseUrl";
-import Header from "../components/Header";
 import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
@@ -21,6 +20,7 @@ import {
   encodeBase64Url,
   parseApiResponse,
 } from "../../util/encode-decode";
+import SEO from "../util/SEO";
 
 const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
 
@@ -78,10 +78,10 @@ const getCategoryConfig = (categoryName = "") => {
     categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
 
   return {
-    icon: FileText,      // default icon
-    color: "gray",       // default color
-    postType: "JOB",     // default type
-    name: formattedName, // 👈 THIS IS WHAT YOU WANTED
+    icon: FileText,
+    color: "gray",
+    postType: "JOB",
+    name: formattedName,
   };
 };
 
@@ -141,23 +141,6 @@ const SkeletonSection = () => (
           </div>
         </div>
       ))}
-    </div>
-  </div>
-);
-
-const SkeletonPrivateJobCard = () => (
-  <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
-    <div className="flex items-center gap-3">
-      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-      <div className="space-y-2 flex-1">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
-      </div>
-    </div>
-    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full animate-pulse" />
-    <div className="flex gap-2 pt-2">
-      <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-      <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
     </div>
   </div>
 );
@@ -400,16 +383,7 @@ export default function HomeScreen() {
     fetchFavPosts();
   }, []);
 
-  const filteredSections = useMemo(() => {
-    if (!searchQuery) return dynamicSections;
-    return dynamicSections.map((section) => ({
-      ...section,
-      data: section.data.filter((item) =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    }));
-  }, [dynamicSections, searchQuery]);
-
+  // IMPORTANT: Remove searchQuery dependency - sections ko filter mat karo
   const recentVisitsData = useMemo(() => {
     if (recentVisitIds?.length === 0) return [];
     const allJobs = [
@@ -450,8 +424,12 @@ export default function HomeScreen() {
       className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
       onClickCapture={handleGlobalClick}
     >
-      <Header />
-
+       <SEO 
+        title="Latest Government Jobs 2025"
+        description="Find latest sarkari naukri, govt job notifications, admit cards, results, and answer keys. Apply online for SSC, Railway, Bank, Police, Teaching jobs in India."
+        keywords="government jobs, sarkari naukri, latest jobs 2025, admit card, result, answer key, SSC jobs, railway jobs, bank jobs"
+        canonical="/"
+      />
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
         <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-r from-blue-700 to-transparent z-10" />
         <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-16 bg-gradient-to-l from-blue-600 to-transparent z-10" />
@@ -460,9 +438,9 @@ export default function HomeScreen() {
             <span className="text-[11px] sm:text-sm">
               Loading latest updates...
             </span>
-          ) : filteredSections?.length > 0 &&
-            filteredSections[0]?.data?.length > 0 ? (
-            filteredSections[0].data.slice(0, 5).map((job, i) => (
+          ) : dynamicSections?.length > 0 &&
+            dynamicSections[0]?.data?.length > 0 ? (
+            dynamicSections[0].data.slice(0, 5).map((job, i) => (
               <Link
                 key={i}
                 to={getPostLink(job.id)}
@@ -487,16 +465,23 @@ export default function HomeScreen() {
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
-            <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+            {/* Animated Gradient Border Wrapper */}
+            <div className="gradient-border-wrapper">
+              <div className="relative w-full">
+                <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none z-10">
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search jobs, admit cards, results..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl shadow-sm focus:outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 dark:text-white relative z-10"
+                />
+              </div>
             </div>
-            <input
-              type="text"
-              placeholder="Search jobs, admit cards, results..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 dark:text-white"
-            />
+            
+            {/* Search Results Dropdown */}
             {searchQuery.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-80 overflow-y-auto">
                 <div className="p-2 sm:p-3">
@@ -512,7 +497,10 @@ export default function HomeScreen() {
                         <Link
                           key={item._id || item.id}
                           to={getPostLink(item?.url)}
-                          onClick={() => saveRecentVisit(item._id || item.id)}
+                          onClick={() => {
+                            saveRecentVisit(item._id || item.id);
+                            setSearchQuery(""); // Clear search on click
+                          }}
                           className="block px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
                         >
                           <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -563,15 +551,16 @@ export default function HomeScreen() {
             isLoading={reminders.isLoading}
           />
 
+          {/* SECTIONS - No filtering based on search */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {isDynamicLoading
               ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
-              : filteredSections.map((section, idx) => (
+              : dynamicSections.map((section, idx) => (
                   <SectionColumn
                     key={idx}
                     title={section.name}
                     icon={section.icon}
-                    data={section.data}
+                    data={section.data} // Original data without filtering
                     colorTheme={section.color}
                     postType={section.postType}
                     isLoading={false}
@@ -608,6 +597,45 @@ export default function HomeScreen() {
         @keyframes shimmer {
           0% { background-position: 100% 0; }
           100% { background-position: -100% 0; }
+        }
+        
+        /* Animated Gradient Border */
+        .gradient-border-wrapper {
+          position: relative;
+          padding: 2px;
+          border-radius: 0.75rem; /* Matches rounded-lg */
+          background: linear-gradient(90deg, 
+            #ff0080, 
+            #ff8c00, 
+            #40e0d0, 
+            #00bfff, 
+            #9370db, 
+            #ff0080
+          );
+          background-size: 300% 300%;
+          animation: gradientRotate 4s linear infinite;
+        }
+        
+        @media (min-width: 640px) {
+          .gradient-border-wrapper {
+            border-radius: 1rem; /* Matches rounded-xl on larger screens */
+          }
+        }
+        
+        @keyframes gradientRotate {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        
+        .gradient-border-wrapper:hover {
+          animation: gradientRotate 2s linear infinite; /* Faster on hover */
         }
       `}</style>
     </div>

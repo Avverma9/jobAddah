@@ -1,3 +1,12 @@
+# public/robots.txt - Update this:
 User-agent: *
 Allow: /
-Sitemap: https://yourdomain.com/sitemap.xml
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap location
+Sitemap: https://jobsaddah.com/sitemap.xml
+
+# Crawl rate (optional)
+Crawl-delay: 1

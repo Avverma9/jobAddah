@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { baseUrl } from "../../util/baseUrl";
-import Header from "../components/Header";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ChevronRight, 
@@ -230,8 +229,6 @@ export default function ViewAll() {
         className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900"
         onClickCapture={handleGlobalClick}
     >
-      <Header />
-      
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         
         <div className="mb-8 flex flex-col items-center text-center space-y-2">

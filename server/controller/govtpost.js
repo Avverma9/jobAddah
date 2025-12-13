@@ -47,7 +47,6 @@ const getGovPostDetails = async (req, res) => {
       success: true,
       data: getData,
     });
-
   } catch (err) {
     return sendEncrypted(res, 500, {
       success: false,
@@ -55,7 +54,6 @@ const getGovPostDetails = async (req, res) => {
     });
   }
 };
-
 
 const getGovJobSections = async (req, res) => {
   try {
@@ -134,14 +132,116 @@ const markFav = async (req, res) => {
   }
 };
 
+const dateKeyPatterns = [
+  "recruitment.importantDates.applicationLastDate",
+  "recruitment.importantDates.applicationEndDate",
+  "recruitment.importantDates.lastDateToApplyOnline",
+  "recruitment.importantDates.onlineApplyLastDate",
+  "recruitment.importantDates.lastDateOfRegistration",
+  "recruitment.importantDates.lastDate",
+  "recruitment.importantDates.applicationEnd",
+  "recruitment.importantDates.onlineApplyEnd",
+  "recruitment.importantDates.lastDateForRegistration",
+];
+
+const parseDate = (dateString) => {
+  if (!dateString || typeof dateString !== "string") return null;
+  const trimmed = dateString.trim();
+  if (!isNaN(Date.parse(trimmed))) return new Date(trimmed);
+
+  const dateRegex = /(\d{1,2})\s+(\w+)\s+(\d{4})/;
+  const match = trimmed.match(dateRegex);
+  if (match) {
+    const months = {
+      january: 0,
+      february: 1,
+      march: 2,
+      april: 3,
+      may: 4,
+      june: 5,
+      july: 6,
+      august: 7,
+      september: 8,
+      october: 9,
+      november: 10,
+      december: 11,
+    };
+    const day = parseInt(match[1]);
+    const month = months[match[2].toLowerCase()];
+    const year = parseInt(match[3]);
+    if (month !== undefined && !isNaN(day) && !isNaN(year)) {
+      return new Date(year, month, day, 23, 59, 59, 999);
+    }
+  }
+  return null;
+};
+
+const getNestedValue = (obj, path) =>
+  path.split(".").reduce((acc, part) => acc?.[part], obj);
+
+const getLastDateForPost = (post) => {
+  for (const keyPath of dateKeyPatterns) {
+    const value = getNestedValue(post, keyPath);
+    if (
+      value &&
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !value.toLowerCase().includes("will be updated") &&
+      !value.toLowerCase().includes("available soon") &&
+      !value.toLowerCase().includes("notify soon") &&
+      !value.toLowerCase().includes("notify later")
+    ) {
+      const parsed = parseDate(value);
+      if (parsed && !isNaN(parsed.getTime())) return parsed;
+    }
+  }
+  return null;
+};
+
 const getFavPosts = async (req, res) => {
   try {
-    const favPosts = await Post.find({ fav: true }).sort({ createdAt: -1 });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // सारे fav posts ले आओ
+    const favPosts = await Post.find({ fav: true }).lean();
+
+    const validFavs = [];
+    const expiredIds = [];
+
+    for (const post of favPosts) {
+      const lastDate = getLastDateForPost(post);
+
+      // अगर date ही नहीं मिला तो मान लो expire हो चुका → unmark
+      if (!lastDate) {
+        expiredIds.push(post._id);
+        continue;
+      }
+
+      if (lastDate < today) {
+        // last date cross हो चुकी है → fav हटाओ
+        expiredIds.push(post._id);
+      } else {
+        // अभी valid है → list में show करो
+        validFavs.push(post);
+      }
+    }
+
+    // DB में भी fav false कर दो (background style; response का wait नहीं जरूरी)
+    if (expiredIds.length > 0) {
+      await Post.updateMany(
+        { _id: { $in: expiredIds } },
+        { $set: { fav: false } }
+      );
+    }
+
+    // valid favs ko latest createdAt के हिसाब से sort कर दो
+    validFavs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return sendEncrypted(res, 200, {
       success: true,
-      count: favPosts.length,
-      data: favPosts,
+      count: validFavs.length,
+      data: validFavs,
     });
   } catch (err) {
     return sendEncrypted(res, 500, {
@@ -306,8 +406,6 @@ const getReminders = async (req, res) => {
   }
 };
 
-
-
 function stripDomain(url) {
   if (!url) return url;
 
@@ -319,7 +417,7 @@ function stripDomain(url) {
     if (!path.startsWith("/")) path = "/" + path;
     if (!path.endsWith("/")) path = path + "/";
 
-     return path;
+    return path;
   } catch (err) {
     // maybe already slug -> normalize
     let clean = url.trim();
@@ -328,7 +426,6 @@ function stripDomain(url) {
     return clean;
   }
 }
-
 
 const fixAllUrls = async (req, res) => {
   try {
@@ -340,10 +437,7 @@ const fixAllUrls = async (req, res) => {
       const cleaned = stripDomain(original);
 
       if (original !== cleaned) {
-        await Post.updateOne(
-          { _id: post._id },
-          { $set: { url: cleaned } }
-        );
+        await Post.updateOne({ _id: post._id }, { $set: { url: cleaned } });
         updatedCount++;
       }
     }
@@ -353,7 +447,6 @@ const fixAllUrls = async (req, res) => {
       updated: updatedCount,
       message: "All URLs normalized successfully",
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -379,14 +472,14 @@ const findByTitle = async (req, res) => {
     // Cursor Query (streaming)
     const cursor = Post.find(
       {
-        "recruitment.title": { $regex: new RegExp(safeTitle, "i") }
+        "recruitment.title": { $regex: new RegExp(safeTitle, "i") },
       },
       {
         _id: 1,
-        url: 1,                 // ✅ FIX → url added
+        url: 1, // ✅ FIX → url added
         recruitment: 1,
         updatedAt: 1,
-        fav: 1
+        fav: 1,
       }
     )
       .lean()
@@ -398,7 +491,11 @@ const findByTitle = async (req, res) => {
 
     let first = true;
 
-    for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
+    for (
+      let doc = await cursor.next();
+      doc != null;
+      doc = await cursor.next()
+    ) {
       if (!first) res.write(",");
       res.write(JSON.stringify(doc));
       first = false;
@@ -406,7 +503,6 @@ const findByTitle = async (req, res) => {
 
     res.write("]}");
     res.end();
-
   } catch (err) {
     console.error("Stream error:", err);
     return res.status(500).json({
@@ -416,8 +512,6 @@ const findByTitle = async (req, res) => {
   }
 };
 
-
-
 module.exports = {
   getGovPostDetails,
   getGovJobSections,
@@ -426,5 +520,5 @@ module.exports = {
   getFavPosts,
   getReminders,
   fixAllUrls,
-  findByTitle
+  findByTitle,
 };

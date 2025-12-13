@@ -1,11 +1,4 @@
-// src/pages/Scrapper.jsx
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
@@ -25,6 +18,8 @@ import {
   Layers,
   Play,
   Square,
+  Trash2,
+  BarChart3,
 } from "lucide-react";
 import {
   deleteJob,
@@ -85,6 +80,10 @@ export default function Scrapper() {
   const [siteUrl, setSiteUrl] = useState("");
   const [savingSite, setSavingSite] = useState(false);
 
+  const [duplicatesModal, setDuplicatesModal] = useState(null);
+  const [analyzingDuplicates, setAnalyzingDuplicates] = useState(false);
+  const [deletingDuplicates, setDeletingDuplicates] = useState(false);
+
   const { sections, postlist, site } = useSelector((state) => state.job);
 
   useEffect(() => {
@@ -121,7 +120,7 @@ export default function Scrapper() {
     }
   };
 
-  const sectionTabs = useMemo(() => {
+  const sectionTabs = useCallback(() => {
     if (!sections?.[0]?.categories) return [];
     return sections[0].categories.map((cat) => ({
       id: cat.name,
@@ -130,14 +129,16 @@ export default function Scrapper() {
     }));
   }, [sections]);
 
+  const tabsData = sectionTabs();
+
   useEffect(() => {
-    if (sectionTabs.length > 0 && !activeTab) {
-      const firstTab = sectionTabs[0];
+    if (tabsData.length > 0 && !activeTab) {
+      const firstTab = tabsData[0];
       setActiveTab(firstTab.id);
       setActiveLink(firstTab.link);
       dispatch(getPostlist(`?url=${encodeURIComponent(firstTab.link)}`));
     }
-  }, [sectionTabs, activeTab, dispatch]);
+  }, [tabsData, activeTab, dispatch]);
 
   const handleTabChange = (tabId, link) => {
     if (isBulkSyncing) {
@@ -193,7 +194,50 @@ export default function Scrapper() {
     }
   };
 
-  const filteredData = useMemo(() => {
+  const handleAnalyzeDuplicates = async () => {
+    setAnalyzingDuplicates(true);
+    const toastId = toast.loading("Analyzing duplicates...");
+    try {
+      const res = await api.get("/scrapper/analyze-duplicates");
+      if (res.status >= 200 && res.status < 300) {
+        toast.success("Analysis complete!", { id: toastId });
+        setDuplicatesModal({
+          type: "analysis",
+          data: res.data,
+        });
+      } else {
+        throw new Error("Failed");
+      }
+    } catch (error) {
+      toast.error("Failed to analyze duplicates", { id: toastId });
+    } finally {
+      setAnalyzingDuplicates(false);
+    }
+  };
+
+  const handleDeleteDuplicates = async () => {
+    setDeletingDuplicates(true);
+    const toastId = toast.loading("Deleting duplicates...");
+    try {
+      const res = await api.post("/scrapper/delete-duplicates");
+      if (res.status >= 200 && res.status < 300) {
+        toast.success(
+          `${res.data.duplicatesDeleted} duplicates deleted!`,
+          { id: toastId }
+        );
+        setDuplicatesModal(null);
+        setRefreshTrigger((prev) => prev + 1);
+      } else {
+        throw new Error("Failed");
+      }
+    } catch (error) {
+      toast.error("Failed to delete duplicates", { id: toastId });
+    } finally {
+      setDeletingDuplicates(false);
+    }
+  };
+
+  const filteredData = useCallback(() => {
     let jobs = [];
 
     if (
@@ -205,7 +249,7 @@ export default function Scrapper() {
       const currentSection = postlist.find(
         (p) =>
           p.url &&
-          sectionTabs.find((t) => t.id === activeTab)?.link.includes(p.url)
+          tabsData.find((t) => t.id === activeTab)?.link.includes(p.url)
       );
       jobs = currentSection?.jobs || postlist[0]?.jobs || [];
     } else if (postlist?.jobs) {
@@ -218,19 +262,22 @@ export default function Scrapper() {
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
     );
-  }, [postlist, activeTab, sectionTabs, searchQuery]);
+  }, [postlist, activeTab, tabsData, searchQuery]);
 
-  const totalItems = filteredData.length;
+  const data = filteredData();
+  const totalItems = data.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-  const paginatedData = filteredData.slice(
+  const paginatedData = data.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
 
   const handleToggleFav = useCallback(
     (e, id, fav) => {
+      e.preventDefault();
       if (id) {
         dispatch(markFav({ id, fav: !fav }));
+        toast.success(fav ? "Removed from favorites" : "Added to favorites");
       }
     },
     [dispatch]
@@ -241,6 +288,7 @@ export default function Scrapper() {
       dispatch(deleteJob(id));
       setConfirmDelete(null);
       setRefreshTrigger((prev) => prev + 1);
+      toast.success("Post deleted");
     }
   };
 
@@ -311,11 +359,11 @@ export default function Scrapper() {
   };
 
   const handleStartBulkSyncAll = async () => {
-    await runBulkSync(filteredData, "Bulk Sync All");
+    await runBulkSync(data, "Bulk Sync All");
   };
 
   const handleSyncSelected = async () => {
-    const itemsToSync = filteredData.filter((item) => {
+    const itemsToSync = data.filter((item) => {
       const linkUrl = item.link || item.url;
       return linkUrl && selectedLinks.has(linkUrl);
     });
@@ -328,7 +376,7 @@ export default function Scrapper() {
   };
 
   const handleSyncMissingOnly = async () => {
-    const itemsToSync = filteredData.filter((item) => {
+    const itemsToSync = data.filter((item) => {
       const linkUrl = item.link || item.url;
       if (!linkUrl) return false;
       const status = dbStatusMap[linkUrl];
@@ -482,7 +530,7 @@ export default function Scrapper() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {isBulkSyncing ? (
                     <button
                       onClick={handleStopBulkSync}
@@ -516,6 +564,26 @@ export default function Scrapper() {
                         title="Sync only items that are not present in DB"
                       >
                         <Play size={14} fill="currentColor" /> Sync Missing Only
+                      </button>
+
+                      <button
+                        onClick={handleAnalyzeDuplicates}
+                        disabled={analyzingDuplicates}
+                        className="flex items-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 border border-purple-100 rounded-lg font-bold text-xs hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Analyze duplicate posts"
+                      >
+                        <BarChart3 size={14} />{" "}
+                        {analyzingDuplicates ? "Analyzing..." : "Analyze Dups"}
+                      </button>
+
+                      <button
+                        onClick={handleDeleteDuplicates}
+                        disabled={deletingDuplicates}
+                        className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-700 border border-red-100 rounded-lg font-bold text-xs hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete duplicate posts (60%+ similarity)"
+                      >
+                        <Trash2 size={14} />{" "}
+                        {deletingDuplicates ? "Deleting..." : "Delete Dups"}
                       </button>
                     </>
                   )}
@@ -573,7 +641,7 @@ export default function Scrapper() {
             <div className="h-6 w-px bg-slate-200 mx-1" />
 
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide mask-linear-fade flex-1">
-              {sectionTabs.map((tab) => (
+              {tabsData.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id, tab.link)}
@@ -683,6 +751,15 @@ export default function Scrapper() {
             onCancel={() => setConfirmDelete(null)}
           />
         )}
+
+        {duplicatesModal && (
+          <DuplicatesModal
+            modal={duplicatesModal}
+            onClose={() => setDuplicatesModal(null)}
+            onDelete={handleDeleteDuplicates}
+            isDeleting={deletingDuplicates}
+          />
+        )}
       </div>
     </div>
   );
@@ -706,9 +783,9 @@ const ListItem = React.memo(
 
     const [fetchedId, setFetchedId] = useState(null);
     const [localFav, setLocalFav] = useState(!!item.fav);
+    const [dbStatus, setDbStatus] = useState("loading");
 
     const activeId = initialId || fetchedId;
-    const hasId = !!activeId;
 
     useEffect(() => {
       setLocalFav(!!item.fav);
@@ -722,8 +799,6 @@ const ListItem = React.memo(
     } catch (e) {
       hostname = "Invalid URL";
     }
-
-    const [dbStatus, setDbStatus] = useState("loading");
 
     useEffect(() => {
       let isMounted = true;
@@ -806,10 +881,12 @@ const ListItem = React.memo(
 
     const handleLocalToggle = (e) => {
       e.stopPropagation();
-      if (activeId) {
-        setLocalFav(!localFav);
-        onToggleFav(e, activeId, localFav);
+      if (!activeId) {
+        toast.error("Please sync first to mark as favorite");
+        return;
       }
+      setLocalFav(!localFav);
+      onToggleFav(e, activeId, localFav);
     };
 
     return (
@@ -876,9 +953,13 @@ const ListItem = React.memo(
         <div className="flex items-center gap-1">
           <button
             onClick={handleLocalToggle}
-            disabled={!hasId}
+            disabled={!activeId}
             className="p-2 rounded-md hover:bg-yellow-50 text-slate-400 hover:text-yellow-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={hasId ? "Toggle favourite" : "Sync to enable favourite"}
+            title={
+              activeId
+                ? "Toggle favourite"
+                : "Sync post first to mark as favourite"
+            }
           >
             <Star
               size={16}
@@ -888,7 +969,7 @@ const ListItem = React.memo(
             />
           </button>
 
-          {!hasId && dbStatus === "missing" && (
+          {!activeId && dbStatus === "missing" && (
             <button
               onClick={handleScrape}
               className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md text-xs font-bold hover:bg-blue-100 transition-colors"
@@ -1028,3 +1109,104 @@ const ConfirmDeleteModal = ({ onConfirm, onCancel }) => (
     </div>
   </div>
 );
+
+const DuplicatesModal = ({ modal, onClose, onDelete, isDeleting }) => {
+  if (!modal) return null;
+
+  const isAnalysis = modal.type === "analysis";
+  const data = modal.data;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              {isAnalysis ? "Duplicate Analysis" : "Delete Duplicates"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {data?.duplicatesFound || 0} duplicates found (60%+ similarity)
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"
+          >
+            <XCircle size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {data?.analysis && data.analysis.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {data.analysis.map((dup, idx) => (
+                <div key={idx} className="p-4 hover:bg-slate-50 transition">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-full border border-red-100">
+                          <Trash2 size={12} /> WILL DELETE
+                        </span>
+                        <span className="text-xs font-bold text-slate-900">
+                          {dup.willDelete.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-3 line-clamp-2">
+                        {dup.willDelete.url}
+                      </p>
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-100">
+                          <Star size={12} fill="currentColor" /> WILL KEEP
+                        </span>
+                        <span className="text-xs font-bold text-slate-900">
+                          {dup.willKeep.title}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-2">
+                        {dup.willKeep.url}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-purple-600">
+                        {dup.similarity}%
+                      </p>
+                      <p className="text-xs text-slate-500">match</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-sm text-slate-500">
+                {data?.message || "No duplicates found"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {data?.duplicatesFound > 0 && (
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-lg border border-slate-200 font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancel
+            </button>
+            {isAnalysis && (
+              <button
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                {isDeleting ? "Deleting..." : `Delete ${data.duplicatesFound}`}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
