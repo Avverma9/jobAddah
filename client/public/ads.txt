@@ -1,4 +1,5 @@
-# ads.txt file for JobsAddah - Jobs portal 2025
+# ads.txt file for JobsAddah - India's #1 Job Portal
+# Sarkari Result 2025, Latest Govt Jobs, Sarkari Naukri
 # This file is required for Google AdSense monetization
 
 # Google AdSense
