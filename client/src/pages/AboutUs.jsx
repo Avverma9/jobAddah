@@ -1,6 +1,8 @@
 // src/pages/AboutUs.jsx
 import React from "react";
 import { Shield, Target, Users, Zap, BookOpen, TrendingUp } from "lucide-react";
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
 
 export default function AboutUs() {
   return (
@@ -16,6 +18,9 @@ export default function AboutUs() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-16 space-y-12">
+        {/* Top Banner Ad */}
+        <AdBanner position="top" className="mb-8" />
+        
         {/* Mission Section */}
         <section>
           <h2 className="text-3xl font-bold text-slate-900 mb-6 flex items-center gap-3">
@@ -37,6 +42,9 @@ export default function AboutUs() {
             To become India's most trusted platform for job seekers, providing real-time updates on placement drives, off-campus recruitment, government exams, and career resources. We aim to empower millions with information and opportunities to advance their careers.
           </p>
         </section>
+
+        {/* Rectangle Ad */}
+        <AdRectangle position="content" className="my-8" />
 
         {/* Why Choose Us */}
         <section>
@@ -147,6 +155,9 @@ export default function AboutUs() {
             ))}
           </div>
         </section>
+
+        {/* Bottom Rectangle Ad */}
+        <AdRectangle position="content" className="my-8" />
 
         {/* Disclaimer */}
         <section className="bg-amber-50 border border-amber-200 rounded-lg p-8">

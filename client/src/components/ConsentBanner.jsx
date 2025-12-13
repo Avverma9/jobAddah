@@ -6,7 +6,7 @@ export default function ConsentBanner() {
 
   useEffect(() => {
     try {
-      const consent = window.localStorage.getItem('jobaddah_consent');
+      const consent = window.localStorage.getItem('jobsaddah_consent');
       if (!consent) setVisible(true);
     } catch (e) {
       // ignore
@@ -15,7 +15,7 @@ export default function ConsentBanner() {
 
   const accept = () => {
     try {
-      window.localStorage.setItem('jobaddah_consent', 'accepted');
+      window.localStorage.setItem('jobsaddah_consent', 'accepted');
       const gtagId = import.meta.env.VITE_GTAG_ID || 'G-XXXXXXXXXX';
       initGtag(gtagId);
       pageview(window.location.pathname + window.location.search);
@@ -24,7 +24,7 @@ export default function ConsentBanner() {
   };
 
   const decline = () => {
-    try { window.localStorage.setItem('jobaddah_consent', 'declined'); } catch (e) {}
+    try { window.localStorage.setItem('jobsaddah_consent', 'declined'); } catch (e) {}
     setVisible(false);
   };
 

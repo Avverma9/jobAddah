@@ -14,7 +14,7 @@ If you want, I can add a consent banner component and an example ad-slot compone
 	- `VITE_ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXX`
 	- `VITE_ADSENSE_SLOT=1234567890`
 
-- The repository includes `src/components/AdSlot.jsx` which injects a Google AdSense `ins` tag and the AdSense script when the user has accepted analytics/ads consent. The component is consent-gated and will not render if `localStorage.jobaddah_consent !== 'accepted'`.
+- The repository includes `src/components/AdSlot.jsx` which injects a Google AdSense `ins` tag and the AdSense script when the user has accepted analytics/ads consent. The component is consent-gated and will not render if `localStorage.jobsaddah_consent !== 'accepted'`.
 
 - Example usage (already added to the post page):
 

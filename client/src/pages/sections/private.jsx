@@ -2,7 +2,7 @@ import { Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export const PrivateJobCard = ({ job }) => {
-    const VISIT_STORAGE_KEY = "jobAddah_visit_counts";
+    const VISIT_STORAGE_KEY = "jobsaddah_visit_counts";
 
     const getVisitCounts = () => {
         try {

@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -68,6 +70,9 @@ export default function ContactUs() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-16">
+        {/* Top Banner Ad */}
+        <AdBanner position="top" className="mb-8" />
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {/* Contact Info Cards */}
           {[
@@ -103,6 +108,9 @@ export default function ContactUs() {
             </div>
           ))}
         </div>
+
+        {/* Rectangle Ad */}
+        <AdRectangle position="contact" className="my-8" />
 
         {/* Contact Form */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-lg p-8 md:p-12">
@@ -195,6 +203,9 @@ export default function ContactUs() {
             </form>
           )}
         </div>
+
+        {/* Rectangle Ad */}
+        <AdRectangle position="contact" className="my-8" />
 
         {/* FAQ Section */}
         <section className="mt-16">

@@ -15,7 +15,7 @@ export default function ScrollToTop() {
     }
   // include pathname and search explicitly to catch query changes
     try {
-      const consent = typeof window !== 'undefined' ? window.localStorage.getItem('jobaddah_consent') : null;
+      const consent = typeof window !== 'undefined' ? window.localStorage.getItem('jobsaddah_consent') : null;
       const autostart = import.meta.env.VITE_ANALYTICS_AUTOSTART === 'true';
       if (consent === 'accepted' || autostart) {
         pageview(location.pathname + location.search);

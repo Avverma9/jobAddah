@@ -15,7 +15,7 @@ This file summarizes what was implemented and recommended next steps to get the 
 
 ## Required manual actions (please do these now)
 
-- Replace every `https://yourdomain.com` placeholder with your real production domain (`https://jobaddah.onrender.com` is used in some places already).
+- Replace every `https://yourdomain.com` placeholder with your real production domain (`https://jobsaddah.onrender.com` is used in some places already).
 - Replace the Google Analytics ID `G-XXXXXXXXXX` in `index.html` with your real measurement ID.
 - Upload `logo.png` and `og-image.png` to the referenced paths or update the paths in `index.html`.
 - Verify your site in Google Search Console and submit `https://<your-domain>/sitemap.xml`.
@@ -67,7 +67,7 @@ If you want me to continue, pick one of the following and I will implement it no
 - "Enable SSG" — I will add `vite-plugin-ssg` and modify app entry files (requires installing a dev dependency).
 - "Add prerender script" — I will implement a Puppeteer-based prerender script and a workflow to run it after `npm run build`.
 - "Optimize images" — I will add an `images` script to convert images in `assets/` to WebP and update references automatically.
-- "Fix sitemap endpoint" — I will update `scripts/generate-sitemap.js` to point to your real posts endpoint (tell me the endpoint or I can try `https://jobaddah.onrender.com/api/v1/posts`).
+- "Fix sitemap endpoint" — I will update `scripts/generate-sitemap.js` to point to your real posts endpoint (tell me the endpoint or I can try `https://jobsaddah.onrender.com/api/v1/posts`).
 - "Do all remaining changes" — I will proceed to enable SSG (option A) and add image optimization and CI prerender steps.
 
 Reply with which option you want me to implement next or say "Do all" to proceed with SSG + image optimization + CI prerendering (I will run installs and create workflows).

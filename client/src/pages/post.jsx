@@ -20,6 +20,9 @@ import {
   VacancyTable,
 } from "./post-helper";
 import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
+import AdInArticle from "../components/ads/AdInArticle";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -100,10 +103,12 @@ const PostDetails = () => {
       <Header />
 
       <main className="container mx-auto px-2 py-6 max-w-5xl">
+        {/* Top Banner Ad */}
+        <AdBanner position="top" className="mb-6" />
+        
         <div className="bg-white dark:bg-gray-900 shadow-sm border border-slate-300 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header section */}
           <div className="border-b border-slate-300 dark:border-gray-700 p-6 text-center bg-white dark:bg-gray-900">
-         
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-gray-100 leading-tight mb-2">
               {data.title}
             </h1>
@@ -114,6 +119,9 @@ const PostDetails = () => {
               </div>
             )}
           </div>
+
+          {/* In-Article Ad after title */}
+          <AdInArticle />
 
           {/* Dates + Fee */}
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-300 dark:divide-gray-700 border-b border-slate-300 dark:border-gray-700">
@@ -235,6 +243,9 @@ const PostDetails = () => {
               </div>
             </div>
           )}
+
+          {/* Rectangle Ad after vacancy details */}
+          <AdRectangle position="post" />
 
           {/* Eligibility */}
           {data.eligibility.length > 0 && (
@@ -388,6 +399,9 @@ const PostDetails = () => {
             </div>
           </div>
         </div>
+
+        {/* Bottom Rectangle Ad */}
+        <AdRectangle position="post" className="mt-6" />
       </main>
 
       <style>{`

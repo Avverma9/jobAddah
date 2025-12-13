@@ -48,13 +48,15 @@
       ]
     }
     </script>
-    <!-- Google Analytics (replace G-XXXXXXXXXX with your Measurement ID) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-      <script 
+    <!-- Google AdSense -->
+    <script 
       async 
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7416335110977682"
       crossorigin="anonymous"
     ></script>
+    
+    <!-- Google Analytics (replace G-XXXXXXXXXX with your Measurement ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);} 
@@ -63,6 +65,14 @@
          send page views manually from client code to get accurate
          single-page-app route tracking and conversion attribution. */
       gtag('config', 'G-XXXXXXXXXX', { 'send_page_view': false });
+    </script>
+    
+    <!-- AdSense Auto Ads (Optional - for automatic ad placement) -->
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({
+        google_ad_client: "ca-pub-7416335110977682",
+        enable_page_level_ads: true
+      });
     </script>
   </head>
   <body>

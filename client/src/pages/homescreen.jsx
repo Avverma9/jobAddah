@@ -21,9 +21,11 @@ import {
   parseApiResponse,
 } from "../../util/encode-decode";
 import SEO from "../util/SEO";
-import AdSense from "../util/AdSense";
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
+import AdInFeed from "../components/ads/AdInFeed";
 
-const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
+const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
 const getRecentVisitIds = () => {
   try {
@@ -161,12 +163,6 @@ const RecentVisitsSection = ({ data }) => {
   return (
     <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 px-1">
-        <AdSense
-          dataAdSlot="1234567890" // Replace with your actual ad slot ID
-          dataAdFormat="horizontal"
-          className="my-6"
-        />
-
         <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
           <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
         </div>
@@ -471,6 +467,9 @@ export default function HomeScreen() {
       </div>
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
+        {/* Top Banner Ad */}
+        <AdBanner position="top" className="mb-6" />
+        
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
             {/* Animated Gradient Border Wrapper */}
@@ -553,6 +552,9 @@ export default function HomeScreen() {
             <RecentVisitsSection data={recentVisitsData} />
           )}
 
+          {/* Rectangle Ad after Recent Visits */}
+          <AdRectangle position="home" className="my-8" />
+
           <UrgentReminderSection
             expiresToday={reminders.expiresToday}
             expiringSoon={reminders.expiringSoon}
@@ -563,18 +565,31 @@ export default function HomeScreen() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {isDynamicLoading
               ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
-              : dynamicSections.map((section, idx) => (
-                  <SectionColumn
-                    key={idx}
-                    title={section.name}
-                    icon={section.icon}
-                    data={section.data} // Original data without filtering
-                    colorTheme={section.color}
-                    postType={section.postType}
-                    isLoading={false}
-                  />
-                ))}
+              : dynamicSections.map((section, idx) => {
+                  // Insert ad after every 3rd section
+                  const shouldShowAd = (idx + 1) % 3 === 0 && idx < dynamicSections.length - 1;
+                  return (
+                    <React.Fragment key={idx}>
+                      <SectionColumn
+                        title={section.name}
+                        icon={section.icon}
+                        data={section.data} // Original data without filtering
+                        colorTheme={section.color}
+                        postType={section.postType}
+                        isLoading={false}
+                      />
+                      {shouldShowAd && (
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <AdRectangle position="content" className="my-6" />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
           </div>
+          
+          {/* Bottom Rectangle Ad */}
+          <AdRectangle position="content" className="mt-8" />
         </div>
       </main>
 
@@ -647,11 +662,6 @@ export default function HomeScreen() {
         }
       `}</style>
 
-      <AdSense
-        dataAdSlot="3456789012"
-        dataAdFormat="rectangle"
-        className="my-8 max-w-md mx-auto"
-      />
     </div>
   );
 }

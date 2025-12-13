@@ -1,5 +1,7 @@
 import React from "react";
 import { Shield, Lock, Eye, Zap, Trash2, Globe, FileText, CheckCircle } from "lucide-react";
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
 
 export default function PrivacyPolicy() {
   const sections = [
@@ -151,6 +153,9 @@ export default function PrivacyPolicy() {
 
       <div className="relative z-20 max-w-6xl mx-auto px-6 -mt-20">
         
+        {/* Top Banner Ad */}
+        <AdBanner position="top" className="mb-8" />
+        
         {/* Last Updated Card */}
         <div className="bg-white/80 backdrop-blur-md border border-white/20 p-1 rounded-2xl shadow-xl mb-16">
           <div className="bg-white rounded-xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center md:items-start border border-slate-100">
@@ -175,6 +180,9 @@ export default function PrivacyPolicy() {
             </div>
           </div>
         </div>
+
+        {/* Rectangle Ad */}
+        <AdRectangle position="content" className="my-8" />
 
         {/* Content Grid */}
         <div className="grid md:grid-cols-2 gap-6 lg:gap-8 mb-24">
@@ -208,6 +216,9 @@ export default function PrivacyPolicy() {
             </div>
           ))}
         </div>
+
+        {/* Bottom Rectangle Ad */}
+        <AdRectangle position="content" className="my-8" />
 
         {/* Contact Footer */}
         <div className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl mb-20">
