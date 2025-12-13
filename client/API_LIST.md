@@ -1,6 +1,6 @@
 # API List
 
-This file documents the APIs used in the jobAddah project.
+This file documents the APIs used in the jobsaddah project.
 
 ## Base URL
 
@@ -13,7 +13,7 @@ http://localhost:5000/api/v1
 or for production:
 
 ```
-https://jobaddah.onrender.com/api/v1
+https://jobsaddah.onrender.com/api/v1
 ```
 
 ## Endpoints

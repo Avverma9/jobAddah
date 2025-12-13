@@ -8,7 +8,7 @@ export const UrgentReminderSection = ({
 }) => {
   const allUrgent = [...(expiresToday || []), ...(expiringSoon || [])];
 
-  const VISIT_STORAGE_KEY = "jobAddah_visit_counts";
+  const VISIT_STORAGE_KEY = "jobsaddah_visit_counts";
 
   const getVisitCounts = () => {
     try {

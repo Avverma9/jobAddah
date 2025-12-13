@@ -21,7 +21,7 @@ if (!import.meta.env.SSR) {
   // Set your Measurement ID in an env var `VITE_GTAG_ID` or replace below
   try {
     const gtagId = import.meta.env.VITE_GTAG_ID || 'G-XXXXXXXXXX'
-    const consent = typeof window !== 'undefined' ? window.localStorage.getItem('jobaddah_consent') : null;
+    const consent = typeof window !== 'undefined' ? window.localStorage.getItem('jobsaddah_consent') : null;
     const autostart = import.meta.env.VITE_ANALYTICS_AUTOSTART === 'true';
     // Initialize only if user already accepted consent or explicit autostart env var enabled
     if (consent === 'accepted' || autostart) {

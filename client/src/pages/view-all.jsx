@@ -16,8 +16,11 @@ import {
   List,
 } from "lucide-react";
 import SEO from "../util/SEO";
+import AdBanner from "../components/ads/AdBanner";
+import AdRectangle from "../components/ads/AdRectangle";
+import AdInFeed from "../components/ads/AdInFeed";
 
-const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
+const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
 const getRecentVisitIds = () => {
   try {
@@ -286,6 +289,9 @@ export default function ViewAll() {
         onClickCapture={handleGlobalClick}
       >
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+          {/* Top Banner Ad */}
+          <AdBanner position="top" className="mb-6" />
+          
           <div className="mb-8 flex flex-col items-center text-center space-y-2">
             <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
               <span className={`p-2 rounded-lg ${getIconStyle(postType)}`}>
@@ -361,38 +367,47 @@ export default function ViewAll() {
             </div>
           ) : (
             <div className="space-y-3">
-              {processedPosts.map((post) => (
-                <Link
-                  key={post._id}
-                  to={getPostLink(post)}
-                  onClick={() => saveRecentVisit(post._id || post.link)}
-                  className="group flex items-center gap-4 bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
-                >
-                  <div
-                    className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getIconStyle(
-                      postType
-                    )} group-hover:scale-110 transition-transform`}
+              {processedPosts.map((post, index) => (
+                <React.Fragment key={post._id}>
+                  <Link
+                    to={getPostLink(post)}
+                    onClick={() => saveRecentVisit(post._id || post.link)}
+                    className="group flex items-center gap-4 bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
                   >
-                    {getIcon(postType)}
-                  </div>
+                    <div
+                      className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getIconStyle(
+                        postType
+                      )} group-hover:scale-110 transition-transform`}
+                    >
+                      {getIcon(postType)}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 pr-2">
-                      {post.postTitle}
-                    </h2>
-                    {post.organization && (
-                      <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        <Building2 size={12} />
-                        <span className="truncate">{post.organization}</span>
-                      </div>
-                    )}
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 pr-2">
+                        {post.postTitle}
+                      </h2>
+                      {post.organization && (
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          <Building2 size={12} />
+                          <span className="truncate">{post.organization}</span>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="shrink-0 text-gray-300 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-colors">
-                    <ChevronRight size={20} />
-                  </div>
-                </Link>
+                    <div className="shrink-0 text-gray-300 group-hover:text-blue-500 dark:text-gray-600 dark:group-hover:text-blue-400 transition-colors">
+                      <ChevronRight size={20} />
+                    </div>
+                  </Link>
+                  
+                  {/* Insert ad after every 5th post */}
+                  {(index + 1) % 5 === 0 && index < processedPosts.length - 1 && (
+                    <AdInFeed index={index} />
+                  )}
+                </React.Fragment>
               ))}
+              
+              {/* Bottom Rectangle Ad */}
+              <AdRectangle position="content" className="mt-8" />
             </div>
           )}
         </main>
