@@ -40,97 +40,93 @@ const formatWithAI = async (scrapedData) => {
       generationConfig: { responseMimeType: "application/json" },
     });
 
-   const prompt =
-  "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
-  "GLOBAL HARD RULES:\n" +
-  "1) Output MUST be valid JSON.\n" +
-  '2) Output MUST contain ONLY one top-level key: "recruitment".\n' +
-  "3) You MUST NOT add any extra top-level keys.\n" +
-  "4) Inside \"recruitment\", you may use ONLY the keys defined in the structure below. You MUST NOT invent or add any other keys.\n" +
-  "5) You MUST NOT rename keys. You may only FILL their values from scrapedData.\n" +
-  "6) If some data is missing in scrapedData, keep the key but leave it empty (\"\", {}, [], or 0 exactly as in the structure).\n" +
-  "7) JSON MUST NOT contain comments, trailing commas, undefined, NaN, functions, or any explanation text.\n" +
-  "8) Output MUST NOT be wrapped in markdown or any extra text. Return ONLY pure JSON.\n\n" +
-    "CRITICAL TITLE REPHRASING RULE (PLAGIARISM CHECK):\n" +
+    const prompt =
+      "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
+      "GLOBAL HARD RULES:\n" +
+      "1) Output MUST be valid JSON.\n" +
+      '2) Output MUST contain ONLY one top-level key: "recruitment".\n' +
+      "3) You MUST NOT add any extra top-level keys.\n" +
+      '4) Inside "recruitment", you may use ONLY the keys defined in the structure below. You MUST NOT invent or add any other keys.\n' +
+      "5) You MUST NOT rename keys. You may only FILL their values from scrapedData.\n" +
+      '6) If some data is missing in scrapedData, keep the key but leave it empty ("", {}, [], or 0 exactly as in the structure).\n' +
+      "7) JSON MUST NOT contain comments, trailing commas, undefined, NaN, functions, or any explanation text.\n" +
+      "8) Output MUST NOT be wrapped in markdown or any extra text. Return ONLY pure JSON.\n\n" +
+      "CRITICAL TITLE REPHRASING RULE (PLAGIARISM CHECK):\n" +
       "- The 'title' field MUST be completely rephrased and unique.\n" +
       "- Do NOT simply copy the scraped title.\n" +
       "- Keep the core meaning (Organization, Post Name, Year) but change the sentence structure.\n" +
       "- Example: If scraped title is 'UP Police Constable Recruitment 2025 Apply Online', change it to 'Uttar Pradesh Police Constable 2025 Vacancy - Online Application Open'.\n" +
       "- Make it SEO-friendly and professional.\n\n" +
-  "ALLOWED JSON STRUCTURE (YOU MUST FOLLOW THIS EXACTLY):\n" +
-  "{\n" +
-  '  "recruitment": {\n' +
-  '    "title": "REPHRASED_UNIQUE_TITLE_HERE",\n' +
-  '    "organization": {\n' +
-  '      "name": "",\n' +
-  '      "shortName": "",\n' +
-  '      "website": "",\n' +
-  '      "officialWebsite": ""\n' +
-  "    },\n" +
-  '    "importantDates": {\n' +
-  '      "notificationDate": "",\n' +
-  '      "applicationStartDate": "",\n' +
-  '      "applicationLastDate": "",\n' +
-  '      "feePaymentLastDate": "",\n' +
-  '      "correctionDate": "",\n' +
-  '      "preExamDate": "",\n' +
-  '      "mainsExamDate": "",\n' +
-  '      "examDate": "",\n' +
-  '      "admitCardDate": "",\n' +
-  '      "resultDate": "",\n' +
-  '      "answerKeyReleaseDate": "",\n' +
-  '      "finalAnswerKeyDate": "",\n' +
-  '      "meritListDate": "",\n' +
-  '      "documentVerificationDate": ""\n' +
-  "    },\n" +
-  '    "vacancyDetails": {\n' +
-  '      "totalPosts": 0,\n' +
-  '      "positions": []\n' +
-  "    },\n" +
-  '    "applicationFee": {},\n' +
-  '    "ageLimit": {},\n' +
-  '    "eligibility": {},\n' +
-  '    "selectionProcess": [],\n' +
-  '    "importantLinks": {},\n' +
-  '    "districtWiseData": []\n' +
-  "  }\n" +
-  "}\n\n" +
-  "SMART MAPPING RULES (VERY IMPORTANT):\n" +
-  "- You MUST intelligently decide which scraped fields belong to which section, based on their meaning and labels.\n" +
-  "- Map date-like fields to importantDates when they clearly represent a schedule.\n" +
-  "  * Any scraped key containing words like \"start\", \"begin\", \"from\" -> applicationStartDate.\n" +
-  "  * Any key containing \"last date\", \"apply online last\" -> applicationLastDate.\n" +
-  "  * Any key containing \"fee payment\" -> feePaymentLastDate.\n" +
-  "  * Any key containing \"correction\" or \"edit\" -> correctionDate.\n" +
-  "  * Any key containing \"pre exam\" -> preExamDate.\n" +
-  "  * Any key containing \"mains\" -> mainsExamDate.\n" +
-  "  * Any key containing \"exam date\" -> examDate.\n" +
-  "  * Any key containing \"admit card\" or \"hall ticket\" -> admitCardDate.\n" +
-  "  * Any key containing \"result\" -> resultDate.\n" +
-  "  * Any key containing \"answer key\" -> answerKeyReleaseDate or finalAnswerKeyDate.\n" +
-  "  * Any key containing \"merit list\" -> meritListDate.\n" +
-  "  * Any key containing \"document verification\" or \"DV\" -> documentVerificationDate.\n" +
-  "- Organization-like text MUST be mapped into organization fields.\n" +
-  "- Category-wise / post-wise counts MUST go into vacancyDetails.positions + totalPosts.\n" +
-  "- Fee information MUST go into applicationFee.\n" +
-  "- Age-related info MUST go into ageLimit.\n" +
-  "- Eligibility / qualifications MUST go into eligibility.\n" +
-  "- Stage-wise selection steps MUST go into selectionProcess.\n" +
-  "- All URLs, notification links, apply links MUST go into importantLinks.\n" +
-  "- District/state-wise data MUST go into districtWiseData.\n\n" +
-
-  "SPECIAL IMPORTANTLINKS RULE:\n" +
-  "- If any URL in importantLinks contains \"whatsapp.com\", \"wa.me\", or \"api.whatsapp.com\", remove that entry entirely. DO NOT include any WhatsApp links.\n\n" +
-
-  "STRICT IGNORE RULE:\n" +
-  "- Ignore any scraped fields that cannot be mapped to the defined structure.\n" +
-  "- Do NOT create any new keys beyond what is defined.\n\n" +
-
-  "Scraped Data (source):\n" +
-  JSON.stringify(scrapedData, null, 2) +
-  "\n\nFINAL OUTPUT RULE:\n" +
-  "Return ONLY one JSON object exactly matching the allowed structure. NO markdown, NO comments, NO explanation.\n";
-
+      "ALLOWED JSON STRUCTURE (YOU MUST FOLLOW THIS EXACTLY):\n" +
+      "{\n" +
+      '  "recruitment": {\n' +
+      '    "title": "REPHRASED_UNIQUE_TITLE_HERE",\n' +
+      '    "organization": {\n' +
+      '      "name": "",\n' +
+      '      "shortName": "",\n' +
+      '      "website": "",\n' +
+      '      "officialWebsite": ""\n' +
+      "    },\n" +
+      '    "importantDates": {\n' +
+      '      "notificationDate": "",\n' +
+      '      "applicationStartDate": "",\n' +
+      '      "applicationLastDate": "",\n' +
+      '      "feePaymentLastDate": "",\n' +
+      '      "correctionDate": "",\n' +
+      '      "preExamDate": "",\n' +
+      '      "mainsExamDate": "",\n' +
+      '      "examDate": "",\n' +
+      '      "admitCardDate": "",\n' +
+      '      "resultDate": "",\n' +
+      '      "answerKeyReleaseDate": "",\n' +
+      '      "finalAnswerKeyDate": "",\n' +
+      '      "meritListDate": "",\n' +
+      '      "documentVerificationDate": ""\n' +
+      "    },\n" +
+      '    "vacancyDetails": {\n' +
+      '      "totalPosts": 0,\n' +
+      '      "positions": []\n' +
+      "    },\n" +
+      '    "applicationFee": {},\n' +
+      '    "ageLimit": {},\n' +
+      '    "eligibility": {},\n' +
+      '    "selectionProcess": [],\n' +
+      '    "importantLinks": {},\n' +
+      '    "districtWiseData": []\n' +
+      "  }\n" +
+      "}\n\n" +
+      "SMART MAPPING RULES (VERY IMPORTANT):\n" +
+      "- You MUST intelligently decide which scraped fields belong to which section, based on their meaning and labels.\n" +
+      "- Map date-like fields to importantDates when they clearly represent a schedule.\n" +
+      '  * Any scraped key containing words like "start", "begin", "from" -> applicationStartDate.\n' +
+      '  * Any key containing "last date", "apply online last" -> applicationLastDate.\n' +
+      '  * Any key containing "fee payment" -> feePaymentLastDate.\n' +
+      '  * Any key containing "correction" or "edit" -> correctionDate.\n' +
+      '  * Any key containing "pre exam" -> preExamDate.\n' +
+      '  * Any key containing "mains" -> mainsExamDate.\n' +
+      '  * Any key containing "exam date" -> examDate.\n' +
+      '  * Any key containing "admit card" or "hall ticket" -> admitCardDate.\n' +
+      '  * Any key containing "result" -> resultDate.\n' +
+      '  * Any key containing "answer key" -> answerKeyReleaseDate or finalAnswerKeyDate.\n' +
+      '  * Any key containing "merit list" -> meritListDate.\n' +
+      '  * Any key containing "document verification" or "DV" -> documentVerificationDate.\n' +
+      "- Organization-like text MUST be mapped into organization fields.\n" +
+      "- Category-wise / post-wise counts MUST go into vacancyDetails.positions + totalPosts.\n" +
+      "- Fee information MUST go into applicationFee.\n" +
+      "- Age-related info MUST go into ageLimit.\n" +
+      "- Eligibility / qualifications MUST go into eligibility.\n" +
+      "- Stage-wise selection steps MUST go into selectionProcess.\n" +
+      "- All URLs, notification links, apply links MUST go into importantLinks.\n" +
+      "- District/state-wise data MUST go into districtWiseData.\n\n" +
+      "SPECIAL IMPORTANTLINKS RULE:\n" +
+      '- If any URL in importantLinks contains "whatsapp.com", "wa.me", or "api.whatsapp.com", remove that entry entirely. DO NOT include any WhatsApp links.\n\n' +
+      "STRICT IGNORE RULE:\n" +
+      "- Ignore any scraped fields that cannot be mapped to the defined structure.\n" +
+      "- Do NOT create any new keys beyond what is defined.\n\n" +
+      "Scraped Data (source):\n" +
+      JSON.stringify(scrapedData, null, 2) +
+      "\n\nFINAL OUTPUT RULE:\n" +
+      "Return ONLY one JSON object exactly matching the allowed structure. NO markdown, NO comments, NO explanation.\n";
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -484,37 +480,47 @@ const scrapeCategory = async (req, res) => {
 const deleteDuplicates = async (req, res) => {
   try {
     const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
-    
+
     console.log(`\n🔄 Starting duplicate deletion process...`);
     console.log(`📊 Scanning ${allPosts.length} posts for duplicates\n`);
-    
+
     const duplicatesToDelete = [];
     const processedPairs = new Set();
-    
+
     // Compare each post with every other post
     for (let i = 0; i < allPosts.length; i++) {
       for (let j = i + 1; j < allPosts.length; j++) {
-        const post1 = allPosts[i];  // Older post (earlier createdAt)
-        const post2 = allPosts[j];  // Newer post (later createdAt)
-        
+        const post1 = allPosts[i]; // Older post (earlier createdAt)
+        const post2 = allPosts[j]; // Newer post (later createdAt)
+
         // Avoid comparing same pair twice
         const pairKey = `${post1._id}-${post2._id}`;
         if (processedPairs.has(pairKey)) continue;
         processedPairs.add(pairKey);
-        
+
         try {
           const similarity = calculateRecruitmentSimilarity(post1, post2);
-          
+
           // If similarity >= 60%, DELETE older post (post1), KEEP newer post (post2)
           if (similarity >= 60) {
             console.log(`   ⚠️  ${similarity.toFixed(1)}% DUPLICATE FOUND:`);
-            console.log(`       ❌ DELETE (older):  ${post1._id} | ${post1.recruitment?.title || post1.url}`);
-            console.log(`       ✅ KEEP (newer):    ${post2._id} | ${post2.recruitment?.title || post2.url}`);
-            console.log(`       📅 Created: ${post1.createdAt} → ${post2.createdAt}\n`);
-            
+            console.log(
+              `       ❌ DELETE (older):  ${post1._id} | ${
+                post1.recruitment?.title || post1.url
+              }`
+            );
+            console.log(
+              `       ✅ KEEP (newer):    ${post2._id} | ${
+                post2.recruitment?.title || post2.url
+              }`
+            );
+            console.log(
+              `       📅 Created: ${post1.createdAt} → ${post2.createdAt}\n`
+            );
+
             duplicatesToDelete.push({
-              deleteId: post1._id,  // ← DELETE OLDER
-              keepId: post2._id,    // ← KEEP NEWER
+              deleteId: post1._id, // ← DELETE OLDER
+              keepId: post2._id, // ← KEEP NEWER
               similarity: similarity,
               deleteTitle: post1.recruitment?.title || post1.url,
               keepTitle: post2.recruitment?.title || post2.url,
@@ -527,32 +533,36 @@ const deleteDuplicates = async (req, res) => {
         }
       }
     }
-    
+
     if (duplicatesToDelete.length === 0) {
       console.log(`✅ No duplicates found (threshold: 60%)`);
       return res.json({
         success: true,
         duplicatesFound: 0,
         duplicatesDeleted: 0,
-        message: 'No duplicates found in database',
+        message: "No duplicates found in database",
       });
     }
-    
-    console.log(`\n🗑️  Found ${duplicatesToDelete.length} duplicates. Deleting older posts...\n`);
-    
+
+    console.log(
+      `\n🗑️  Found ${duplicatesToDelete.length} duplicates. Deleting older posts...\n`
+    );
+
     // Delete duplicate posts
     const deletionResults = [];
-    
+
     for (const duplicate of duplicatesToDelete) {
       try {
         const deleted = await Post.findByIdAndDelete(duplicate.deleteId);
-        
+
         if (deleted) {
           console.log(`   ✅ Deleted (older): ${duplicate.deleteId}`);
           console.log(`      Title: ${duplicate.deleteTitle}`);
           console.log(`      Created: ${duplicate.deleteCreatedAt}`);
-          console.log(`      Similarity: ${duplicate.similarity.toFixed(1)}%\n`);
-          
+          console.log(
+            `      Similarity: ${duplicate.similarity.toFixed(1)}%\n`
+          );
+
           deletionResults.push({
             deleted: true,
             deletedId: duplicate.deleteId,
@@ -568,7 +578,7 @@ const deleteDuplicates = async (req, res) => {
           deletionResults.push({
             deleted: false,
             deletedId: duplicate.deleteId,
-            error: 'Deletion failed',
+            error: "Deletion failed",
           });
         }
       } catch (error) {
@@ -580,14 +590,14 @@ const deleteDuplicates = async (req, res) => {
         });
       }
     }
-    
-    const successCount = deletionResults.filter(r => r.deleted).length;
-    
+
+    const successCount = deletionResults.filter((r) => r.deleted).length;
+
     console.log(`\n✨ Deletion complete!`);
     console.log(`   Total duplicates found: ${duplicatesToDelete.length}`);
     console.log(`   Successfully deleted (older): ${successCount}`);
     console.log(`   Failed: ${deletionResults.length - successCount}\n`);
-    
+
     res.json({
       success: true,
       duplicatesFound: duplicatesToDelete.length,
@@ -595,13 +605,11 @@ const deleteDuplicates = async (req, res) => {
       results: deletionResults,
       timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error("Delete Duplicates Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
-
 
 /**
  * Optional: Get duplicate analysis WITHOUT deleting
@@ -610,25 +618,25 @@ const deleteDuplicates = async (req, res) => {
 const analyzeDuplicates = async (req, res) => {
   try {
     const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
-    
+
     console.log(`\n📊 Analyzing duplicates (DRY-RUN)...`);
     console.log(`Scanning ${allPosts.length} posts\n`);
-    
+
     const duplicateAnalysis = [];
     const processedPairs = new Set();
-    
+
     for (let i = 0; i < allPosts.length; i++) {
       for (let j = i + 1; j < allPosts.length; j++) {
         const post1 = allPosts[i];
         const post2 = allPosts[j];
-        
+
         const pairKey = `${post1._id}-${post2._id}`;
         if (processedPairs.has(pairKey)) continue;
         processedPairs.add(pairKey);
-        
+
         try {
           const similarity = calculateRecruitmentSimilarity(post1, post2);
-          
+
           if (similarity >= 60) {
             duplicateAnalysis.push({
               similarity: similarity.toFixed(2),
@@ -651,31 +659,36 @@ const analyzeDuplicates = async (req, res) => {
         }
       }
     }
-    
+
     if (duplicateAnalysis.length === 0) {
       return res.json({
         success: true,
-        message: 'No duplicates found',
+        message: "No duplicates found",
         analysis: [],
       });
     }
-    
-    console.log(`Found ${duplicateAnalysis.length} potential duplicates (60%+ similarity)\n`);
-    
+
+    console.log(
+      `Found ${duplicateAnalysis.length} potential duplicates (60%+ similarity)\n`
+    );
+
     res.json({
       success: true,
       duplicatesFound: duplicateAnalysis.length,
       analysis: duplicateAnalysis,
-      info: 'This is a dry-run analysis. No data was deleted. Use /api/delete-duplicates endpoint to actually delete.',
+      info: "This is a dry-run analysis. No data was deleted. Use /api/delete-duplicates endpoint to actually delete.",
       timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error("Analyze Duplicates Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-
-
-module.exports = { scrapper, getCategories, scrapeCategory, deleteDuplicates, analyzeDuplicates};
+module.exports = {
+  scrapper,
+  getCategories,
+  scrapeCategory,
+  deleteDuplicates,
+  analyzeDuplicates,
+};
