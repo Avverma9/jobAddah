@@ -51,10 +51,16 @@ const formatWithAI = async (scrapedData) => {
   "6) If some data is missing in scrapedData, keep the key but leave it empty (\"\", {}, [], or 0 exactly as in the structure).\n" +
   "7) JSON MUST NOT contain comments, trailing commas, undefined, NaN, functions, or any explanation text.\n" +
   "8) Output MUST NOT be wrapped in markdown or any extra text. Return ONLY pure JSON.\n\n" +
+    "CRITICAL TITLE REPHRASING RULE (PLAGIARISM CHECK):\n" +
+      "- The 'title' field MUST be completely rephrased and unique.\n" +
+      "- Do NOT simply copy the scraped title.\n" +
+      "- Keep the core meaning (Organization, Post Name, Year) but change the sentence structure.\n" +
+      "- Example: If scraped title is 'UP Police Constable Recruitment 2025 Apply Online', change it to 'Uttar Pradesh Police Constable 2025 Vacancy - Online Application Open'.\n" +
+      "- Make it SEO-friendly and professional.\n\n" +
   "ALLOWED JSON STRUCTURE (YOU MUST FOLLOW THIS EXACTLY):\n" +
   "{\n" +
   '  "recruitment": {\n' +
-  '    "title": "",\n' +
+  '    "title": "REPHRASED_UNIQUE_TITLE_HERE",\n' +
   '    "organization": {\n' +
   '      "name": "",\n' +
   '      "shortName": "",\n' +
@@ -475,4 +481,201 @@ const scrapeCategory = async (req, res) => {
   }
 };
 
-module.exports = { scrapper, getCategories, scrapeCategory };
+const deleteDuplicates = async (req, res) => {
+  try {
+    const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
+    
+    console.log(`\n🔄 Starting duplicate deletion process...`);
+    console.log(`📊 Scanning ${allPosts.length} posts for duplicates\n`);
+    
+    const duplicatesToDelete = [];
+    const processedPairs = new Set();
+    
+    // Compare each post with every other post
+    for (let i = 0; i < allPosts.length; i++) {
+      for (let j = i + 1; j < allPosts.length; j++) {
+        const post1 = allPosts[i];  // Older post (earlier createdAt)
+        const post2 = allPosts[j];  // Newer post (later createdAt)
+        
+        // Avoid comparing same pair twice
+        const pairKey = `${post1._id}-${post2._id}`;
+        if (processedPairs.has(pairKey)) continue;
+        processedPairs.add(pairKey);
+        
+        try {
+          const similarity = calculateRecruitmentSimilarity(post1, post2);
+          
+          // If similarity >= 60%, DELETE older post (post1), KEEP newer post (post2)
+          if (similarity >= 60) {
+            console.log(`   ⚠️  ${similarity.toFixed(1)}% DUPLICATE FOUND:`);
+            console.log(`       ❌ DELETE (older):  ${post1._id} | ${post1.recruitment?.title || post1.url}`);
+            console.log(`       ✅ KEEP (newer):    ${post2._id} | ${post2.recruitment?.title || post2.url}`);
+            console.log(`       📅 Created: ${post1.createdAt} → ${post2.createdAt}\n`);
+            
+            duplicatesToDelete.push({
+              deleteId: post1._id,  // ← DELETE OLDER
+              keepId: post2._id,    // ← KEEP NEWER
+              similarity: similarity,
+              deleteTitle: post1.recruitment?.title || post1.url,
+              keepTitle: post2.recruitment?.title || post2.url,
+              deleteCreatedAt: post1.createdAt,
+              keepCreatedAt: post2.createdAt,
+            });
+          }
+        } catch (error) {
+          console.error(`Error comparing posts:`, error.message);
+        }
+      }
+    }
+    
+    if (duplicatesToDelete.length === 0) {
+      console.log(`✅ No duplicates found (threshold: 60%)`);
+      return res.json({
+        success: true,
+        duplicatesFound: 0,
+        duplicatesDeleted: 0,
+        message: 'No duplicates found in database',
+      });
+    }
+    
+    console.log(`\n🗑️  Found ${duplicatesToDelete.length} duplicates. Deleting older posts...\n`);
+    
+    // Delete duplicate posts
+    const deletionResults = [];
+    
+    for (const duplicate of duplicatesToDelete) {
+      try {
+        const deleted = await Post.findByIdAndDelete(duplicate.deleteId);
+        
+        if (deleted) {
+          console.log(`   ✅ Deleted (older): ${duplicate.deleteId}`);
+          console.log(`      Title: ${duplicate.deleteTitle}`);
+          console.log(`      Created: ${duplicate.deleteCreatedAt}`);
+          console.log(`      Similarity: ${duplicate.similarity.toFixed(1)}%\n`);
+          
+          deletionResults.push({
+            deleted: true,
+            deletedId: duplicate.deleteId,
+            keptId: duplicate.keepId,
+            similarity: duplicate.similarity,
+            deletedTitle: duplicate.deleteTitle,
+            keptTitle: duplicate.keepTitle,
+            deletedCreatedAt: duplicate.deleteCreatedAt,
+            keptCreatedAt: duplicate.keepCreatedAt,
+          });
+        } else {
+          console.log(`   ❌ Failed to delete: ${duplicate.deleteId}`);
+          deletionResults.push({
+            deleted: false,
+            deletedId: duplicate.deleteId,
+            error: 'Deletion failed',
+          });
+        }
+      } catch (error) {
+        console.error(`Error deleting ${duplicate.deleteId}:`, error.message);
+        deletionResults.push({
+          deleted: false,
+          deletedId: duplicate.deleteId,
+          error: error.message,
+        });
+      }
+    }
+    
+    const successCount = deletionResults.filter(r => r.deleted).length;
+    
+    console.log(`\n✨ Deletion complete!`);
+    console.log(`   Total duplicates found: ${duplicatesToDelete.length}`);
+    console.log(`   Successfully deleted (older): ${successCount}`);
+    console.log(`   Failed: ${deletionResults.length - successCount}\n`);
+    
+    res.json({
+      success: true,
+      duplicatesFound: duplicatesToDelete.length,
+      duplicatesDeleted: successCount,
+      results: deletionResults,
+      timestamp: new Date().toISOString(),
+    });
+    
+  } catch (error) {
+    console.error("Delete Duplicates Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+/**
+ * Optional: Get duplicate analysis WITHOUT deleting
+ * (Dry-run mode to see what would be deleted)
+ */
+const analyzeDuplicates = async (req, res) => {
+  try {
+    const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
+    
+    console.log(`\n📊 Analyzing duplicates (DRY-RUN)...`);
+    console.log(`Scanning ${allPosts.length} posts\n`);
+    
+    const duplicateAnalysis = [];
+    const processedPairs = new Set();
+    
+    for (let i = 0; i < allPosts.length; i++) {
+      for (let j = i + 1; j < allPosts.length; j++) {
+        const post1 = allPosts[i];
+        const post2 = allPosts[j];
+        
+        const pairKey = `${post1._id}-${post2._id}`;
+        if (processedPairs.has(pairKey)) continue;
+        processedPairs.add(pairKey);
+        
+        try {
+          const similarity = calculateRecruitmentSimilarity(post1, post2);
+          
+          if (similarity >= 60) {
+            duplicateAnalysis.push({
+              similarity: similarity.toFixed(2),
+              keep: {
+                id: post1._id,
+                title: post1.recruitment?.title || post1.url,
+                url: post1.url,
+                createdAt: post1.createdAt,
+              },
+              delete: {
+                id: post2._id,
+                title: post2.recruitment?.title || post2.url,
+                url: post2.url,
+                createdAt: post2.createdAt,
+              },
+            });
+          }
+        } catch (error) {
+          console.error(`Error analyzing:`, error.message);
+        }
+      }
+    }
+    
+    if (duplicateAnalysis.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No duplicates found',
+        analysis: [],
+      });
+    }
+    
+    console.log(`Found ${duplicateAnalysis.length} potential duplicates (60%+ similarity)\n`);
+    
+    res.json({
+      success: true,
+      duplicatesFound: duplicateAnalysis.length,
+      analysis: duplicateAnalysis,
+      info: 'This is a dry-run analysis. No data was deleted. Use /api/delete-duplicates endpoint to actually delete.',
+      timestamp: new Date().toISOString(),
+    });
+    
+  } catch (error) {
+    console.error("Analyze Duplicates Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+
+
+module.exports = { scrapper, getCategories, scrapeCategory, deleteDuplicates, analyzeDuplicates};
