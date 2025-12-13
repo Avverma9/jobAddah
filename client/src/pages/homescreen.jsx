@@ -429,9 +429,9 @@ export default function HomeScreen() {
       onClickCapture={handleGlobalClick}
     >
       <SEO
-        title="Latest Government Jobs 2025 - JobsAddah"
-        description="Apply for latest sarkari naukri, govt jobs, admit cards, and results"
-        keywords="government jobs, sarkari naukri, latest jobs 2025"
+        title="Sarkari Result 2025 - Latest Govt Jobs, Sarkari Naukri, Admit Card Downloads"
+        description="Sarkari Result 2025: Latest government jobs, sarkari naukri notifications, admit card downloads, exam results. SSC, Railway, Bank, UPSC, Defence jobs. Apply online for govt job vacancies today."
+        keywords="sarkari result, sarkari result 2025, sarkari naukri, govt jobs, government jobs, latest govt jobs, today govt job, sarkari job alert, govt job alert, rojgar samachar, employment news, govt job notifications, sarkari naukri vacancy, admit card, sarkari admit card, hall ticket download, exam result, sarkari result latest, answer key, official answer key, ssc jobs, railway jobs, bank jobs, upsc exam, defence jobs, army bharti, police vacancy, bihar govt job, up govt job, mp govt job, delhi govt job, 10th pass govt job, 12th pass govt job, graduate govt job"
         canonical="/"
       />
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">

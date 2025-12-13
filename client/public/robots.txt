@@ -1,12 +1,23 @@
-# public/robots.txt - Update this:
+# JobsAddah - Sarkari Result 2025
 User-agent: *
 Allow: /
+
+# Important pages for SEO
+Allow: /view-all
+Allow: /post
+Allow: /about-us
+Allow: /contact-us
+Allow: /privacy-policy
+Allow: /terms
+
+# Disallow admin or private areas
 Disallow: /dashboard/
 Disallow: /api/
 Disallow: /admin/
+Disallow: /*.json$
 
 # Sitemap location
 Sitemap: https://jobsaddah.com/sitemap.xml
 
-# Crawl rate (optional)
+# Crawl rate for better indexing
 Crawl-delay: 1

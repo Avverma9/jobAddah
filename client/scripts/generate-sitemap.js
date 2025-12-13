@@ -35,7 +35,7 @@ function buildSitemap(urls) {
 }
 
 async function main() {
-  const domain = (baseUrl.includes('http') ? baseUrl.replace(/\/api\/v1$/, '') : 'https://yourdomain.com');
+  const domain = (baseUrl.includes('http') ? baseUrl.replace(/\/api\/v1$/, '') : 'https://jobsaddah.com');
   const urls = [
     { loc: `${domain}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${domain}/govt-jobs`, changefreq: 'daily', priority: '0.9' },
