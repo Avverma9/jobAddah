@@ -21,6 +21,7 @@ import {
   parseApiResponse,
 } from "../../util/encode-decode";
 import SEO from "../util/SEO";
+import AdSense from "../util/AdSense";
 
 const VISIT_STORAGE_KEY = "jobAddah_recent_visits_v2";
 
@@ -160,6 +161,12 @@ const RecentVisitsSection = ({ data }) => {
   return (
     <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 px-1">
+        <AdSense
+          dataAdSlot="1234567890" // Replace with your actual ad slot ID
+          dataAdFormat="horizontal"
+          className="my-6"
+        />
+
         <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-500 rounded-full flex items-center justify-center">
           <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
         </div>
@@ -417,17 +424,18 @@ export default function HomeScreen() {
     }
   };
 
-  const showSearchSkeleton = searchQuery.length > 0 && (isTyping || isSearching);
+  const showSearchSkeleton =
+    searchQuery.length > 0 && (isTyping || isSearching);
 
   return (
     <div
       className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans"
       onClickCapture={handleGlobalClick}
     >
-       <SEO 
-        title="Latest Government Jobs 2025"
-        description="Find latest sarkari naukri, govt job notifications, admit cards, results, and answer keys. Apply online for SSC, Railway, Bank, Police, Teaching jobs in India."
-        keywords="government jobs, sarkari naukri, latest jobs 2025, admit card, result, answer key, SSC jobs, railway jobs, bank jobs"
+      <SEO
+        title="Latest Government Jobs 2025 - JobsAddah"
+        description="Apply for latest sarkari naukri, govt jobs, admit cards, and results"
+        keywords="government jobs, sarkari naukri, latest jobs 2025"
         canonical="/"
       />
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
@@ -480,7 +488,7 @@ export default function HomeScreen() {
                 />
               </div>
             </div>
-            
+
             {/* Search Results Dropdown */}
             {searchQuery.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-80 overflow-y-auto">
@@ -638,6 +646,12 @@ export default function HomeScreen() {
           animation: gradientRotate 2s linear infinite; /* Faster on hover */
         }
       `}</style>
+
+      <AdSense
+        dataAdSlot="3456789012"
+        dataAdFormat="rectangle"
+        className="my-8 max-w-md mx-auto"
+      />
     </div>
   );
 }
