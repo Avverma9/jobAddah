@@ -96,39 +96,39 @@ const ListSkeleton = () => (
 const getSEOData = (type) => {
   const seoConfig = {
     JOB: {
-      title: "Latest Govt Jobs 2025 - Sarkari Naukri Notifications, Apply Online",
-      description: "Latest government jobs 2025, sarkari naukri notifications. SSC, Railway, Bank, UPSC, Defence, Police jobs. 10th, 12th pass govt jobs. Apply online for govt job vacancies today.",
-      keywords: "latest govt jobs, sarkari naukri, government jobs, today govt job, new govt vacancy, sarkari job alert, govt job alert, employment news, govt job notifications, sarkari naukri vacancy, ssc jobs, railway jobs, bank jobs, upsc exam, defence jobs, army bharti, police vacancy, 10th pass govt job, 12th pass govt job, graduate govt job, govt job apply online, direct recruitment govt job, govt job without exam"
+      title: "JobsAddah - Latest Govt Jobs 2025, Sarkari Naukri Notifications, Apply Online",
+      description: "JobsAddah: Latest government jobs 2025, sarkari naukri notifications. SSC, Railway, Bank, UPSC, Defence, Police jobs. 10th, 12th pass govt jobs. Apply online for govt job vacancies today.",
+      keywords: "JobsAddah, latest govt jobs, sarkari naukri, government jobs, today govt job, new govt vacancy, sarkari job alert, govt job alert, employment news, govt job notifications, sarkari naukri vacancy, ssc jobs, railway jobs, bank jobs, upsc exam, defence jobs, army bharti, police vacancy, 10th pass govt job, 12th pass govt job, graduate govt job, govt job apply online, direct recruitment govt job, govt job without exam"
     },
     ADMIT_CARD: {
-      title: "Admit Card Download 2025 - Sarkari Admit Card, Hall Ticket Download",
-      description: "Download admit cards 2025 for SSC, Railway, Bank, UPSC, State PSC exams. Sarkari admit card, hall ticket download, call letter govt exam. Get exam roll number.",
-      keywords: "admit card, sarkari admit card, govt exam admit card, hall ticket download, exam admit card 2025, roll number download, call letter govt exam, admit card download, exam hall ticket, sarkari exam admit card"
+      title: "JobsAddah - Admit Card Download 2025, Sarkari Admit Card, Hall Ticket",
+      description: "JobsAddah: Download admit cards 2025 for SSC, Railway, Bank, UPSC, State PSC exams. Sarkari admit card, hall ticket download, call letter govt exam. Get exam roll number.",
+      keywords: "JobsAddah, admit card, sarkari admit card, govt exam admit card, hall ticket download, exam admit card 2025, roll number download, call letter govt exam, admit card download, exam hall ticket, sarkari exam admit card"
     },
     RESULT: {
-      title: "Sarkari Result 2025 - Latest Govt Exam Results, Cut Off Marks",
-      description: "Sarkari Result 2025: Latest government exam results, cut off marks, merit list PDF. SSC, Railway, Bank exam results. Check result declared today.",
-      keywords: "sarkari result, sarkari result 2025, govt exam result, result declared, exam result today, cut off marks, merit list pdf, final result govt job, selection list, sarkari result latest, sarkari result official website 2025"
+      title: "JobsAddah - Sarkari Result 2025, Latest Govt Exam Results, Cut Off Marks",
+      description: "JobsAddah: Sarkari Result 2025, latest government exam results, cut off marks, merit list PDF. SSC, Railway, Bank exam results. Check result declared today.",
+      keywords: "JobsAddah, sarkari result, sarkari result 2025, govt exam result, result declared, exam result today, cut off marks, merit list pdf, final result govt job, selection list, sarkari result latest, sarkari result official website 2025"
     },
     ANSWER_KEY: {
-      title: "Answer Key 2025 - Official Answer Key PDF, Govt Exam Solutions",
-      description: "Download official answer key 2025 for government exams. SSC, Railway, Banking exam answer key PDF, response sheet, exam solution PDF with objections.",
-      keywords: "answer key, official answer key, govt exam answer key, answer key pdf, response sheet, exam solution pdf, answer key download, sarkari exam answer key"
+      title: "JobsAddah - Answer Key 2025, Official Answer Key PDF, Govt Exam Solutions",
+      description: "JobsAddah: Download official answer key 2025 for government exams. SSC, Railway, Banking exam answer key PDF, response sheet, exam solution PDF with objections.",
+      keywords: "JobsAddah, answer key, official answer key, govt exam answer key, answer key pdf, response sheet, exam solution pdf, answer key download, sarkari exam answer key"
     },
     ADMISSION: {
-      title: "Government College Admission 2025 - Apply Online Form",
-      description: "Government college admission 2025, university admission notifications. Engineering, Medical, Management college admissions. Apply online for govt college admission.",
-      keywords: "government college admission, university admission, engineering admission, medical college admission, govt college admission 2025, admission notification, college admission form"
+      title: "JobsAddah - Government College Admission 2025, Apply Online Form",
+      description: "JobsAddah: Government college admission 2025, university admission notifications. Engineering, Medical, Management college admissions. Apply online for govt college admission.",
+      keywords: "JobsAddah, government college admission, university admission, engineering admission, medical college admission, govt college admission 2025, admission notification, college admission form"
     },
     SYLLABUS: {
-      title: "Govt Exam Syllabus 2025 - Exam Pattern, Study Material PDF",
-      description: "Download government exam syllabus 2025 and exam pattern for SSC, Railway, Bank, UPSC exams. Complete study material PDF for sarkari exam preparation.",
-      keywords: "govt exam syllabus, exam pattern, government exam syllabus, study material, sarkari exam syllabus, exam syllabus pdf, govt exam pattern"
+      title: "JobsAddah - Govt Exam Syllabus 2025, Exam Pattern, Study Material PDF",
+      description: "JobsAddah: Download government exam syllabus 2025 and exam pattern for SSC, Railway, Bank, UPSC exams. Complete study material PDF for sarkari exam preparation.",
+      keywords: "JobsAddah, govt exam syllabus, exam pattern, government exam syllabus, study material, sarkari exam syllabus, exam syllabus pdf, govt exam pattern"
     },
     PRIVATE_JOB: {
-      title: "Private Jobs 2025 - IT Jobs, MNC Recruitment, Company Hiring",
-      description: "Latest private jobs 2025, IT jobs, Non-IT jobs, MNC recruitment, startup hiring. Private sector job vacancies, company jobs, apply for private jobs online.",
-      keywords: "private jobs, IT jobs, MNC jobs, private sector recruitment, job vacancies, company jobs, private job vacancy, IT job vacancy"
+      title: "JobsAddah - Private Jobs 2025, IT Jobs, MNC Recruitment, Company Hiring",
+      description: "JobsAddah: Latest private jobs 2025, IT jobs, Non-IT jobs, MNC recruitment, startup hiring. Private sector job vacancies, company jobs, apply for private jobs online.",
+      keywords: "JobsAddah, private jobs, IT jobs, MNC jobs, private sector recruitment, job vacancies, company jobs, private job vacancy, IT job vacancy"
     }
   };
 
