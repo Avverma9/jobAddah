@@ -13,7 +13,6 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/TermsAndConditions";
 import Header from "./components/Header";
 import { HelmetProvider } from "react-helmet-async";
-
 function App() {
   return (
     <HelmetProvider>

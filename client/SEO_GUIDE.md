@@ -15,7 +15,7 @@ This file summarizes what was implemented and recommended next steps to get the 
 
 ## Required manual actions (please do these now)
 
-- Replace every `https://yourdomain.com` placeholder with your real production domain (`https://jobsaddah.onrender.com` is used in some places already).
+- Replace every `https://jobsaddah.com` placeholder with your real production domain (`https://jobsaddah.onrender.com` is used in some places already).
 - Replace the Google Analytics ID `G-XXXXXXXXXX` in `index.html` with your real measurement ID.
 - Upload `logo.png` and `og-image.png` to the referenced paths or update the paths in `index.html`.
 - Verify your site in Google Search Console and submit `https://<your-domain>/sitemap.xml`.

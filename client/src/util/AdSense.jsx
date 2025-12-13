@@ -12,10 +12,17 @@ const AdSense = ({
   const adRef = useRef(null);
   const isLoaded = useRef(false);
 
+  // Automatic mode detection
+  const isProduction = import.meta.env.PROD; // Automatically true in production build
+  const isDevelopment = import.meta.env.DEV; // Automatically true in development
+  
+  // Manual override (optional) - only use if you want to force enable ads in development
+  const forceAdsEnabled = import.meta.env.VITE_ADSENSE_ENABLED === 'true';
+
   useEffect(() => {
     const loadAd = () => {
       try {
-        if (window.adsbygoogle && !isLoaded.current) {
+        if (window.adsbygoogle && !isLoaded.current && (isProduction || forceAdsEnabled)) {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
           isLoaded.current = true;
         }
@@ -24,17 +31,28 @@ const AdSense = ({
       }
     };
 
-    // Load ad after a small delay to ensure DOM is ready
-    const timer = setTimeout(loadAd, 100);
-    return () => clearTimeout(timer);
-  }, []);
+    // Load ads in production OR when manually enabled in development
+    if (isProduction || forceAdsEnabled) {
+      const timer = setTimeout(loadAd, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isProduction, forceAdsEnabled]);
 
-  // Show placeholder in development or when adTest is true
-  if (process.env.NODE_ENV !== 'production' || adTest) {
+  // SIMPLE RULE: Hide ads in development, show in production
+  if (isDevelopment && !forceAdsEnabled && !adTest) {
+    return null; // No ads in development = no blank spaces
+  }
+
+  // Show test placeholder only when adTest is true
+  if (adTest && isDevelopment) {
     return (
-      <div className={`bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center ${className}`} style={style}>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Ad Placeholder</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Slot: {dataAdSlot}</p>
+      <div className={`bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 text-center ${className}`} style={style}>
+        <p className="text-xs text-blue-600 dark:text-blue-400">
+          🧪 Ad Test - Slot: {dataAdSlot}
+        </p>
+        <p className="text-xs text-blue-500 dark:text-blue-300 mt-1">
+          Mode: {isProduction ? 'Production' : 'Development'}
+        </p>
       </div>
     );
   }
