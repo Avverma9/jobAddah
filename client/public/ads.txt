@@ -1,0 +1,12 @@
+# ads.txt file for JobsAddah - Jobs portal 2025
+# This file is required for Google AdSense monetization
+
+# Google AdSense
+google.com, pub-7416335110977682, DIRECT, f08c47fec0942fa0
+
+# Additional ad networks (add when you partner with them)
+# Example format:
+# adnxs.com, 12345, RESELLER, f5ab79cb980f11d1
+# rubiconproject.com, 67890, RESELLER, 0bfd66d529a55807
+
+# Last updated: 2025-01-01
