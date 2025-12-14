@@ -1,54 +1,51 @@
-// src/components/ads/AdContainer.jsx
-// Smart container that manages space when ads are hidden
+import SmartAdSense from "./SmartAdSense";
+import { AD_SLOTS } from "../../util/AdConfig";
+import useAdControl from "../../hooks/useAdControl";
 
-import React from 'react';
-import { useAdControl } from '../../hooks/useAdControl';
-import SmartAdSense from './SmartAdSense';
+// Map placement types to actual AdSense slot IDs
+const getSlotId = (placement, pageType) => {
+  const slotMap = {
+    banner: {
+      homepage: AD_SLOTS.HEADER_BANNER,
+      jobDetail: AD_SLOTS.TOP_LEADERBOARD,
+      categoryPages: AD_SLOTS.HEADER_BANNER,
+      staticPages: AD_SLOTS.HEADER_BANNER,
+      footer: AD_SLOTS.FOOTER_BANNER,
+    },
+    rectangle: {
+      homepage: AD_SLOTS.HOME_RECTANGLE,
+      jobDetail: AD_SLOTS.POST_RECTANGLE,
+      categoryPages: AD_SLOTS.CONTENT_RECTANGLE,
+      staticPages: AD_SLOTS.CONTACT_RECTANGLE,
+    },
+    inFeed: {
+      homepage: AD_SLOTS.FEED_AD,
+      categoryPages: AD_SLOTS.FEED_AD,
+    },
+    inArticle: {
+      jobDetail: AD_SLOTS.IN_ARTICLE,
+    },
+  };
 
-const AdContainer = ({ 
-  placement,
-  pageType = 'default',
-  children,
-  className = '',
-  adProps = {},
-  showPlaceholder = false,
-  placeholderText = 'Advertisement'
-}) => {
-  const { shouldShow, isLoading } = useAdControl(placement, pageType);
-
-  // Loading state - don't take space
-  if (isLoading) {
-    return null;
-  }
-
-  // Ad should show
-  if (shouldShow) {
-    return (
-      <div className={className}>
-        <SmartAdSense 
-          placement={placement}
-          pageType={pageType}
-          {...adProps}
-        />
-        {children}
-      </div>
-    );
-  }
-
-  // Ad hidden - show placeholder or children only
-  if (showPlaceholder && import.meta.env.DEV) {
-    return (
-      <div className={className}>
-        <div className="bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{placeholderText} (Hidden)</p>
-        </div>
-        {children}
-      </div>
-    );
-  }
-
-  // Just return children without ad space
-  return children ? <div className={className}>{children}</div> : null;
+  return slotMap[placement]?.[pageType] || AD_SLOTS.CONTENT_RECTANGLE;
 };
 
-export default AdContainer;
+export default function AdContainer({
+  pageType,
+  placement,
+  slotId,
+  fallback = null,
+  format = "auto",
+  className = "",
+}) {
+  const canShow = useAdControl(pageType, placement);
+  const actualSlotId = slotId || getSlotId(placement, pageType);
+
+  if (!canShow) return fallback;
+
+  return (
+    <div className={`my-4 ${className}`}>
+      <SmartAdSense slotId={actualSlotId} format={format} />
+    </div>
+  );
+}

@@ -1,0 +1,284 @@
+{
+  "jobsaddah_ad_api_requests": {
+    "base_url": "http://localhost:5000/api/v1/ad-config",
+    "publisher_id": "ca-pub-7416335110977682",
+    "required_headers": {
+      "Content-Type": "application/json",
+      "X-Publisher-ID": "ca-pub-7416335110977682"
+    },
+    
+    "1_initialize_adsense": {
+      "method": "POST",
+      "endpoint": "/initialize",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "domain": "jobsaddah.com",
+        "siteName": "JobsAddah - Sarkari Result 2025",
+        "apiKey": "jobsaddah-secure-key-2025"
+      },
+      "description": "First time setup - Initialize AdSense credentials"
+    },
+
+    "2_get_ad_config": {
+      "method": "GET",
+      "endpoint": "/",
+      "headers": {
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "description": "Get complete ad configuration"
+    },
+
+    "3_initialize_ad_slots": {
+      "method": "POST",
+      "endpoint": "/slots/initialize",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "adSlots": {
+          "banner": {
+            "enabled": true,
+            "priority": 1,
+            "adSlotId": "1234567890",
+            "format": "horizontal",
+            "description": "Top banner ads"
+          },
+          "rectangle": {
+            "enabled": true,
+            "priority": 2,
+            "adSlotId": "4567890123",
+            "format": "rectangle",
+            "description": "Content rectangle ads"
+          },
+          "inFeed": {
+            "enabled": true,
+            "priority": 3,
+            "adSlotId": "9012345678",
+            "format": "fluid",
+            "description": "In-feed native ads"
+          },
+          "inArticle": {
+            "enabled": true,
+            "priority": 4,
+            "adSlotId": "3456789012",
+            "format": "fluid",
+            "description": "In-article content ads"
+          },
+          "sidebar": {
+            "enabled": true,
+            "priority": 5,
+            "adSlotId": "5678901234",
+            "format": "vertical",
+            "description": "Sidebar ads for desktop"
+          },
+          "footer": {
+            "enabled": true,
+            "priority": 6,
+            "adSlotId": "6789012345",
+            "format": "horizontal",
+            "description": "Footer banner ads"
+          },
+          "mobileBanner": {
+            "enabled": true,
+            "priority": 7,
+            "adSlotId": "7890123456",
+            "format": "horizontal",
+            "description": "Mobile banner ads"
+          },
+          "mobileRectangle": {
+            "enabled": true,
+            "priority": 8,
+            "adSlotId": "8901234567",
+            "format": "rectangle",
+            "description": "Mobile rectangle ads"
+          }
+        }
+      },
+      "description": "Initialize all ad slots with detailed configuration"
+    },
+
+    "4_update_global_settings": {
+      "method": "POST",
+      "endpoint": "/global",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "adsEnabled": true,
+        "showAds": true,
+        "maxAdsPerPage": 6
+      },
+      "description": "Update global ad settings"
+    },
+
+    "5_update_page_settings": {
+      "method": "POST",
+      "endpoint": "/page/homepage",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "enabled": true,
+        "maxAds": 4
+      },
+      "description": "Update page-specific settings (replace 'homepage' with: jobDetail, categoryPages, staticPages, footer, blogPages)"
+    },
+
+    "6_update_ad_slot": {
+      "method": "POST",
+      "endpoint": "/slot/banner",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "enabled": true,
+        "priority": 1,
+        "adSlotId": "NEW_SLOT_ID_HERE",
+        "format": "horizontal",
+        "description": "Updated banner slot"
+      },
+      "description": "Update individual ad slot (replace 'banner' with: rectangle, inFeed, inArticle, sidebar, footer, mobileBanner, mobileRectangle)"
+    },
+
+    "7_bulk_update_slots": {
+      "method": "POST",
+      "endpoint": "/slots/bulk-update",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "operation": "disable",
+        "slotTypes": ["rectangle", "sidebar"],
+        "reason": "Performance optimization"
+      },
+      "description": "Bulk enable/disable multiple ad slots (operation: 'enable' or 'disable')"
+    },
+
+    "8_test_ad_placement": {
+      "method": "POST",
+      "endpoint": "/test-placement",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "placement": "banner",
+        "pageType": "homepage"
+      },
+      "description": "Test if ad should show for specific placement and page type"
+    },
+
+    "9_get_slot_mapping": {
+      "method": "GET",
+      "endpoint": "/slot-mapping",
+      "headers": {
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "description": "Get ad slot mapping for frontend integration"
+    },
+
+    "10_get_enhanced_status": {
+      "method": "GET",
+      "endpoint": "/enhanced-status?pageType=homepage&slotType=banner",
+      "headers": {
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "description": "Get enhanced ad status with slot ID and format details"
+    },
+
+    "11_emergency_disable": {
+      "method": "POST",
+      "endpoint": "/emergency-disable",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "reason": "AdSense policy violation",
+        "disabledBy": "admin"
+      },
+      "description": "Emergency disable all ads"
+    },
+
+    "12_enable_ads": {
+      "method": "POST",
+      "endpoint": "/enable",
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Publisher-ID": "ca-pub-7416335110977682"
+      },
+      "body": {
+        "publisherId": "ca-pub-7416335110977682",
+        "reason": "AdSense approved",
+        "enabledBy": "admin"
+      },
+      "description": "Re-enable ads after approval"
+    },
+
+    "13_health_check": {
+      "method": "GET",
+      "endpoint": "/health",
+      "description": "Check API health status"
+    }
+  },
+
+  "curl_examples": {
+    "initialize_adsense": "curl -X POST http://localhost:5000/api/v1/ad-config/initialize -H \"Content-Type: application/json\" -d '{\"publisherId\": \"ca-pub-7416335110977682\", \"domain\": \"jobsaddah.com\", \"siteName\": \"JobsAddah - Sarkari Result 2025\", \"apiKey\": \"jobsaddah-secure-key-2025\"}'",
+    
+    "get_config": "curl -H \"X-Publisher-ID: ca-pub-7416335110977682\" http://localhost:5000/api/v1/ad-config/",
+    
+    "emergency_disable": "curl -X POST http://localhost:5000/api/v1/ad-config/emergency-disable -H \"Content-Type: application/json\" -H \"X-Publisher-ID: ca-pub-7416335110977682\" -d '{\"publisherId\": \"ca-pub-7416335110977682\", \"reason\": \"Policy violation\", \"disabledBy\": \"admin\"}'",
+    
+    "enable_ads": "curl -X POST http://localhost:5000/api/v1/ad-config/enable -H \"Content-Type: application/json\" -H \"X-Publisher-ID: ca-pub-7416335110977682\" -d '{\"publisherId\": \"ca-pub-7416335110977682\", \"reason\": \"AdSense approved\", \"enabledBy\": \"admin\"}'",
+    
+    "test_placement": "curl -X POST http://localhost:5000/api/v1/ad-config/test-placement -H \"Content-Type: application/json\" -H \"X-Publisher-ID: ca-pub-7416335110977682\" -d '{\"publisherId\": \"ca-pub-7416335110977682\", \"placement\": \"banner\", \"pageType\": \"homepage\"}'",
+    
+    "bulk_disable": "curl -X POST http://localhost:5000/api/v1/ad-config/slots/bulk-update -H \"Content-Type: application/json\" -H \"X-Publisher-ID: ca-pub-7416335110977682\" -d '{\"publisherId\": \"ca-pub-7416335110977682\", \"operation\": \"disable\", \"slotTypes\": [\"rectangle\", \"sidebar\"], \"reason\": \"Testing\"}'"
+  },
+
+  "page_types": [
+    "homepage",
+    "jobDetail", 
+    "jobList",
+    "govtPost",
+    "categoryPages",
+    "staticPages",
+    "footer",
+    "blogPages"
+  ],
+
+  "slot_types": [
+    "banner",
+    "rectangle", 
+    "inFeed",
+    "inArticle",
+    "sidebar",
+    "footer",
+    "mobileBanner",
+    "mobileRectangle"
+  ],
+
+  "ad_formats": [
+    "auto",
+    "horizontal",
+    "rectangle",
+    "vertical",
+    "fluid",
+    "responsive"
+  ]
+}

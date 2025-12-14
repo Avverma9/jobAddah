@@ -4,7 +4,11 @@
   "private": true,
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "setup-ads": "node setup-ad-system.js",
+    "test-ads": "node test-ad-api.js",
+    "test-enhanced": "node test-enhanced-ad-api.js",
+    "quick-start": "node quick-start.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

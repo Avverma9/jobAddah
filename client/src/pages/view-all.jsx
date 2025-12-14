@@ -16,9 +16,7 @@ import {
   List,
 } from "lucide-react";
 import SEO from "../util/SEO";
-import AdBanner from "../components/ads/AdBanner";
-import AdRectangle from "../components/ads/AdRectangle";
-import AdInFeed from "../components/ads/AdInFeed";
+import AdContainer from "../components/ads/AdContainer";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -290,7 +288,12 @@ export default function ViewAll() {
       >
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           {/* Top Banner Ad */}
-          <AdBanner position="top" className="mb-6" />
+          <AdContainer 
+            placement="banner" 
+            pageType="categoryPages"
+            format="horizontal"
+            className="mb-6"
+          />
           
           <div className="mb-8 flex flex-col items-center text-center space-y-2">
             <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
@@ -401,13 +404,23 @@ export default function ViewAll() {
                   
                   {/* Insert ad after every 5th post */}
                   {(index + 1) % 5 === 0 && index < processedPosts.length - 1 && (
-                    <AdInFeed index={index} />
+                    <AdContainer 
+                      placement="inFeed" 
+                      pageType="categoryPages"
+                      format="fluid"
+                      className="my-4"
+                    />
                   )}
                 </React.Fragment>
               ))}
               
               {/* Bottom Rectangle Ad */}
-              <AdRectangle position="content" className="mt-8" />
+              <AdContainer 
+                placement="rectangle" 
+                pageType="categoryPages"
+                format="rectangle"
+                className="mt-8"
+              />
             </div>
           )}
         </main>
