@@ -412,12 +412,7 @@ export default function HomeScreen() {
       })
       .filter((job) => job !== undefined);
     
-    // Debug logging
-    if (recentVisitIds.length > 0) {
-      console.log('Recent Visit IDs:', recentVisitIds);
-      console.log('All Jobs Count:', allJobs.length);
-      console.log('Matched Jobs:', matchedJobs);
-    }
+
     
     return matchedJobs;
   }, [dynamicSections, privateJobs, recentVisitIds]);
