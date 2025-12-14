@@ -6,3 +6,18 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Fix for unwanted cursor icons */
+body {
+  cursor: default;
+}
+
+/* Ensure proper cursor for interactive elements */
+a, button, [role="button"] {
+  cursor: pointer;
+}
+
+/* Ensure proper cursor for text inputs */
+input, textarea {
+  cursor: text;
+}
