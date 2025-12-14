@@ -92,10 +92,10 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* UPDATED: Reduced height from h-20 to h-16 */}
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center h-16">
           
           {/* --- Brand Logo Area --- */}
-          <a href="/" className="flex items-center gap-3 group">
+          <a href="/" className="flex items-center gap-3 group mr-8">
             <div className="relative flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
              {/* Replace this src with your actual Koala image path */}
               <img 
@@ -110,7 +110,7 @@ export default function Header() {
           </a>
 
           {/* --- Desktop Navigation --- */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 flex-1">
             {NAV_ITEMS.map((item) => (
               <a
                 key={item.label}
@@ -173,7 +173,7 @@ export default function Header() {
           </nav>
 
           {/* --- Mobile Controls --- */}
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex items-center gap-2 ml-auto">
              <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

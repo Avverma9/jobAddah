@@ -21,6 +21,7 @@ import {
 } from "./post-helper";
 import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
+import { useGlobalLoader } from "../components/GlobalLoader";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -41,6 +42,7 @@ const PostDetails = () => {
 
   const query = useQuery();
   const navigate = useNavigate();
+  const { withLoader } = useGlobalLoader();
 
   const paramUrl = query.get("url");
   const paramId = query.get("id") || query.get("_id");
@@ -67,20 +69,22 @@ const PostDetails = () => {
       }
 
       try {
-        const response = await fetch(fetchUrl);
-        if (!response.ok) throw new Error("Failed to fetch data");
+        await withLoader(async () => {
+          const response = await fetch(fetchUrl);
+          if (!response.ok) throw new Error("Failed to fetch data");
 
-        // ✅ encrypted → decrypt | normal → return
-        const result = await parseApiResponse(response);
+          // ✅ encrypted → decrypt | normal → return
+          const result = await parseApiResponse(response);
 
-        const validData = result?.data || result?.job || result;
+          const validData = result?.data || result?.job || result;
 
-        if (validData) {
-          const extracted = extractRecruitmentData(validData);
-          setData(extracted);
-        } else {
-          throw new Error("No data found");
-        }
+          if (validData) {
+            const extracted = extractRecruitmentData(validData);
+            setData(extracted);
+          } else {
+            throw new Error("No data found");
+          }
+        }, "Loading job details...", 50);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -89,7 +93,7 @@ const PostDetails = () => {
     };
 
     fetchData();
-  }, [paramUrl, paramId]);
+  }, [paramUrl, paramId, withLoader]);
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorScreen error={error} navigate={navigate} />;

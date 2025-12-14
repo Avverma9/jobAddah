@@ -22,6 +22,7 @@ import {
 } from "../../util/encode-decode";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
+import { useGlobalLoader } from "../components/GlobalLoader";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -204,6 +205,8 @@ export default function HomeScreen() {
     expiringSoon: [],
     isLoading: true,
   });
+  
+  const { withLoader } = useGlobalLoader();
 
   useEffect(() => {
     if (!searchQuery) {
@@ -255,60 +258,62 @@ export default function HomeScreen() {
     const fetchDynamicData = async () => {
       try {
         setIsDynamicLoading(true);
-        const categoryRes = await fetch(`${baseUrl}/get-sections`);
-        const categoryPayload = await parseApiResponse(categoryRes);
-        const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
-        const categories =
-          Array.isArray(sectionDocs) && sectionDocs?.length > 0
-            ? sectionDocs[0]?.categories || []
-            : [];
-        if (categories?.length === 0) {
-          setDynamicSections([]);
-          return;
-        }
-        const sectionPromises = categories.map(async (cat) => {
-          try {
-            const res = await fetch(`${baseUrl}/get-postlist`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ url: cat.link }),
-            });
-            const payload = await parseApiResponse(res);
-            const base = payload?.data ?? payload;
-            let jobs = [];
-            if (Array.isArray(base)) {
-              const match =
-                base.find((item) => item.url === cat.link) || base[0];
-              jobs = match?.jobs || [];
-            } else {
-              jobs = base?.jobs || [];
-            }
-            const processedData = (jobs || [])
-              .filter(
-                (job) =>
-                  job.title &&
-                  !job.title.toLowerCase().includes("privacy policy") &&
-                  !job.title.toLowerCase().includes("sarkari result")
-              )
-              .map((job) => ({ ...job, id: job.link }));
-            return {
-              name: cat.name,
-              data: processedData,
-              ...getCategoryConfig(cat.name),
-            };
-          } catch (err) {
-            console.error(`Error fetching section ${cat.name}:`, err);
-            return {
-              name: cat.name,
-              data: [],
-              ...getCategoryConfig(cat.name),
-            };
+        await withLoader(async () => {
+          const categoryRes = await fetch(`${baseUrl}/get-sections`);
+          const categoryPayload = await parseApiResponse(categoryRes);
+          const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
+          const categories =
+            Array.isArray(sectionDocs) && sectionDocs?.length > 0
+              ? sectionDocs[0]?.categories || []
+              : [];
+          if (categories?.length === 0) {
+            setDynamicSections([]);
+            return;
           }
-        });
-        const sections = await Promise.all(sectionPromises);
-        setDynamicSections(sections);
+          const sectionPromises = categories.map(async (cat) => {
+            try {
+              const res = await fetch(`${baseUrl}/get-postlist`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ url: cat.link }),
+              });
+              const payload = await parseApiResponse(res);
+              const base = payload?.data ?? payload;
+              let jobs = [];
+              if (Array.isArray(base)) {
+                const match =
+                  base.find((item) => item.url === cat.link) || base[0];
+                jobs = match?.jobs || [];
+              } else {
+                jobs = base?.jobs || [];
+              }
+              const processedData = (jobs || [])
+                .filter(
+                  (job) =>
+                    job.title &&
+                    !job.title.toLowerCase().includes("privacy policy") &&
+                    !job.title.toLowerCase().includes("sarkari result")
+                )
+                .map((job) => ({ ...job, id: job.link }));
+              return {
+                name: cat.name,
+                data: processedData,
+                ...getCategoryConfig(cat.name),
+              };
+            } catch (err) {
+              console.error(`Error fetching section ${cat.name}:`, err);
+              return {
+                name: cat.name,
+                data: [],
+                ...getCategoryConfig(cat.name),
+              };
+            }
+          });
+          const sections = await Promise.all(sectionPromises);
+          setDynamicSections(sections);
+        }, "Loading latest job sections...", 50);
       } catch (error) {
         console.error("Error fetching dynamic sections:", error);
       } finally {
@@ -316,16 +321,18 @@ export default function HomeScreen() {
       }
     };
     fetchDynamicData();
-  }, []);
+  }, [withLoader]);
 
   useEffect(() => {
     const fetchPrivateJobs = async () => {
       try {
-        const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-        const payload = await parseApiResponse(res);
-        const base = payload?.data ?? payload;
-        const jobs = Array.isArray(base) ? base : base?.data || [];
-        setPrivateJobs(jobs || []);
+        await withLoader(async () => {
+          const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
+          const payload = await parseApiResponse(res);
+          const base = payload?.data ?? payload;
+          const jobs = Array.isArray(base) ? base : base?.data || [];
+          setPrivateJobs(jobs || []);
+        }, "Loading private job opportunities...", 50);
       } catch (error) {
         console.error("Error fetching private jobs:", error);
       } finally {
@@ -333,25 +340,27 @@ export default function HomeScreen() {
       }
     };
     fetchPrivateJobs();
-  }, []);
+  }, [withLoader]);
 
   useEffect(() => {
     const fetchReminders = async () => {
       try {
-        const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
-        const data = await parseApiResponse(response);
-        if (data?.success) {
-          const list = Array.isArray(data.reminders) ? data.reminders : [];
-          const expiresToday = list.filter((item) => item.daysLeft === 0);
-          const expiringSoon = list.filter((item) => item.daysLeft > 0);
-          setReminders({
-            expiresToday,
-            expiringSoon,
-            isLoading: false,
-          });
-        } else {
-          setReminders((prev) => ({ ...prev, isLoading: false }));
-        }
+        await withLoader(async () => {
+          const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
+          const data = await parseApiResponse(response);
+          if (data?.success) {
+            const list = Array.isArray(data.reminders) ? data.reminders : [];
+            const expiresToday = list.filter((item) => item.daysLeft === 0);
+            const expiringSoon = list.filter((item) => item.daysLeft > 0);
+            setReminders({
+              expiresToday,
+              expiringSoon,
+              isLoading: false,
+            });
+          } else {
+            setReminders((prev) => ({ ...prev, isLoading: false }));
+          }
+        }, "Loading job reminders and deadlines...", 50);
       } catch (error) {
         console.error("Error fetching reminders:", error);
         setReminders((prev) => ({ ...prev, isLoading: false }));
@@ -360,29 +369,31 @@ export default function HomeScreen() {
     fetchReminders();
     const interval = setInterval(fetchReminders, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [withLoader]);
 
   useEffect(() => {
     const fetchFavPosts = async () => {
       try {
-        const res = await fetch(`${baseUrl}/fav-posts`);
-        const payload = await parseApiResponse(res);
-        let fav = [];
-        if (Array.isArray(payload)) {
-          fav = payload;
-        } else if (Array.isArray(payload?.data)) {
-          fav = payload.data;
-        } else if (Array.isArray(payload?.data?.data)) {
-          fav = payload.data.data;
-        }
-        setFavPosts(fav);
+        await withLoader(async () => {
+          const res = await fetch(`${baseUrl}/fav-posts`);
+          const payload = await parseApiResponse(res);
+          let fav = [];
+          if (Array.isArray(payload)) {
+            fav = payload;
+          } else if (Array.isArray(payload?.data)) {
+            fav = payload.data;
+          } else if (Array.isArray(payload?.data?.data)) {
+            fav = payload.data.data;
+          }
+          setFavPosts(fav);
+        }, "Loading featured job posts...", 50);
       } catch (error) {
         console.error("Error fetching fav posts:", error);
         setFavPosts([]);
       }
     };
     fetchFavPosts();
-  }, []);
+  }, [withLoader]);
 
   // IMPORTANT: Remove searchQuery dependency - sections ko filter mat karo
   const recentVisitsData = useMemo(() => {
