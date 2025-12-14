@@ -21,9 +21,8 @@ import {
   parseApiResponse,
 } from "../../util/encode-decode";
 import SEO from "../util/SEO";
-import AdBanner from "../components/ads/AdBanner";
-import AdRectangle from "../components/ads/AdRectangle";
-import AdInFeed from "../components/ads/AdInFeed";
+import AdContainer from "../components/ads/AdContainer";
+import SmartAdSense from "../components/ads/SmartAdSense";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -468,7 +467,11 @@ export default function HomeScreen() {
 
       <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl space-y-6 sm:space-y-8">
         {/* Top Banner Ad */}
-        <AdBanner position="top" className="mb-6" />
+        <AdContainer 
+          placement="banner" 
+          pageType="homepage"
+          adProps={{ dataAdFormat: 'horizontal', spacingClass: 'mb-6' }}
+        />
         
         <div className="space-y-4 sm:space-y-6">
           <div className="relative max-w-2xl mx-auto w-full">
@@ -553,7 +556,11 @@ export default function HomeScreen() {
           )}
 
           {/* Rectangle Ad after Recent Visits */}
-          <AdRectangle position="home" className="my-8" />
+          <AdContainer 
+            placement="rectangle" 
+            pageType="homepage"
+            adProps={{ dataAdFormat: 'rectangle', spacingClass: 'my-8' }}
+          />
 
           <UrgentReminderSection
             expiresToday={reminders.expiresToday}
@@ -580,7 +587,11 @@ export default function HomeScreen() {
                       />
                       {shouldShowAd && (
                         <div className="md:col-span-2 lg:col-span-3">
-                          <AdRectangle position="content" className="my-6" />
+                          <AdContainer 
+                            placement="inFeed" 
+                            pageType="homepage"
+                            adProps={{ dataAdFormat: 'fluid', spacingClass: 'my-6' }}
+                          />
                         </div>
                       )}
                     </React.Fragment>
@@ -589,7 +600,11 @@ export default function HomeScreen() {
           </div>
           
           {/* Bottom Rectangle Ad */}
-          <AdRectangle position="content" className="mt-8" />
+          <AdContainer 
+            placement="rectangle" 
+            pageType="homepage"
+            adProps={{ dataAdFormat: 'rectangle', spacingClass: 'mt-8' }}
+          />
         </div>
       </main>
 
