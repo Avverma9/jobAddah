@@ -12,6 +12,7 @@ import ContactUs from "./pages/ContactUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/TermsAndConditions";
 import Header from "./components/Header";
+import ImageResize from "./pages/tools/imageResize";
 import { HelmetProvider } from "react-helmet-async";
 import { LoaderProvider } from "./components/GlobalLoader";
 function App() {
@@ -44,6 +45,9 @@ function App() {
               <Route path="/contact-us" element={<ContactUs />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<Terms />} />
+
+              {/* Tools */}
+              <Route path="/jobsaddah-image-tools" element={<ImageResize />} />
 
               {/* fallback */}
               <Route path="*" element={<HomeScreen />} />
