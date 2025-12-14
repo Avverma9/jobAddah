@@ -22,6 +22,7 @@ import {
 import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
+import SEO from "../util/SEO";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -102,6 +103,12 @@ const PostDetails = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
+      <SEO
+        title={`${data.title} | JobsAddah – Your Career Gateway`}
+        description={`${data.title} - Complete details, application process, important dates, eligibility criteria. Apply online at JobsAddah – Your Career Gateway for latest government job notifications.`}
+        keywords={`${data.title}, ${data.organization || 'government job'}, sarkari result 2025, latest govt jobs 2025, sarkari naukri, govt job notification, online application, admit card, result, answer key, JobsAddah career gateway`}
+        canonical={`/post?${paramUrl ? `url=${paramUrl}` : `id=${paramId}`}`}
+      />
       <Header />
 
       <main className="container mx-auto px-2 py-6 max-w-5xl">
