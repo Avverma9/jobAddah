@@ -20,9 +20,7 @@ import {
   VacancyTable,
 } from "./post-helper";
 import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
-import AdBanner from "../components/ads/AdBanner";
-import AdRectangle from "../components/ads/AdRectangle";
-import AdInArticle from "../components/ads/AdInArticle";
+import AdContainer from "../components/ads/AdContainer";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -104,7 +102,12 @@ const PostDetails = () => {
 
       <main className="container mx-auto px-2 py-6 max-w-5xl">
         {/* Top Banner Ad */}
-        <AdBanner position="top" className="mb-6" />
+        <AdContainer 
+          placement="banner" 
+          pageType="jobDetail"
+          format="horizontal"
+          className="mb-6"
+        />
         
         <div className="bg-white dark:bg-gray-900 shadow-sm border border-slate-300 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header section */}
@@ -121,7 +124,12 @@ const PostDetails = () => {
           </div>
 
           {/* In-Article Ad after title */}
-          <AdInArticle />
+          <AdContainer 
+            placement="inArticle" 
+            pageType="jobDetail"
+            format="fluid"
+            className="my-6"
+          />
 
           {/* Dates + Fee */}
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-300 dark:divide-gray-700 border-b border-slate-300 dark:border-gray-700">
@@ -245,7 +253,12 @@ const PostDetails = () => {
           )}
 
           {/* Rectangle Ad after vacancy details */}
-          <AdRectangle position="post" />
+          <AdContainer 
+            placement="rectangle" 
+            pageType="jobDetail"
+            format="rectangle"
+            className="my-6"
+          />
 
           {/* Eligibility */}
           {data.eligibility.length > 0 && (
@@ -401,7 +414,12 @@ const PostDetails = () => {
         </div>
 
         {/* Bottom Rectangle Ad */}
-        <AdRectangle position="post" className="mt-6" />
+        <AdContainer 
+          placement="rectangle" 
+          pageType="jobDetail"
+          format="rectangle"
+          className="mt-6"
+        />
       </main>
 
       <style>{`

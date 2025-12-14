@@ -1,12 +1,17 @@
 import React from 'react';
 import { Facebook, Twitter, Instagram, Linkedin, Send, PlayCircle, Apple, MapPin, Phone, Mail } from 'lucide-react';
-import AdBanner from './ads/AdBanner';
+import AdContainer from './ads/AdContainer';
 
 const Footer = () => {
   return (
     <footer className="relative bg-white dark:bg-blue-900 text-slate-700 dark:text-slate-300">
       {/* Footer Banner Ad */}
-      <AdBanner position="footer" className="py-4 bg-gray-50 dark:bg-blue-950" />
+      <AdContainer 
+        placement="banner" 
+        pageType="footer"
+        format="horizontal"
+        className="py-4 bg-gray-50 dark:bg-blue-950"
+      />
 
       <div className="pt-8 pb-8 container mx-auto px-6 relative z-10">
         

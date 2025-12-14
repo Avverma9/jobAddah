@@ -22,7 +22,6 @@ import {
 } from "../../util/encode-decode";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
-import SmartAdSense from "../components/ads/SmartAdSense";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -470,7 +469,8 @@ export default function HomeScreen() {
         <AdContainer 
           placement="banner" 
           pageType="homepage"
-          adProps={{ dataAdFormat: 'horizontal', spacingClass: 'mb-6' }}
+          format="horizontal"
+          className="mb-6"
         />
         
         <div className="space-y-4 sm:space-y-6">
@@ -559,7 +559,8 @@ export default function HomeScreen() {
           <AdContainer 
             placement="rectangle" 
             pageType="homepage"
-            adProps={{ dataAdFormat: 'rectangle', spacingClass: 'my-8' }}
+            format="rectangle"
+            className="my-8"
           />
 
           <UrgentReminderSection
@@ -590,7 +591,8 @@ export default function HomeScreen() {
                           <AdContainer 
                             placement="inFeed" 
                             pageType="homepage"
-                            adProps={{ dataAdFormat: 'fluid', spacingClass: 'my-6' }}
+                            format="fluid"
+                            className="my-6"
                           />
                         </div>
                       )}
@@ -603,7 +605,8 @@ export default function HomeScreen() {
           <AdContainer 
             placement="rectangle" 
             pageType="homepage"
-            adProps={{ dataAdFormat: 'rectangle', spacingClass: 'mt-8' }}
+            format="rectangle"
+            className="mt-8"
           />
         </div>
       </main>

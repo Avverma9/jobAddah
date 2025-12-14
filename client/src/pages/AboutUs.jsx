@@ -1,8 +1,7 @@
 // src/pages/AboutUs.jsx
-import React from "react";
+// React import removed - not needed
 import { Shield, Target, Users, Zap, BookOpen, TrendingUp } from "lucide-react";
-import AdBanner from "../components/ads/AdBanner";
-import AdRectangle from "../components/ads/AdRectangle";
+import AdContainer from "../components/ads/AdContainer";
 
 export default function AboutUs() {
   return (
@@ -19,7 +18,12 @@ export default function AboutUs() {
 
       <div className="max-w-4xl mx-auto px-6 py-16 space-y-12">
         {/* Top Banner Ad */}
-        <AdBanner position="top" className="mb-8" />
+        <AdContainer 
+          placement="banner" 
+          pageType="staticPages"
+          format="horizontal"
+          className="mb-8"
+        />
         
         {/* Mission Section */}
         <section>
@@ -44,7 +48,12 @@ export default function AboutUs() {
         </section>
 
         {/* Rectangle Ad */}
-        <AdRectangle position="content" className="my-8" />
+        <AdContainer 
+          placement="rectangle" 
+          pageType="staticPages"
+          format="rectangle"
+          className="my-8"
+        />
 
         {/* Why Choose Us */}
         <section>
@@ -157,7 +166,12 @@ export default function AboutUs() {
         </section>
 
         {/* Bottom Rectangle Ad */}
-        <AdRectangle position="content" className="my-8" />
+        <AdContainer 
+          placement="rectangle" 
+          pageType="staticPages"
+          format="rectangle"
+          className="my-8"
+        />
 
         {/* Disclaimer */}
         <section className="bg-amber-50 border border-amber-200 rounded-lg p-8">

@@ -12,6 +12,9 @@ app.use(express.json());
 
 // In-memory ad configuration (use database in production)
 let adConfig = {
+  publisherId: "ca-pub-7416335110977682",
+  domain: "jobsaddah.com",
+  siteName: "JobsAddah",
   adsEnabled: true,
   globalSettings: {
     showAds: true,
@@ -19,24 +22,106 @@ let adConfig = {
     adRefreshInterval: 30000,
   },
   pageSettings: {
-    homepage: { enabled: true, maxAds: 4 },
-    jobDetail: { enabled: true, maxAds: 4 },
-    categoryPages: { enabled: true, maxAds: 3 },
-    staticPages: { enabled: true, maxAds: 2 },
+    homepage: { 
+      enabled: true, 
+      maxAds: 4,
+      allowedPlacements: ['banner', 'rectangle', 'inFeed']
+    },
+    jobDetail: { 
+      enabled: true, 
+      maxAds: 4,
+      allowedPlacements: ['banner', 'rectangle', 'inArticle']
+    },
+    categoryPages: { 
+      enabled: true, 
+      maxAds: 3,
+      allowedPlacements: ['banner', 'rectangle', 'inFeed']
+    },
+    staticPages: { 
+      enabled: true, 
+      maxAds: 2,
+      allowedPlacements: ['banner', 'rectangle']
+    },
+    footer: {
+      enabled: true,
+      maxAds: 1,
+      allowedPlacements: ['banner']
+    }
   },
   adSlots: {
-    banner: { enabled: true, priority: 1 },
-    rectangle: { enabled: true, priority: 2 },
-    inFeed: { enabled: true, priority: 3 },
-    inArticle: { enabled: true, priority: 4 },
+    banner: { 
+      enabled: true, 
+      priority: 1,
+      adSlotId: "1234567890",
+      format: "horizontal",
+      description: "Top banner ads"
+    },
+    rectangle: { 
+      enabled: true, 
+      priority: 2,
+      adSlotId: "4567890123",
+      format: "rectangle", 
+      description: "Content rectangle ads"
+    },
+    inFeed: { 
+      enabled: true, 
+      priority: 3,
+      adSlotId: "9012345678",
+      format: "fluid",
+      description: "In-feed native ads"
+    },
+    inArticle: { 
+      enabled: true, 
+      priority: 4,
+      adSlotId: "3456789012",
+      format: "fluid",
+      description: "In-article content ads"
+    },
   },
   lastUpdated: new Date().toISOString()
 };
 
+// Middleware for publisher ID validation
+const validatePublisher = (req, res, next) => {
+  const publisherId = req.headers['x-publisher-id'] || req.body.publisherId;
+  if (!publisherId || publisherId !== adConfig.publisherId) {
+    return res.status(401).json({ error: 'Invalid or missing publisher ID' });
+  }
+  next();
+}; 
+
 // Routes
 
+// Initialize AdSense credentials (first time setup)
+app.post('/api/ad-config/initialize', (req, res) => {
+  try {
+    const { publisherId, domain, siteName, apiKey } = req.body;
+    
+    if (!publisherId || !domain) {
+      return res.status(400).json({ error: 'Publisher ID and domain required' });
+    }
+    
+    // Update config with credentials
+    adConfig.publisherId = publisherId;
+    adConfig.domain = domain;
+    adConfig.siteName = siteName;
+    adConfig.lastUpdated = new Date().toISOString();
+    
+    res.json({
+      success: true,
+      message: 'AdSense credentials initialized',
+      publisherId,
+      domain,
+      credentialsStored: true,
+      timestamp: adConfig.lastUpdated
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to initialize credentials' });
+  }
+});
+
 // Get ad configuration
-app.get('/api/ad-config', (req, res) => {
+app.get('/api/ad-config', validatePublisher, (req, res) => {
   try {
     res.json(adConfig);
   } catch (error) {
@@ -45,7 +130,7 @@ app.get('/api/ad-config', (req, res) => {
 });
 
 // Update global ad settings
-app.post('/api/ad-config/global', (req, res) => {
+app.post('/api/ad-config/global', validatePublisher, (req, res) => {
   try {
     const { adsEnabled, showAds, maxAdsPerPage } = req.body;
     
@@ -74,7 +159,7 @@ app.post('/api/ad-config/global', (req, res) => {
 });
 
 // Update page-specific settings
-app.post('/api/ad-config/page/:pageType', (req, res) => {
+app.post('/api/ad-config/page/:pageType', validatePublisher, (req, res) => {
   try {
     const { pageType } = req.params;
     const { enabled, maxAds } = req.body;
