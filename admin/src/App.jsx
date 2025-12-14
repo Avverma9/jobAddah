@@ -14,6 +14,7 @@ import MenuItemsPage from "./pages/admin/MenuItems";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ModelSelector from "./pages/admin/Ai-integration";
 import Scrapper from "./pages/admin/Ai-scrapper";
+import GoogleAdsManager from "./pages/admin/GoogleAds";
 
 const ProtectedRoute = () => {
   const { isAuthenticated } = useSelector((state) => state.user);
@@ -42,6 +43,8 @@ function App() {
           <Route path="/admin-manage/users" element={<ManageUsers />} />
           <Route path="/ai-integrate" element={<ModelSelector />} />
           <Route path="/govt-scrapper" element={<Scrapper />} />
+          <Route path="/ads-manager" element={<GoogleAdsManager />} />
+
 
         </Route>
       </Route>
