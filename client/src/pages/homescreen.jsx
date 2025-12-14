@@ -38,21 +38,26 @@ const getRecentVisitIds = () => {
 const saveRecentVisit = (id) => {
   if (!id) return;
   try {
+    // Clean the ID - remove curly braces if present
+    const cleanId = id.toString().replace(/[{}]/g, '');
+    
     let visits = getRecentVisitIds();
-    visits = visits.filter((visitId) => visitId !== id);
-    visits.unshift(id);
+    visits = visits.filter((visitId) => visitId !== cleanId);
+    visits.unshift(cleanId);
     visits = visits.slice(0, 5);
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
+    
+    // Log visit to server
     fetch(`${baseUrl}/log-visit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: id }),
+      body: JSON.stringify({ postId: cleanId }),
     }).catch((error) => {
       console.error("Failed to log visit on server:", error);
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error saving recent visit:", error);
   }
 };
 
@@ -127,35 +132,7 @@ const QuickCard = ({ icon: Icon, title, id, color }) => {
   );
 };
 
-const SkeletonSection = () => (
-  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm h-full">
-    <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-3">
-      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-      <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-    </div>
-    <div className="divide-y divide-gray-100 dark:divide-gray-700">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="p-3 sm:p-4 flex gap-3">
-          <div className="w-1.5 h-1.5 mt-2 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse" />
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
-const SearchResultsSkeleton = () => (
-  <div className="space-y-1.5 sm:space-y-2">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="relative overflow-hidden rounded-lg">
-        <div className="h-9 sm:h-10 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700 shimmer" />
-      </div>
-    ))}
-  </div>
-);
 
 const RecentVisitsSection = ({ data }) => {
   if (!data || data?.length === 0) return null;
@@ -170,20 +147,25 @@ const RecentVisitsSection = ({ data }) => {
         </h3>
       </div>
       <div className="flex flex-wrap gap-2 sm:gap-3">
-        {data.map((job) => (
-          <Link
-            key={job.id}
-            to={getPostLink(job.id)}
-            onClick={() => saveRecentVisit(job.id)}
-            className="group"
-          >
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white dark:bg-gray-900 border border-blue-300 text-blue-600 dark:text-blue-300 dark:border-blue-700 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
-              <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
-                {job.title}
-              </span>
-            </div>
-          </Link>
-        ))}
+        {data.map((job, index) => {
+          const jobId = job.id || job._id || job.link || job.url;
+          const jobTitle = job.title || job.postTitle || job.recruitment?.title || 'Untitled';
+          
+          return (
+            <Link
+              key={jobId || index}
+              to={getPostLink(jobId)}
+              onClick={() => saveRecentVisit(jobId)}
+              className="group"
+            >
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white dark:bg-gray-900 border border-blue-300 text-blue-600 dark:text-blue-300 dark:border-blue-700 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all">
+                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                  {jobTitle}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -398,14 +380,46 @@ export default function HomeScreen() {
   // IMPORTANT: Remove searchQuery dependency - sections ko filter mat karo
   const recentVisitsData = useMemo(() => {
     if (recentVisitIds?.length === 0) return [];
+    
     const allJobs = [
-      ...dynamicSections.flatMap((s) => s.data),
-      ...privateJobs.map((j) => ({ ...j, id: j._id, title: j.postTitle })),
+      ...dynamicSections.flatMap((s) => s.data || []),
+      ...privateJobs.map((j) => ({ ...j, id: j._id || j.id, title: j.postTitle || j.title })),
     ];
-    const jobMap = new Map(allJobs.map((job) => [job.id, job]));
-    return recentVisitIds
-      .map((id) => jobMap.get(id))
+    
+    // Create multiple mappings for different ID formats
+    const jobMap = new Map();
+    allJobs.forEach((job) => {
+      if (job.id) jobMap.set(job.id, job);
+      if (job._id) jobMap.set(job._id, job);
+      if (job.link) jobMap.set(job.link, job);
+      if (job.url) jobMap.set(job.url, job);
+    });
+    
+    const matchedJobs = recentVisitIds
+      .map((id) => {
+        // Try to find job by different ID formats
+        let job = jobMap.get(id);
+        if (!job && typeof id === 'string') {
+          // Try to match by URL or link
+          job = allJobs.find(j => 
+            j.link === id || 
+            j.url === id || 
+            j._id === id ||
+            j.id === id
+          );
+        }
+        return job;
+      })
       .filter((job) => job !== undefined);
+    
+    // Debug logging
+    if (recentVisitIds.length > 0) {
+      console.log('Recent Visit IDs:', recentVisitIds);
+      console.log('All Jobs Count:', allJobs.length);
+      console.log('Matched Jobs:', matchedJobs);
+    }
+    
+    return matchedJobs;
   }, [dynamicSections, privateJobs, recentVisitIds]);
 
   const handleGlobalClick = (e) => {
@@ -438,9 +452,9 @@ export default function HomeScreen() {
       onClickCapture={handleGlobalClick}
     >
       <SEO
-        title="JobsAddah - Sarkari Result 2025, Latest Govt Jobs, Sarkari Naukri, Admit Card"
-        description="JobsAddah: India's #1 portal for sarkari result 2025, latest government jobs, sarkari naukri notifications, admit card downloads, exam results. SSC, Railway, Bank, UPSC, Defence jobs. Apply online for govt job vacancies today."
-        keywords="JobsAddah, sarkari result, sarkari result 2025, sarkari naukri, govt jobs, government jobs, latest govt jobs, today govt job, sarkari job alert, govt job alert, rojgar samachar, employment news, govt job notifications, sarkari naukri vacancy, admit card, sarkari admit card, hall ticket download, exam result, sarkari result latest, answer key, official answer key, ssc jobs, railway jobs, bank jobs, upsc exam, defence jobs, army bharti, police vacancy, bihar govt job, up govt job, mp govt job, delhi govt job, 10th pass govt job, 12th pass govt job, graduate govt job"
+        title="JobsAddah – Your Career Gateway | Sarkari Result 2025, Latest Govt Jobs, Sarkari Naukri"
+        description="JobsAddah – Your Career Gateway: India's #1 portal for sarkari result 2025, latest government jobs, sarkari naukri notifications, admit card downloads, exam results. SSC, Railway, Bank, UPSC, Defence jobs. Apply online for govt job vacancies today."
+        keywords="JobsAddah, sarkari result 2025, latest govt jobs 2025, bihar sarkari naukri, up sarkari result, ssc gd constable vacancy, railway group d recruitment, ibps so result 2025, ssc cgl admit card, ssc chsl answer key, upsc exam calendar 2025, ssc admit card 2025, railway admit card download, up police si admit card, ssc cpo admit card, ctet admit card 2026, rrb ntpc admit card, ssc delhi police admit card, emrs teacher admit card, bihar bpsc admit card, afcat admit card 2026, sarkari result bihar board, up board result 2025, ssc result 2025, railway result 2025, ibps clerk result, ssc gd result 2026, up police result 2025, bihar bssc result, jpsc result 2025, bseb deled result, sarkari online form 2025, ssc online form, railway online form, up deled online form, bihar iti online form, nvs admission online form, ctet online form 2026, mppsc online form, upsc online form, afcat online form, private jobs in india, it jobs for freshers, work from home jobs, naukri.com jobs, pvtjob.in updates, latest private vacancy, digital marketing jobs, software developer jobs, android developer jobs, react native jobs, ssc gd syllabus 2025, railway exam pattern, upsc syllabus pdf, ssc cgl syllabus, ssc chsl syllabus, ctet syllabus 2026, bihar police syllabus, up police syllabus, rrb group d syllabus, ibps po syllabus, sarkari admission form, nvs class 9 admission, nvs class 11 admission, bihar deled admission, up deled admission, bcece counselling 2025, iti admission bihar, polytechnic admission 2025, clat admission form, cmat admission 2026, sarkari naukri 2025, sarkari exam 2025, sarkari job portal, sarkari vacancy 2025, sarkari yojna updates, sarkari notification, sarkari recruitment 2025, sarkari career portal, sarkari latest jobs, sarkari online apply, bihar govt jobs, up govt jobs, delhi govt jobs, jharkhand govt jobs, rajasthan govt jobs, mp govt jobs, haryana govt jobs, punjab govt jobs, maharashtra govt jobs, west bengal govt jobs, sarkari result latest update, sarkari result admit card download, sarkari result online form apply, sarkari result answer key check, sarkari result govt jobs notification, sarkari result private jobs update, sarkari result exam syllabus pdf, sarkari result admission form online, sarkari result recruitment 2025, sarkari result vacancy details"
         canonical="/"
       />
       <div className="bg-gradient-to-r from-blue-700 to-blue-600 dark:from-blue-800 dark:to-blue-700 text-white text-xs sm:text-sm py-2 shadow-md overflow-hidden relative">
@@ -507,7 +521,9 @@ export default function HomeScreen() {
               <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-80 overflow-y-auto">
                 <div className="p-2 sm:p-3">
                   {showSearchSkeleton ? (
-                    <SearchResultsSkeleton />
+                    <p className="text-gray-500 text-sm py-1.5 px-1">
+                      Searching...
+                    </p>
                   ) : searchResults.length === 0 ? (
                     <p className="text-gray-500 text-sm py-1.5 px-1">
                       No results found.
@@ -582,9 +598,7 @@ export default function HomeScreen() {
 
           {/* SECTIONS - No filtering based on search */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {isDynamicLoading
-              ? [1, 2, 3, 4, 5, 6].map((i) => <SkeletonSection key={i} />)
-              : dynamicSections.map((section, idx) => {
+            {!isDynamicLoading && dynamicSections.map((section, idx) => {
                   // Insert ad after every 3rd section
                   const shouldShowAd = (idx + 1) % 3 === 0 && idx < dynamicSections.length - 1;
                   return (
@@ -642,14 +656,7 @@ export default function HomeScreen() {
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-        .shimmer {
-          background-size: 200% 100%;
-          animation: shimmer 1.2s linear infinite;
-        }
-        @keyframes shimmer {
-          0% { background-position: 100% 0; }
-          100% { background-position: -100% 0; }
-        }
+
         
         /* Animated Gradient Border */
         .gradient-border-wrapper {
