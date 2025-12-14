@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
+import { useGlobalLoader } from "../components/GlobalLoader";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -146,6 +147,7 @@ export default function ViewAll() {
   const [sortOrder, setSortOrder] = useState("newest");
 
   const location = useLocation();
+  const { withLoader } = useGlobalLoader();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -157,65 +159,67 @@ export default function ViewAll() {
       setAllPosts([]);
 
       try {
-        if (type === "PRIVATE_JOB") {
-          const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-          const data = await res.json();
-          if (!res.ok) throw new Error("Failed to fetch private jobs");
+        await withLoader(async () => {
+          if (type === "PRIVATE_JOB") {
+            const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
+            const data = await res.json();
+            if (!res.ok) throw new Error("Failed to fetch private jobs");
 
-          const jobs = Array.isArray(data) ? data : data.data || [];
-          setAllPosts(jobs);
-        } else {
-          const catRes = await fetch(`${baseUrl}/scrapper/get-categories`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-          });
-          const catData = await catRes.json();
-
-          let targetUrl = null;
-
-          if (catData.success && catData.categories) {
-            const matchedCat = catData.categories.find(
-              (c) =>
-                c.name.toLowerCase().includes(type.toLowerCase().replace("_", " ")) ||
-                type.toLowerCase().includes(c.name.toLowerCase())
-            );
-            if (matchedCat) targetUrl = matchedCat.link;
-          }
-
-          if (targetUrl) {
-            const scrapeRes = await fetch(`${baseUrl}/scrapper/scrape-category`, {
+            const jobs = Array.isArray(data) ? data : data.data || [];
+            setAllPosts(jobs);
+          } else {
+            const catRes = await fetch(`${baseUrl}/scrapper/get-categories`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: targetUrl }),
             });
-            const scrapeData = await scrapeRes.json();
+            const catData = await catRes.json();
 
-            if (scrapeData.success) {
-              const cleanData = scrapeData.jobs
-                .filter(
-                  (job) =>
-                    job.title.toLowerCase() !== "privacy policy" &&
-                    job.title.toLowerCase() !== "sarkari result" &&
-                    job.title.toLowerCase() !== "contact us"
-                )
-                .map((job) => ({
-                  ...job,
-                  _id: job.link,
-                  postTitle: job.title,
-                  postType: type,
-                  createdAt: new Date().toISOString(),
-                }));
-              setAllPosts(cleanData);
-            } else {
-              throw new Error("Failed to load category data");
+            let targetUrl = null;
+
+            if (catData.success && catData.categories) {
+              const matchedCat = catData.categories.find(
+                (c) =>
+                  c.name.toLowerCase().includes(type.toLowerCase().replace("_", " ")) ||
+                  type.toLowerCase().includes(c.name.toLowerCase())
+              );
+              if (matchedCat) targetUrl = matchedCat.link;
             }
-          } else {
-            const fallbackRes = await fetch(`${baseUrl}/get-all`);
-            const fallbackData = await fallbackRes.json();
-            const raw = Array.isArray(fallbackData) ? fallbackData : fallbackData.jobs || [];
-            setAllPosts(raw.filter((p) => p.postType === type));
+
+            if (targetUrl) {
+              const scrapeRes = await fetch(`${baseUrl}/scrapper/scrape-category`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: targetUrl }),
+              });
+              const scrapeData = await scrapeRes.json();
+
+              if (scrapeData.success) {
+                const cleanData = scrapeData.jobs
+                  .filter(
+                    (job) =>
+                      job.title.toLowerCase() !== "privacy policy" &&
+                      job.title.toLowerCase() !== "sarkari result" &&
+                      job.title.toLowerCase() !== "contact us"
+                  )
+                  .map((job) => ({
+                    ...job,
+                    _id: job.link,
+                    postTitle: job.title,
+                    postType: type,
+                    createdAt: new Date().toISOString(),
+                  }));
+                setAllPosts(cleanData);
+              } else {
+                throw new Error("Failed to load category data");
+              }
+            } else {
+              const fallbackRes = await fetch(`${baseUrl}/get-all`);
+              const fallbackData = await fallbackRes.json();
+              const raw = Array.isArray(fallbackData) ? fallbackData : fallbackData.jobs || [];
+              setAllPosts(raw.filter((p) => p.postType === type));
+            }
           }
-        }
+        }, `Loading ${formatTitle(type)}...`, 50);
       } catch (err) {
         console.error(err);
         setError(err.message || "Something went wrong");
@@ -225,7 +229,7 @@ export default function ViewAll() {
     };
 
     fetchData();
-  }, [location.search]);
+  }, [location.search, withLoader]);
 
   const processedPosts = useMemo(() => {
     let result = [...allPosts];
