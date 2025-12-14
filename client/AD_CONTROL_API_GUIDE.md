@@ -8,6 +8,12 @@ Aapke JobsAddah project mein ab **powerful ad control system** implement ho gaya
 - **Blank spaces nahi chhodta** jab ads hidden hain
 - **Smart space management** karta hai
 
+## 🔐 **AdSense Credentials**
+
+**Your AdSense Publisher ID**: `ca-pub-7416335110977682`
+**Domain**: `jobsaddah.com`
+**Site Status**: Under Review (Getting Ready)
+
 ## 🔧 **System Architecture**
 
 ### **Frontend Components:**
@@ -46,13 +52,41 @@ Aapke JobsAddah project mein ab **powerful ad control system** implement ho gaya
 
 ## 🖥️ **API Endpoints**
 
-### **1. Get Ad Configuration**
+### **🔐 STEP 1: Initialize AdSense Credentials (FIRST REQUEST)**
+```bash
+POST /api/ad-config/initialize
+Content-Type: application/json
+
+{
+  "publisherId": "ca-pub-7416335110977682",
+  "domain": "jobsaddah.com",
+  "siteName": "JobsAddah",
+  "apiKey": "your-secure-api-key"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "AdSense credentials initialized",
+  "publisherId": "ca-pub-7416335110977682",
+  "domain": "jobsaddah.com",
+  "credentialsStored": true,
+  "timestamp": "2025-01-01T00:00:00.000Z"
+}
+```
+
+### **2. Get Ad Configuration**
 ```bash
 GET /api/ad-config
+Headers: X-Publisher-ID: ca-pub-7416335110977682
 ```
 **Response:**
 ```json
 {
+  "publisherId": "ca-pub-7416335110977682",
+  "domain": "jobsaddah.com",
   "adsEnabled": true,
   "globalSettings": {
     "showAds": true,
@@ -69,56 +103,145 @@ GET /api/ad-config
 }
 ```
 
-### **2. Global Ad Control**
+### **3. Global Ad Control**
 ```bash
 POST /api/ad-config/global
 Content-Type: application/json
+Headers: X-Publisher-ID: ca-pub-7416335110977682
 
 {
+  "publisherId": "ca-pub-7416335110977682",
   "adsEnabled": true,
   "showAds": true,
   "maxAdsPerPage": 6
 }
 ```
 
-### **3. Page-Specific Control**
+### **4. Page-Specific Control**
 ```bash
 POST /api/ad-config/page/homepage
 Content-Type: application/json
+Headers: X-Publisher-ID: ca-pub-7416335110977682
 
 {
+  "publisherId": "ca-pub-7416335110977682",
   "enabled": true,
   "maxAds": 4
 }
 ```
 
-### **4. Ad Slot Control**
+### **5. Ad Slot Control**
 ```bash
 POST /api/ad-config/slot/banner
 Content-Type: application/json
+Headers: X-Publisher-ID: ca-pub-7416335110977682
 
 {
+  "publisherId": "ca-pub-7416335110977682",
   "enabled": true,
   "priority": 1
 }
 ```
 
-### **5. Emergency Disable**
+### **6. Emergency Disable (Policy Violation)**
 ```bash
 POST /api/ad-config/emergency-disable
+Content-Type: application/json
+Headers: X-Publisher-ID: ca-pub-7416335110977682
+
+{
+  "publisherId": "ca-pub-7416335110977682",
+  "reason": "AdSense policy violation",
+  "disabledBy": "admin"
+}
 ```
 
-### **6. Re-enable Ads**
+### **7. Re-enable Ads (After Approval)**
 ```bash
 POST /api/ad-config/enable
+Content-Type: application/json
+Headers: X-Publisher-ID: ca-pub-7416335110977682
+
+{
+  "publisherId": "ca-pub-7416335110977682",
+  "reason": "AdSense approved",
+  "enabledBy": "admin"
+}
+```
+
+## 🔐 **Credential Management & Database Setup**
+
+### **Initial Setup Commands (Run First Time):**
+
+```bash
+# 1. Initialize your AdSense credentials in database
+curl -X POST http://localhost:3001/api/ad-config/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "domain": "jobsaddah.com", 
+    "siteName": "JobsAddah",
+    "apiKey": "jobsaddah-secure-key-2025"
+  }'
+
+# 2. Verify credentials stored
+curl -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  http://localhost:3001/api/ad-config
+
+# 3. Set initial ad configuration
+curl -X POST http://localhost:3001/api/ad-config/global \
+  -H "Content-Type: application/json" \
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "adsEnabled": true,
+    "showAds": true,
+    "maxAdsPerPage": 6
+  }'
+```
+
+### **Database Schema:**
+```javascript
+// AdSense Credentials Collection
+{
+  _id: ObjectId,
+  publisherId: "ca-pub-7416335110977682",
+  domain: "jobsaddah.com",
+  siteName: "JobsAddah",
+  status: "under_review", // under_review, approved, rejected
+  createdAt: Date,
+  lastUpdated: Date,
+  adConfig: {
+    adsEnabled: Boolean,
+    globalSettings: Object,
+    pageSettings: Object,
+    adSlots: Object
+  }
+}
+```
+
+### **Environment Variables:**
+```env
+# .env file for API server
+ADSENSE_PUBLISHER_ID=ca-pub-7416335110977682
+ADSENSE_DOMAIN=jobsaddah.com
+API_SECRET_KEY=jobsaddah-secure-key-2025
+MONGODB_URI=mongodb://localhost:27017/jobsaddah_ads
 ```
 
 ## 🎯 **Use Cases**
 
 ### **1. AdSense Policy Violation**
 ```bash
-# Instantly disable all ads
-curl -X POST http://localhost:3001/api/ad-config/emergency-disable
+# Instantly disable all ads with your credentials
+curl -X POST http://localhost:3001/api/ad-config/emergency-disable \
+  -H "Content-Type: application/json" \
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "reason": "Policy violation detected",
+    "disabledBy": "system"
+  }'
 ```
 
 ### **2. A/B Testing**
@@ -126,7 +249,11 @@ curl -X POST http://localhost:3001/api/ad-config/emergency-disable
 # Disable ads on homepage only
 curl -X POST http://localhost:3001/api/ad-config/page/homepage \
   -H "Content-Type: application/json" \
-  -d '{"enabled": false}'
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "enabled": false
+  }'
 ```
 
 ### **3. Revenue Optimization**
@@ -134,7 +261,12 @@ curl -X POST http://localhost:3001/api/ad-config/page/homepage \
 # Disable low-performing ad slots
 curl -X POST http://localhost:3001/api/ad-config/slot/inFeed \
   -H "Content-Type: application/json" \
-  -d '{"enabled": false}'
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "enabled": false,
+    "reason": "Low performance"
+  }'
 ```
 
 ### **4. Maintenance Mode**
@@ -142,7 +274,25 @@ curl -X POST http://localhost:3001/api/ad-config/slot/inFeed \
 # Disable all ads during maintenance
 curl -X POST http://localhost:3001/api/ad-config/global \
   -H "Content-Type: application/json" \
-  -d '{"showAds": false}'
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "showAds": false,
+    "reason": "Site maintenance"
+  }'
+```
+
+### **5. AdSense Approval Process**
+```bash
+# When AdSense gets approved, enable ads
+curl -X POST http://localhost:3001/api/ad-config/enable \
+  -H "Content-Type: application/json" \
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "reason": "AdSense approved",
+    "approvalDate": "2025-01-15"
+  }'
 ```
 
 ## 🔄 **Smart Space Management**
@@ -365,20 +515,97 @@ AD_CONTROL_API_KEY=your-secure-api-key
 
 ---
 
-## 🚀 **Quick Start Commands**
+## 🚀 **Complete Setup Workflow**
 
+### **Step 1: Start API Server**
 ```bash
-# 1. Start API server
-cd api-example && npm install && npm start
+cd api-example
+npm install
+npm start
+# Server runs on http://localhost:3001
+```
 
-# 2. Test ad control
-curl -X POST http://localhost:3001/api/ad-config/emergency-disable
+### **Step 2: Initialize Your AdSense Credentials (FIRST TIME ONLY)**
+```bash
+# Initialize your specific AdSense account
+curl -X POST http://localhost:3001/api/ad-config/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "domain": "jobsaddah.com",
+    "siteName": "JobsAddah - Sarkari Result 2025",
+    "apiKey": "jobsaddah-secure-key-2025"
+  }'
+```
 
-# 3. Check frontend
+### **Step 3: Configure Initial Ad Settings**
+```bash
+# Set up your ad configuration
+curl -X POST http://localhost:3001/api/ad-config/global \
+  -H "Content-Type: application/json" \
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "adsEnabled": true,
+    "showAds": true,
+    "maxAdsPerPage": 6
+  }'
+```
+
+### **Step 4: Test Ad Control**
+```bash
+# Test emergency disable
+curl -X POST http://localhost:3001/api/ad-config/emergency-disable \
+  -H "X-Publisher-ID: ca-pub-7416335110977682"
+
+# Test re-enable
+curl -X POST http://localhost:3001/api/ad-config/enable \
+  -H "X-Publisher-ID: ca-pub-7416335110977682"
+```
+
+### **Step 5: Start Frontend**
+```bash
+# Update environment
+echo "VITE_API_BASE_URL=http://localhost:3001" > .env.local
+
+# Start development server
 npm run dev
+```
 
-# 4. Re-enable ads
-curl -X POST http://localhost:3001/api/ad-config/enable
+### **Step 6: Verify Integration**
+```bash
+# Check ad config is working
+curl -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  http://localhost:3001/api/ad-config
+
+# Check health
+curl http://localhost:3001/api/health
+```
+
+## 🎯 **Production Deployment Commands**
+
+### **For Your JobsAddah Site:**
+```bash
+# Production API calls (replace localhost with your API domain)
+
+# 1. Initialize production credentials
+curl -X POST https://your-api-domain.com/api/ad-config/initialize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "domain": "jobsaddah.com",
+    "siteName": "JobsAddah",
+    "apiKey": "your-production-api-key"
+  }'
+
+# 2. Enable ads after AdSense approval
+curl -X POST https://your-api-domain.com/api/ad-config/enable \
+  -H "Content-Type: application/json" \
+  -H "X-Publisher-ID: ca-pub-7416335110977682" \
+  -d '{
+    "publisherId": "ca-pub-7416335110977682",
+    "reason": "AdSense approved for jobsaddah.com"
+  }'
 ```
 
 **Result**: Aapke pas ab **complete ad control system** hai jo API se manage ho sakta hai aur **smart space management** karta hai! 🎯
