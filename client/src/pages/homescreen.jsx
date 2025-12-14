@@ -44,9 +44,13 @@ const saveRecentVisit = (id) => {
     let visits = getRecentVisitIds();
     visits = visits.filter((visitId) => visitId !== cleanId);
     visits.unshift(cleanId);
-    visits = visits.slice(0, 5);
+    visits = visits.slice(0, 8); // Store 8 recent visits
     localStorage.setItem(VISIT_STORAGE_KEY, JSON.stringify(visits));
     window.dispatchEvent(new Event("recent-visits-updated"));
+    
+    // Debug logging
+    console.log('Saved recent visit:', cleanId);
+    console.log('All recent visits:', visits);
     
     // Log visit to server
     fetch(`${baseUrl}/log-visit`, {
@@ -189,6 +193,27 @@ export default function HomeScreen() {
   });
   
   const { withLoader } = useGlobalLoader();
+
+  // Test function to add sample recent visits (for debugging)
+  const addTestRecentVisits = () => {
+    if (dynamicSections.length > 0 && dynamicSections[0].data.length > 0) {
+      const sampleJobs = dynamicSections[0].data.slice(0, 3);
+      sampleJobs.forEach((job, index) => {
+        setTimeout(() => {
+          saveRecentVisit(job.link || job.id || job._id);
+        }, index * 100);
+      });
+      console.log('Added test recent visits');
+    }
+  };
+
+  // Add test visits when data is loaded (for debugging)
+  useEffect(() => {
+    if (!isDynamicLoading && dynamicSections.length > 0 && recentVisitIds.length === 0) {
+      // Uncomment next line for testing
+      // addTestRecentVisits();
+    }
+  }, [isDynamicLoading, dynamicSections, recentVisitIds.length]);
 
   useEffect(() => {
     if (!searchQuery) {
@@ -379,40 +404,71 @@ export default function HomeScreen() {
 
   // IMPORTANT: Remove searchQuery dependency - sections ko filter mat karo
   const recentVisitsData = useMemo(() => {
-    if (recentVisitIds?.length === 0) return [];
+    if (recentVisitIds?.length === 0) {
+      console.log('No recent visit IDs found');
+      return [];
+    }
     
     const allJobs = [
       ...dynamicSections.flatMap((s) => s.data || []),
       ...privateJobs.map((j) => ({ ...j, id: j._id || j.id, title: j.postTitle || j.title })),
     ];
     
+    console.log('Recent Visit IDs:', recentVisitIds);
+    console.log('All Jobs Count:', allJobs.length);
+    console.log('Sample Jobs:', allJobs.slice(0, 3));
+    
     // Create multiple mappings for different ID formats
     const jobMap = new Map();
     allJobs.forEach((job) => {
+      // Add all possible ID variations to the map
       if (job.id) jobMap.set(job.id, job);
       if (job._id) jobMap.set(job._id, job);
       if (job.link) jobMap.set(job.link, job);
       if (job.url) jobMap.set(job.url, job);
+      
+      // Also add cleaned versions (without curly braces)
+      if (job.id) jobMap.set(job.id.toString().replace(/[{}]/g, ''), job);
+      if (job._id) jobMap.set(job._id.toString().replace(/[{}]/g, ''), job);
+      if (job.link) jobMap.set(job.link.toString().replace(/[{}]/g, ''), job);
     });
     
     const matchedJobs = recentVisitIds
       .map((id) => {
         // Try to find job by different ID formats
         let job = jobMap.get(id);
+        
         if (!job && typeof id === 'string') {
-          // Try to match by URL or link
-          job = allJobs.find(j => 
-            j.link === id || 
-            j.url === id || 
-            j._id === id ||
-            j.id === id
-          );
+          // Try to match by URL or link with more flexible matching
+          job = allJobs.find(j => {
+            const cleanId = id.replace(/[{}]/g, '');
+            return (
+              j.link === id || 
+              j.url === id || 
+              j._id === id ||
+              j.id === id ||
+              j.link === cleanId ||
+              j.url === cleanId ||
+              j._id === cleanId ||
+              j.id === cleanId ||
+              (j.link && j.link.toString().replace(/[{}]/g, '') === cleanId) ||
+              (j._id && j._id.toString().replace(/[{}]/g, '') === cleanId)
+            );
+          });
         }
+        
+        if (job) {
+          console.log('Matched job for ID', id, ':', job.title || job.postTitle);
+        } else {
+          console.log('No match found for ID:', id);
+        }
+        
         return job;
       })
       .filter((job) => job !== undefined);
     
-
+    console.log('Matched Jobs Count:', matchedJobs.length);
+    console.log('Matched Jobs:', matchedJobs.map(j => ({ id: j.id, title: j.title || j.postTitle })));
     
     return matchedJobs;
   }, [dynamicSections, privateJobs, recentVisitIds]);
@@ -420,21 +476,46 @@ export default function HomeScreen() {
   const handleGlobalClick = (e) => {
     const link = e.target.closest("a");
     if (!link || !link.href) return;
-    const url = new URL(link.href);
-    if (!url.pathname.includes("/post")) return;
-    const urlParam = url.searchParams.get("url");
-    if (urlParam) {
-      saveRecentVisit(urlParam);
-      return;
-    }
-    const scrapedUrlEncoded = url.searchParams.get("q");
-    if (scrapedUrlEncoded) {
-      saveRecentVisit(scrapedUrlEncoded);
-      return;
-    }
-    const id = url.searchParams.get("id") || url.searchParams.get("_id");
-    if (id) {
-      saveRecentVisit(id);
+    
+    try {
+      const url = new URL(link.href);
+      if (!url.pathname.includes("/post")) return;
+      
+      console.log('Clicked link:', link.href);
+      
+      // Try different parameter formats
+      const urlParam = url.searchParams.get("url");
+      const idParam = url.searchParams.get("id");
+      const _idParam = url.searchParams.get("_id");
+      const qParam = url.searchParams.get("q");
+      
+      if (urlParam) {
+        console.log('Saving URL param:', urlParam);
+        saveRecentVisit(urlParam);
+        return;
+      }
+      
+      if (idParam) {
+        console.log('Saving ID param:', idParam);
+        saveRecentVisit(idParam);
+        return;
+      }
+      
+      if (_idParam) {
+        console.log('Saving _ID param:', _idParam);
+        saveRecentVisit(_idParam);
+        return;
+      }
+      
+      if (qParam) {
+        console.log('Saving Q param:', qParam);
+        saveRecentVisit(qParam);
+        return;
+      }
+      
+      console.log('No valid parameters found in URL:', url.href);
+    } catch (error) {
+      console.error('Error in handleGlobalClick:', error);
     }
   };
 
