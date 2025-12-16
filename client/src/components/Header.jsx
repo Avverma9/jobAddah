@@ -14,7 +14,8 @@ import {
   Key,
   Image,
   TypeIcon,
-  Printer
+  Printer,
+  DraftingCompass
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -27,6 +28,8 @@ const TOOLS_LINKS = [
   { label: "Image Master", path: "/jobsaddah-image-tools", icon: Image },
   { label: "Typing Test", path: "/jobsaddah-typing-tools", icon: TypeIcon },
   { label: "Pdf Tools", path: "/jobsaddah-pdf-tools", icon: Printer },
+  { label: "Resume Maker", path: "/jobsaddah-resume-tools", icon: DraftingCompass },
+
 ];
 
 const INFO_LINKS = [

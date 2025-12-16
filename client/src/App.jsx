@@ -17,6 +17,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { LoaderProvider } from "./components/GlobalLoader";
 import TypingTest from "./pages/tools/typingTest";
 import PdfTool from "./pages/tools/pdfTool";
+import ResumeMaker from "./pages/tools/resumeMaker";
 function App() {
   return (
     <HelmetProvider>
@@ -52,6 +53,8 @@ function App() {
               <Route path="/jobsaddah-image-tools" element={<ImageResize />} />
               <Route path="/jobsaddah-typing-tools" element={<TypingTest />} />
               <Route path="/jobsaddah-pdf-tools" element={<PdfTool />} />
+              <Route path="/jobsaddah-resume-tools" element={< ResumeMaker/>} />
+
 
 
 
