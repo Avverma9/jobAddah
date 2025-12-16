@@ -1,4 +1,4 @@
-const Post = require("@/models/govtpost");
+const Post = require("@/models/gov/govtpost");
 
 // --- Helper: Standard Response Formatter ---
 const formatResponse = (data) => ({
@@ -130,9 +130,6 @@ const getDocsById = async (req, res) => {
   }
 };
 
-// ==========================================
-// B. CATEGORIZED GETTERS (No Pagination)
-// ==========================================
 
 // 8. Get All Jobs (Online Forms)
 const getJobs = async (req, res) => {
@@ -160,126 +157,6 @@ const getJobs = async (req, res) => {
 };
 
 
-// 9. Get Private Jobs
-const getPrivateJob = async (req, res) => {
-  try {
-    const { search } = req.query;
-    const query = { postType: "PRIVATE_JOB" };
-
-    if (search) {
-      query.$or = [
-        { postTitle: { $regex: search, $options: "i" } },
-        { organization: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const posts = await Post.find(query).sort({ createdAt: -1 }).lean();
-
-    const data = posts.map((post) => ({
-      _id: post._id,
-      title: post.postTitle,
-      slug: post.slug,
-      org: post.organization,
-      vacancies: post.totalVacancyCount || "N/A",
-      lastDate: post.importantDates?.find((d) => d.label?.toLowerCase().includes("last"))?.value || "N/A",
-      createdAt: post.createdAt,
-    }));
-
-    res.json(formatResponse(data));
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 10. Get Admit Cards
-const getAdmitCards = async (req, res) => {
-  try {
-    const { search } = req.query;
-    const query = { postType: "ADMIT_CARD" };
-
-    if (search) query.postTitle = { $regex: search, $options: "i" };
-
-    const posts = await Post.find(query)
-      .select("postTitle slug organization importantDates importantLinks")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const data = posts.map((post) => ({
-      _id: post._id,
-      title: post.postTitle,
-      slug: post.slug,
-      examDate: post.importantDates?.find((d) => d.label.toLowerCase().includes("exam"))?.value || "Soon",
-      downloadLink: post.importantLinks?.find((l) => /admit|download/i.test(l.label))?.url,
-    }));
-
-    res.json(formatResponse(data));
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 11. Get Results
-const getResults = async (req, res) => {
-  try {
-    const { search } = req.query;
-    const query = { postType: "RESULT" };
-
-    if (search) query.postTitle = { $regex: search, $options: "i" };
-
-    const posts = await Post.find(query)
-      .select("postTitle slug organization importantDates importantLinks")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const data = posts.map((post) => ({
-      _id: post._id,
-      title: post.postTitle,
-      slug: post.slug,
-      resultDate: post.importantDates?.find((d) => d.label.toLowerCase().includes("result"))?.value || "Declared",
-      checkLink: post.importantLinks?.find((l) => l.label.toLowerCase().includes("result"))?.url,
-    }));
-
-    res.json(formatResponse(data));
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 12. Get Upcoming Exams
-const getExams = async (req, res) => {
-  try {
-    const query = {
-      "importantDates.label": { $regex: /Exam Date|Test Date|CBT Date/i },
-    };
-
-    const posts = await Post.find(query)
-      .select("postTitle slug organization importantDates")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const data = posts.map((post) => ({
-      _id: post._id,
-      title: post.postTitle,
-      slug: post.slug,
-      examDate: post.importantDates?.find((d) => /Exam Date|Test Date/i.test(d.label))?.value,
-    }));
-
-    res.json(formatResponse(data));
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 13. Get Answer Keys
-const getAnswerKeys = async (req, res) => {
-  try {
-    const query = { postType: "ANSWER_KEY" };
-    const posts = await Post.find(query).sort({ createdAt: -1 });
-    res.json(formatResponse(posts));
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 // 14. Get All Posts (Raw)
 const getallPost = async (req, res) => {
@@ -291,39 +168,6 @@ const getallPost = async (req, res) => {
   }
 };
 
-// ==========================================
-// C. STATS & UTILITIES
-// ==========================================
-
-// 15. Get Dashboard Stats
-const getStats = async (req, res) => {
-  try {
-    const stats = await Promise.all([
-      Post.countDocuments({}),
-      Post.countDocuments({ postType: "JOB" }),
-      Post.countDocuments({ postType: "ADMIT_CARD" }),
-      Post.countDocuments({ postType: "RESULT" }),
-      Post.countDocuments({ postType: "ADMISSION" }),
-      Post.countDocuments({ postType: "ANSWER_KEY" }),
-    ]);
-
-    res.json({
-      success: true,
-      stats: {
-        total: stats[0],
-        jobs: stats[1],
-        admitCards: stats[2],
-        results: stats[3],
-        admissions: stats[4],
-        answerKeys: stats[5],
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// 16. Expiring Jobs Reminder
 const getExpiringJobsReminder = async (req, res) => {
   try {
     const today = new Date();
@@ -475,15 +319,10 @@ module.exports = {
   deletePost,
   deleteAllPosts,
   getJobs,
-  getAdmitCards,
-  getResults,
-  getExams,
-  getAnswerKeys,
-  getStats,
+
   insertBulkPosts,
   getallPost,
   getDocsById,
-  getPrivateJob,
   getExpiringJobsReminder,
   getJobsSmartByState,
   deleteAllJobs,

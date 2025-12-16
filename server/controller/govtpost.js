@@ -1,8 +1,8 @@
 // controllers/postController.js (ya jo bhi file ka naam hai)
 
-const Post = require("@/models/govtpost");
-const govPostList = require("@/models/postList");
-const Section = require("@/models/section");
+const Post = require("@/models/gov/govtpost");
+const govPostList = require("@/models/gov/postList");
+const Section = require("@/models/gov/section");
 
 const getGovPostDetails = async (req, res) => {
   try {

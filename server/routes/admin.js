@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('@/models/user');
+const User = require('../models/user');
 const { verifyToken, authorizeRoles } = require('@/middleware/auth');
 const { ALL_PERMISSIONS } = require('@/config/sidebar');
 const MenuItem = require('@/models/menuItem');

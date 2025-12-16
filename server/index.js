@@ -1,9 +1,11 @@
 require("dotenv").config();
+// register module-alias so paths like require('@/models/...') work at runtime
+require('module-alias/register');
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./config/db");
-import router from "./routes/index.js";
+const router = require("./routes/index");
 
 const app = express();
 
