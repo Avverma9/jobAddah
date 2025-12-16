@@ -11,6 +11,7 @@
     "quick-start": "node quick-start.js"
   },
   "dependencies": {
+    "module-alias": "^2.2.2",
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
@@ -24,5 +25,10 @@
     "mongoose": "^8.20.0",
     "nodemon": "^3.1.11",
     "string-similarity": "^4.0.4"
+  }
+
+  ,
+  "_moduleAliases": {
+    "@": "."
   }
 }

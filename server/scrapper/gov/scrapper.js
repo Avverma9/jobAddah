@@ -2,12 +2,12 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Post = require("@/models/govtpost");
-const govPostList = require("@/models/postList");
-const Section = require("@/models/section");
+const Post = require("@/models/gov/govtpost");
+const govPostList = require("@/models/gov/postList");
+const Section = require("@/models/gov/section");
 const GeminiModel = require("@/models/ai/gemini-model");
 const ApiKey = require("@/models/ai/ai-apiKey");
-const Site = require("@/models/scrapperSite");
+const Site = require("@/models/gov/scrapperSite");
 
 const cleanText = (text) => {
   if (!text) return "";

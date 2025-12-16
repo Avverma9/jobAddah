@@ -5,7 +5,7 @@ const {
   scrapeCategory,
   analyzeDuplicates,
   deleteDuplicates,
-} = require("@/scrapper/scrapper");
+} = require("@/scrapper/gov/scrapper");
 const router = express.Router();
 
 router.post("/scrape-complete", scrapper);

@@ -1,7 +1,7 @@
-const govPostList = require("@/models/postList");
-const Post = require("@/models/govtpost");
-const Section = require("@/models/section");
-const Site = require("@/models/scrapperSite");
+const govPostList = require("@/models/gov/postList");
+const Post = require("@/models/gov/govtpost");
+const Section = require("@/models/gov/section");
+const Site = require("@/models/gov/scrapperSite");
 
 // ======================
 // 1️⃣  getGovPostListBySection
