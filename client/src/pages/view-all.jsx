@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { baseUrl } from "../../util/baseUrl";
+import { baseUrl } from "../util/baseUrl";
 import { Link, useLocation } from "react-router-dom";
 import {
   ChevronRight,

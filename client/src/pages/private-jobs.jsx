@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/Header";
-import { baseUrl } from "../../util/baseUrl";
+import { baseUrl } from "../util/baseUrl";
 import { Building2, Calendar, ExternalLink, Briefcase } from "lucide-react";
 
 export default function PrivateJobs() {

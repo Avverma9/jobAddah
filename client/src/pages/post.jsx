@@ -11,7 +11,7 @@ import {
   Building,
   Download,
 } from "lucide-react";
-import { baseUrl } from "../../util/baseUrl";
+import { baseUrl } from "../util/baseUrl";
 import Header from "../components/Header";
 import {
   ErrorScreen,
@@ -19,7 +19,7 @@ import {
   LoadingSkeleton,
   VacancyTable,
 } from "./post-helper";
-import { decryptResponse } from "../../util/encode-decode"; // ✅ ADDED
+import { decryptResponse } from "../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
 import SEO from "../util/SEO";

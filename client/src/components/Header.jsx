@@ -14,7 +14,9 @@ import {
   BookOpen,
   Key,
   Settings,
-  Image
+  Image,
+  TypeIcon,
+  Printer
 } from "lucide-react";
 
 // Icons mapping for visual appeal in Nav
@@ -25,7 +27,11 @@ const NAV_ITEMS = [
 ];
 
 const TOOLS_LINKS = [
-  { label: "Image Resizer", path: "/jobsaddah-image-tools", icon: Image },
+  { label: "Image Master", path: "/jobsaddah-image-tools", icon: Image },
+  { label: "Typing Test", path: "/jobsaddah-typing-tools", icon: TypeIcon },
+  { label: "Pdf Tools", path: "/jobsaddah-pdf-tools", icon: Printer },
+
+
 ];
 
 const INFO_LINKS = [
