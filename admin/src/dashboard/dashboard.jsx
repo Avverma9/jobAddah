@@ -7,7 +7,6 @@ import {
   Briefcase,
   GraduationCap,
   CheckCircle,
-  Edit2,
   Trash2,
   Search,
   ChevronLeft,
@@ -24,14 +23,11 @@ import {
   Square,
 } from "lucide-react";
 import {
-  getStats,
-  getPrivateJob,
   deleteJob,
   markFav,
   getSections,
   getPostlist,
 } from "../../redux/slices/job";
-import { getResults } from "../../redux/slices/resources";
 import { baseUrl } from "../../util/url";
 
 const ITEMS_PER_PAGE = 12;
@@ -73,10 +69,7 @@ export default function JobAddahAdmin() {
   } = useSelector((state) => state.job);
 
   useEffect(() => {
-    dispatch(getStats());
     dispatch(getSections());
-    dispatch(getPrivateJob());
-    dispatch(getResults());
   }, [dispatch]);
 
   const sectionTabs = useMemo(() => {

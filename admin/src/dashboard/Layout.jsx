@@ -9,7 +9,6 @@ import {
 import Sidebar from "./Sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSidebarItems } from "../../redux/slices/sidebar";
-import { getStats } from "../../redux/slices/job";
 import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { logout } from "../../redux/slices/user";
 import Loader from "../../util/loader"; // Import the Loader
@@ -27,7 +26,6 @@ export default function Layout() {
 
   useEffect(() => {
     dispatch(fetchSidebarItems());
-    dispatch(getStats());
   }, [dispatch]);
 
   const buildSidebarTree = (items) => {

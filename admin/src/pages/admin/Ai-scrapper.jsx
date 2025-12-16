@@ -30,7 +30,6 @@ import {
   setSite,
 } from "../../../redux/slices/job";
 import api from "../../../util/api";
-import { getResults } from "../../../redux/slices/resources";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -89,7 +88,6 @@ export default function Scrapper() {
   useEffect(() => {
     dispatch(getSite());
     dispatch(getSections());
-    dispatch(getResults());
   }, [dispatch]);
 
   useEffect(() => {

@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, Briefcase, Clock, Search, TrendingUp } from "lucide-react";
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchSections } from '../../redux/slices/sectionsSlice';
+import { fetchPrivateJobs } from '../../redux/slices/privateJobsSlice';
 import { baseUrl } from "../util/baseUrl";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
@@ -167,11 +170,10 @@ export default function HomeScreen() {
   const [favPosts, setFavPosts] = useState([]);
   const [recentVisits, setRecentVisits] = useState([]);
 
-  const [dynamicSections, setDynamicSections] = useState([]);
-  const [isDynamicLoading, setIsDynamicLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { sections: dynamicSections, loading: isDynamicLoading, error } = useSelector((state) => state.sections);
 
-  const [privateJobs, setPrivateJobs] = useState([]);
-  const [isPrivateLoading, setIsPrivateLoading] = useState(true);
+  const { jobs: privateJobs, loading: isPrivateLoading } = useSelector((state) => state.privateJobs);
 
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -230,108 +232,12 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchDynamicData = async () => {
-      try {
-        setIsDynamicLoading(true);
-        await withLoader(
-          async () => {
-            const categoryRes = await fetch(`${baseUrl}/get-sections`);
-            const categoryPayload = await parseApiResponse(categoryRes);
-            const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
-            const categories =
-              Array.isArray(sectionDocs) && sectionDocs.length > 0 ? sectionDocs[0]?.categories || [] : [];
-
-            if (!categories?.length) {
-              setDynamicSections([]);
-              return;
-            }
-
-            const sectionPromises = categories.map(async (cat) => {
-              try {
-                const res = await fetch(`${baseUrl}/get-postlist`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ url: cat.link }),
-                });
-
-                const payload = await parseApiResponse(res);
-                
-                const base = payload?.data ?? payload;
-
-                let jobs = [];
-                if (Array.isArray(base)) {
-                  const match = base.find((item) => item.url === cat.link) || base[0];
-                  jobs = match?.jobs || [];
-                } else {
-                  jobs = base?.jobs || [];
-                }
-
-                const processed = sortLatestFirst(
-                  (jobs || [])
-                    .map(normalizeJob)
-                    .filter(
-                      (job) =>
-                        job?.title &&
-                        !job.title.toLowerCase().includes("privacy policy") &&
-                        !job.title.toLowerCase().includes("sarkari result")
-                    )
-                );
-console.log("payload", payload);
-console.log("base", base);
-console.log("sample job", jobs?.[0]);
-console.log("job keys", jobs?.[0] ? Object.keys(jobs[0]) : []);
-
-                return { name: cat.name, data: processed, icon: Briefcase, color: "gray", postType: "JOB" };
-              } catch {
-                return { name: cat.name, data: [], icon: Briefcase, color: "gray", postType: "JOB" };
-              }
-            });
-
-            const sections = await Promise.all(sectionPromises);
-            setDynamicSections(sections);
-          },
-          "Loading latest job sections...",
-          50
-        );
-      } finally {
-        setIsDynamicLoading(false);
-      }
-    };
-
-    fetchDynamicData();
-  }, [withLoader]);
+    dispatch(fetchSections());
+  }, [dispatch]);
 
   useEffect(() => {
-    const fetchPrivateJobs = async () => {
-      try {
-        await withLoader(
-          async () => {
-            const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-            const payload = await parseApiResponse(res);
-            const base = payload?.data ?? payload;
-            const jobs = Array.isArray(base) ? base : base?.data || [];
-            const processed = sortLatestFirst(
-              jobs.map((j) =>
-                normalizeJob({
-                  ...j,
-                  id: j._id || j.id,
-                  title: j.postTitle || j.title,
-                  createdAt: j.createdAt || j.updatedAt,
-                })
-              )
-            );
-            setPrivateJobs(processed);
-          },
-          "Loading private job opportunities...",
-          50
-        );
-      } finally {
-        setIsPrivateLoading(false);
-      }
-    };
-
-    fetchPrivateJobs();
-  }, [withLoader]);
+    dispatch(fetchPrivateJobs());
+  }, [dispatch]);
 
   useEffect(() => {
     const fetchReminders = async () => {
@@ -554,7 +460,7 @@ console.log("job keys", jobs?.[0] ? Object.keys(jobs[0]) : []);
                   <React.Fragment key={`${section.name}-${idx}`}>
                     <SectionColumn
                       title={section.name}
-                      icon={section.icon}
+                      icon={Briefcase}
                       data={section.data}
                       colorTheme={section.color}
                       postType={section.postType}
