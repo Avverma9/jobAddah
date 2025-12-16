@@ -1,5 +1,5 @@
 const express = require("express");
-const { getGovJobSections,getGovPostListBySection, getGovPostDetails, getGovSlice, setGovSite } = require("../controller/dashboard");
+const { getGovJobSections,getGovPostListBySection, getGovPostDetails, getGovSlice, setGovSite } = require("@/controller/dashboard");
 const router = express.Router();
 router.get("/get-sections", getGovJobSections);
 router.post("/get-postlist", getGovPostListBySection);

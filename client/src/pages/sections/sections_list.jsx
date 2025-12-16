@@ -7,7 +7,7 @@ import {
   MapPin,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 // --- Helper Function to Strip Domain ---
@@ -33,6 +33,16 @@ const ListItem = ({
   showTrending = false,
   showUrgent = false,
 }) => {
+  // --- Check if the post is new ---
+  const isNew = useMemo(() => {
+    if (!item.createdAt) return false;
+    const postDate = new Date(item.createdAt);
+    const now = new Date();
+    const differenceInTime = now.getTime() - postDate.getTime();
+    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
+    return differenceInDays <= 2;
+  }, [item.createdAt]);
+
   // Theme logic
   const getThemeColors = () => {
     switch (colorTheme) {
@@ -124,7 +134,7 @@ const ListItem = ({
                   <TrendingUp size={8} /> HOT
                 </span>
               )}
-              {item.isNew && (
+              {isNew && (
                 <span className="text-[9px] sm:text-[10px] font-bold bg-red-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
                   NEW
                 </span>

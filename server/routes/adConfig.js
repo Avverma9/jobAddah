@@ -15,7 +15,7 @@ const {
   testAdPlacement,
   getAdSlotMapping,
   validatePublisher
-} = require('../controller/adController');
+} = require('@/controller/adController');
 
 const router = express.Router();
 

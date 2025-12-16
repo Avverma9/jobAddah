@@ -24,10 +24,10 @@ if (!MONGO_URI) {
 // MONGO CONNECT
 mongoose
   .connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => {})
   .catch((err) => console.error("Mongo Error:", err));
 
-const ExamPost = require("../models/jobs");
+const ExamPost = require("@/models/jobs");
 
 // --------------------------------------------------
 // BASIC HTML CLEANER
@@ -184,7 +184,6 @@ app.post("/api/ai-scrape", async (req, res) => {
   }
 
   try {
-    console.log("[AI-SCRAPER] Fetching:", url);
 
     const { data } = await axios.get(url, {
       timeout: 90000,
@@ -261,6 +260,4 @@ app.post("/api/ai-scrape", async (req, res) => {
 // SERVER START
 // --------------------------------------------------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 AI Scraper running on PORT: ${PORT}`);
-});
+app.listen(PORT, () => {});

@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./config/db");
+import router from "./routes/index.js";
 
 const app = express();
 
@@ -14,7 +15,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 
 
-app.use("/api/v1", require("./routes/index"));
+app.use("/api/v1",router );
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {});

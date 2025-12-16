@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken, authorizeRoles } = require("../middleware/auth");
+const { verifyToken, authorizeRoles } = require("@/middleware/auth");
 
 // Import the NEW Optimized Controller
 const {
@@ -22,8 +22,8 @@ const {
   getJobsSmartByState,
 
   deleteAllJobs,
-} = require("../controller/jobs");
-const { getGovPostDetails } = require("../controller/govtpost");
+} = require("@/controller/jobs");
+const { getGovPostDetails } = require("@/controller/govtpost");
 
 // ==================================================================
 // 🟢 PUBLIC ROUTES (Accessible by Everyone - No Login Required)

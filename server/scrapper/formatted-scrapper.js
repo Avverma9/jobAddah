@@ -6,7 +6,6 @@ app.post('/scrape-complete', async (req, res) => {
     // =============================================
     // PHASE 1: COMPLETE RAW DATA EXTRACTION
     // =============================================
-    console.log('📥 Phase 1: Extracting raw data...');
     
     const response = await axios.get(jobUrl, {
       headers: { 
@@ -289,15 +288,9 @@ app.post('/scrape-complete', async (req, res) => {
       }
     });
 
-    console.log('✅ Phase 1 Complete: Raw data extracted');
-    console.log(`   - Tables: ${rawData.tables.length}`);
-    console.log(`   - Links: ${rawData.links.length}`);
-    console.log(`   - Headings: ${rawData.headings.h1.length + rawData.headings.h2.length}`);
-
     // =============================================
     // PHASE 2: INTELLIGENT FORMATTING
     // =============================================
-    console.log('🧠 Phase 2: Intelligent formatting...');
 
     const formattedData = {
       slug: '',
@@ -377,7 +370,6 @@ app.post('/scrape-complete', async (req, res) => {
       ).join(' ');
       const firstRowText = table.rows[0]?.cells.map(c => c.text.toLowerCase()).join(' ') || '';
 
-      console.log(`   Analyzing Table ${tableIndex}...`);
 
       // Detect table type with confidence scoring
       const tableTypes = {
@@ -421,7 +413,6 @@ app.post('/scrape-complete', async (req, res) => {
       );
       const confidence = tableTypes[detectedType];
 
-      console.log(`   -> Detected: ${detectedType} (confidence: ${confidence})`);
 
       // Process based on detected type
       if (detectedType === 'dates' && confidence >= 2) {
@@ -697,13 +688,6 @@ app.post('/scrape-complete', async (req, res) => {
       });
     }
 
-    console.log('✅ Phase 2 Complete: Formatting done');
-    console.log(`   - Dates: ${formattedData.importantDates.length}`);
-    console.log(`   - Fees: ${formattedData.applicationFee.length}`);
-    console.log(`   - Vacancy Details: ${formattedData.vacancyDetails.length}`);
-    console.log(`   - Important Links: ${formattedData.importantLinks.length}`);
-
-    // =============================================
     // FINAL RESPONSE
     // =============================================
     res.json({ 

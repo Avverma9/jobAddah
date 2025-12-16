@@ -2,11 +2,12 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Post = require("../models/govtpost");
-const govPostList = require("../models/postList");
-const Section = require("../models/section");
-const GeminiModel = require("../models/ai/gemini-model");
-const ApiKey = require("../models/ai/ai-apiKey");
+const Post = require("@/models/govtpost");
+const govPostList = require("@/models/postList");
+const Section = require("@/models/section");
+const GeminiModel = require("@/models/ai/gemini-model");
+const ApiKey = require("@/models/ai/ai-apiKey");
+const Site = require("@/models/scrapperSite");
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -385,7 +386,11 @@ const scrapper = async (req, res) => {
 
 const getCategories = async (req, res) => {
   try {
-    const rawUrl = "sarkariresult.com.cm";
+    const siteUrl = await Site.find();
+    const rawUrl = siteUrl[0].url;
+
+    console.log(siteUrl);
+
     const targetUrl = ensureProtocol(rawUrl);
     if (!targetUrl) return res.status(400).json({ error: "Invalid URL" });
 
@@ -481,7 +486,6 @@ const deleteDuplicates = async (req, res) => {
   try {
     const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
 
-
     const duplicatesToDelete = [];
     const processedPairs = new Set();
 
@@ -501,21 +505,6 @@ const deleteDuplicates = async (req, res) => {
 
           // If similarity >= 60%, DELETE older post (post1), KEEP newer post (post2)
           if (similarity >= 60) {
-            console.log(`   ⚠️  ${similarity.toFixed(1)}% DUPLICATE FOUND:`);
-            console.log(
-              `       ❌ DELETE (older):  ${post1._id} | ${
-                post1.recruitment?.title || post1.url
-              }`
-            );
-            console.log(
-              `       ✅ KEEP (newer):    ${post2._id} | ${
-                post2.recruitment?.title || post2.url
-              }`
-            );
-            console.log(
-              `       📅 Created: ${post1.createdAt} → ${post2.createdAt}\n`
-            );
-
             duplicatesToDelete.push({
               deleteId: post1._id, // ← DELETE OLDER
               keepId: post2._id, // ← KEEP NEWER
@@ -541,7 +530,6 @@ const deleteDuplicates = async (req, res) => {
       });
     }
 
-
     // Delete duplicate posts
     const deletionResults = [];
 
@@ -550,10 +538,6 @@ const deleteDuplicates = async (req, res) => {
         const deleted = await Post.findByIdAndDelete(duplicate.deleteId);
 
         if (deleted) {
-          console.log(
-            `      Similarity: ${duplicate.similarity.toFixed(1)}%\n`
-          );
-
           deletionResults.push({
             deleted: true,
             deletedId: duplicate.deleteId,
@@ -565,7 +549,6 @@ const deleteDuplicates = async (req, res) => {
             keptCreatedAt: duplicate.keepCreatedAt,
           });
         } else {
-         
           deletionResults.push({
             deleted: false,
             deletedId: duplicate.deleteId,

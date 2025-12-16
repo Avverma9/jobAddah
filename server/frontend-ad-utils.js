@@ -97,7 +97,6 @@ class AdControlAPI {
         
         // Use cached config if less than 1 hour old
         if (age < 60 * 60 * 1000) {
-          console.log('Using cached ad config (offline mode)');
           return config;
         }
       }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { baseUrl } from "../util/baseUrl";
 
-const PUBLISHER_ID = "ca-pub-7416335110977682";
+const PUBLISHER_ID = "ca-pub-5390089359360512";
 
 export default function useAdControl(pageType, slot) {
   const [allowed, setAllowed] = useState(false);

@@ -24,14 +24,10 @@ const apiCall = async (method, endpoint, data = null, headers = {}) => {
     }
 
     const response = await axios(config);
-    console.log(`✅ ${method.toUpperCase()} ${endpoint}:`);
-    console.log(JSON.stringify(response.data, null, 2));
-    console.log('');
     return response.data;
   } catch (error) {
     console.error(`❌ ${method.toUpperCase()} ${endpoint}:`);
     console.error(error.response?.data || error.message);
-    console.log('');
     return null;
   }
 };
@@ -149,68 +145,41 @@ const testNewPageTypes = async () => {
 
 // Comprehensive test suite
 const runEnhancedTests = async () => {
-  console.log('🚀 Starting Enhanced Ad Control API Tests...\n');
-  console.log('='.repeat(60));
-
   try {
     // Test 1: Initialize all ad slots
-    console.log('1. Testing Initialize All Ad Slots...');
     await testInitializeAdSlots();
 
     // Test 2: Get slot mapping
-    console.log('2. Testing Get Slot Mapping...');
     await testGetSlotMapping();
 
     // Test 3: Test enhanced status
-    console.log('3. Testing Enhanced Ad Status...');
     await testEnhancedStatus('homepage', 'banner');
     await testEnhancedStatus('jobDetail', 'inArticle');
     await testEnhancedStatus('categoryPages', 'inFeed');
 
     // Test 4: Test ad placement
-    console.log('4. Testing Ad Placement...');
     await testAdPlacement('banner', 'homepage');
     await testAdPlacement('rectangle', 'jobDetail');
     await testAdPlacement('inFeed', 'categoryPages');
 
     // Test 5: Update slot with detailed info
-    console.log('5. Testing Update Slot with Details...');
     await testUpdateSlotWithDetails('banner');
 
     // Test 6: Add new page types
-    console.log('6. Testing New Page Types...');
     await testNewPageTypes();
 
     // Test 7: Bulk disable some slots
-    console.log('7. Testing Bulk Disable Slots...');
     await testBulkUpdateSlots('disable', ['rectangle', 'sidebar']);
 
     // Test 8: Test placement after bulk disable
-    console.log('8. Testing Placement After Bulk Disable...');
     await testAdPlacement('rectangle', 'homepage');
     await testAdPlacement('sidebar', 'homepage');
 
     // Test 9: Bulk enable slots back
-    console.log('9. Testing Bulk Enable Slots...');
     await testBulkUpdateSlots('enable', ['rectangle', 'sidebar']);
 
     // Test 10: Final configuration check
-    console.log('10. Final Configuration Check...');
     await apiCall('GET', '/');
-
-    console.log('='.repeat(60));
-    console.log('✅ All Enhanced Tests Completed Successfully!');
-    console.log('');
-    console.log('📋 What was tested:');
-    console.log('   ✓ Ad slot initialization with detailed configuration');
-    console.log('   ✓ Slot mapping for frontend integration');
-    console.log('   ✓ Enhanced status with slot IDs and formats');
-    console.log('   ✓ Ad placement testing for different page types');
-    console.log('   ✓ Bulk slot operations (enable/disable)');
-    console.log('   ✓ New page type integration');
-    console.log('   ✓ Detailed slot updates with descriptions');
-    console.log('');
-    console.log('🎯 Your enhanced ad system is ready for production!');
 
   } catch (error) {
     console.error('❌ Enhanced tests failed:', error.message);
@@ -263,12 +232,9 @@ if (require.main === module) {
   const testType = process.argv[2];
   
   if (testType === 'manual') {
-    console.log('Available manual tests:');
     Object.keys(manualTests).forEach(test => {
-      console.log(`  node test-enhanced-ad-api.js ${test}`);
     });
   } else if (testType && manualTests[testType]) {
-    console.log(`Running manual test: ${testType}`);
     manualTests[testType]().catch(console.error);
   } else {
     runEnhancedTests().catch(console.error);

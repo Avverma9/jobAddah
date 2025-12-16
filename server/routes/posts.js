@@ -8,8 +8,8 @@ const {
   getReminders,
   fixAllUrls,
   findByTitle,
-} = require("../controller/govtpost");
-const { verifyToken, authorizeRoles } = require("../middleware/auth");
+} = require("@/controller/govtpost");
+const { verifyToken, authorizeRoles } = require("@/middleware/auth");
 const router = express.Router();
 router.get("/get-sections", getGovJobSections);
 router.post("/get-postlist", getGovPostListBySection);
