@@ -3,19 +3,13 @@
 const Post = require("../models/govtpost");
 const govPostList = require("../models/postList");
 const Section = require("../models/section");
-const encrypt = require("../utils/decoder"); // pehle decoder likha tha, ab sahi
 
-// Common helper: sari responses yahin se encrypt ho ke jayengi
-const sendEncrypted = (res, statusCode, payload) => {
-  const encryptedPayload = encrypt(payload);
-  return res.status(statusCode).json(encryptedPayload);
-};
 
 const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
     if (!url) {
-      return sendEncrypted(res, 400, {
+      return res.status(400).json({
         success: false,
         error: "URL is required",
       });
@@ -37,18 +31,18 @@ const getGovPostDetails = async (req, res) => {
     const getData = await Post.findOne({ url }).sort({ createdAt: -1 });
 
     if (!getData) {
-      return sendEncrypted(res, 404, {
+      return res.status(404).json({
         success: false,
         error: "Post not found",
       });
     }
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       data: getData,
     });
   } catch (err) {
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       error: err.message || "Internal server error",
     });
@@ -59,13 +53,13 @@ const getGovJobSections = async (req, res) => {
   try {
     const getData = await Section.find().sort({ createdAt: -1 });
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       count: getData.length,
       data: getData,
     });
   } catch (err) {
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       error: err.message || "Internal server error",
     });
@@ -79,13 +73,13 @@ const getGovPostListBySection = async (req, res) => {
       createdAt: -1,
     });
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       count: getData.length,
       data: getData,
     });
   } catch (err) {
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       error: err.message || "Internal server error",
     });
@@ -100,7 +94,7 @@ const markFav = async (req, res) => {
     if (fav === true) {
       const favCount = await Post.countDocuments({ fav: true });
       if (favCount >= 8) {
-        return sendEncrypted(res, 400, {
+        return res.status(400).json({
           success: false,
           message: "You can mark only 8 posts as favorite",
         });
@@ -114,18 +108,18 @@ const markFav = async (req, res) => {
     );
 
     if (!updatedPost) {
-      return sendEncrypted(res, 404, {
+      return res.status(404).json({
         success: false,
         message: "Post not found",
       });
     }
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       data: updatedPost,
     });
   } catch (err) {
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       message: err.message || "Internal server error",
     });
@@ -238,13 +232,13 @@ const getFavPosts = async (req, res) => {
     // valid favs ko latest createdAt के हिसाब से sort कर दो
     validFavs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       count: validFavs.length,
       data: validFavs,
     });
   } catch (err) {
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       message: err.message || "Internal server error",
     });
@@ -388,7 +382,7 @@ const getReminders = async (req, res) => {
 
     const sortedReminders = reminders.sort((a, b) => a.daysLeft - b.daysLeft);
 
-    return sendEncrypted(res, 200, {
+    return res.status(200).json({
       success: true,
       count: sortedReminders.length,
       reminders: sortedReminders,
@@ -399,7 +393,7 @@ const getReminders = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching reminders:", error);
-    return sendEncrypted(res, 500, {
+    return res.status(500).json({
       success: false,
       message: error.message || "Failed to fetch reminders",
     });
