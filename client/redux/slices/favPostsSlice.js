@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { baseUrl } from '../../util/baseUrl';
+import api from '../../src/util/apiClient';
 
 // Helper functions from homescreen.jsx
 const normalizeJob = (job) => {
@@ -30,8 +29,7 @@ const normalizeJob = (job) => {
   };
 
 export const fetchFavPosts = createAsyncThunk('favPosts/fetchFavPosts', async () => {
-  const response = await axios.get(`${baseUrl}/fav-posts`);
-  const payload = response.data;
+  const payload = await api.get('/fav-posts');
 
   let fav = [];
   if (Array.isArray(payload)) fav = payload;

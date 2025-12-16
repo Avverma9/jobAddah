@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
+  <div className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
     {children}
   </div>
 );
@@ -30,9 +30,9 @@ const Button = ({ onClick, children, variant = "primary", className = "", disabl
   const baseStyle = "px-3 py-2 text-xs md:text-base md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 md:gap-2";
   const variants = {
     primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300",
-    secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-50",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100",
-    outline: "border-2 border-dashed border-gray-300 text-gray-500 hover:border-blue-500 hover:text-blue-500"
+    secondary: "bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:bg-gray-50",
+    danger: "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/10 dark:text-red-400",
+    outline: "border-2 border-dashed border-gray-300 text-gray-500 hover:border-blue-500 hover:text-blue-500 dark:border-slate-700 dark:text-slate-300"
   };
   
   return (
@@ -139,7 +139,7 @@ export default function ImageEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 md:p-8 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-2 md:p-8 font-sans text-slate-900 dark:text-slate-100">
       <div className="max-w-6xl mx-auto">
         <header className="mb-4 md:mb-8 text-center">
           <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 mb-1 md:mb-2">Image Master Pro</h1>

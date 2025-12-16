@@ -4,10 +4,12 @@ import { Bell, Briefcase, Clock, Search, TrendingUp } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSections } from '../../redux/slices/sectionsSlice';
 import { fetchPrivateJobs } from '../../redux/slices/privateJobsSlice';
-import { baseUrl } from "../util/baseUrl";
+import { fetchFavPosts } from '../../redux/slices/favPostsSlice';
+import { fetchSearchResults, clearSearch } from '../../redux/slices/searchSlice';
+import { fetchReminders } from '../../redux/slices/remindersSlice';
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
-import { encodeBase64Url, parseApiResponse } from "../util/encode-decode";
+import { encodeBase64Url } from "../util/encode-decode";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
@@ -167,7 +169,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const [favPosts, setFavPosts] = useState([]);
+  // favPosts are now managed by Redux slice `favPosts`
+  const { posts: favPosts, loading: isFavLoading } = useSelector((state) => state.favPosts);
   const [recentVisits, setRecentVisits] = useState([]);
 
   const dispatch = useDispatch();
@@ -175,49 +178,37 @@ export default function HomeScreen() {
 
   const { jobs: privateJobs, loading: isPrivateLoading } = useSelector((state) => state.privateJobs);
 
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const { results: searchResults, loading: isSearching } = useSelector((state) => state.search);
 
-  const [reminders, setReminders] = useState({
-    expiresToday: [],
-    expiringSoon: [],
-    isLoading: true,
-  });
+  const { expiresToday, expiringSoon, loading: remindersLoading } = useSelector((state) => state.reminders);
 
   const { withLoader } = useGlobalLoader();
 
   useEffect(() => {
     if (!searchQuery) {
       setIsTyping(false);
-      setIsSearching(false);
-      setSearchResults([]);
+      // clear Redux search results when query is empty
+      dispatch(clearSearch());
       return;
     }
+
     setIsTyping(true);
     const t = setTimeout(() => setIsTyping(false), 400);
     return () => clearTimeout(t);
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!searchQuery) return;
+    if (!searchQuery) {
+      dispatch(clearSearch());
+      return;
+    }
 
-    const t = setTimeout(async () => {
-      try {
-        setIsSearching(true);
-        const res = await fetch(`${baseUrl}/find-by-title?title=${encodeURIComponent(searchQuery)}`);
-        const payload = await parseApiResponse(res);
-        const results = payload?.data ?? payload;
-        const finalRes = Array.isArray(results) ? results.map(normalizeJob) : [];
-        setSearchResults(sortLatestFirst(finalRes));
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
+    const t = setTimeout(() => {
+      dispatch(fetchSearchResults(searchQuery));
     }, 1000);
 
     return () => clearTimeout(t);
-  }, [searchQuery]);
+  }, [searchQuery, dispatch]);
 
   useEffect(() => {
     const load = async () => {
@@ -240,63 +231,16 @@ export default function HomeScreen() {
   }, [dispatch]);
 
   useEffect(() => {
-    const fetchReminders = async () => {
-      try {
-        await withLoader(
-          async () => {
-            const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
-            const data = await parseApiResponse(response);
-
-            if (data?.success) {
-              const list = Array.isArray(data.reminders) ? data.reminders : [];
-              setReminders({
-                expiresToday: list.filter((item) => item.daysLeft === 0),
-                expiringSoon: list.filter((item) => item.daysLeft > 0),
-                isLoading: false,
-              });
-              return;
-            }
-
-            setReminders((p) => ({ ...p, isLoading: false }));
-          },
-          "Loading job reminders and deadlines...",
-          50
-        );
-      } catch {
-        setReminders((p) => ({ ...p, isLoading: false }));
-      }
-    };
-
-    fetchReminders();
-    const interval = setInterval(fetchReminders, 5 * 60 * 1000);
+    // Use Redux thunk to fetch reminders and refresh periodically
+    dispatch(fetchReminders());
+    const interval = setInterval(() => dispatch(fetchReminders()), 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [withLoader]);
+  }, [dispatch]);
 
   useEffect(() => {
-    const fetchFavPosts = async () => {
-      try {
-        await withLoader(
-          async () => {
-            const res = await fetch(`${baseUrl}/fav-posts`);
-            const payload = await parseApiResponse(res);
-
-            let fav = [];
-            if (Array.isArray(payload)) fav = payload;
-            else if (Array.isArray(payload?.data)) fav = payload.data;
-            else if (Array.isArray(payload?.data?.data)) fav = payload.data.data;
-
-            setFavPosts(sortLatestFirst(fav.map(normalizeJob)));
-          },
-          "Loading featured job posts...",
-          50
-        );
-      } catch {
-        setFavPosts([]);
-      }
-    };
-
-    fetchFavPosts();
-  }, [withLoader]);
+    // Dispatch Redux thunk to load featured/favorite posts
+    dispatch(fetchFavPosts());
+  }, [dispatch]);
 
   const allJobsIndex = useMemo(() => {
     const all = [
@@ -447,9 +391,9 @@ export default function HomeScreen() {
           <Tools />
 
           <UrgentReminderSection
-            expiresToday={reminders.expiresToday}
-            expiringSoon={reminders.expiringSoon}
-            isLoading={reminders.isLoading}
+            expiresToday={expiresToday}
+            expiringSoon={expiringSoon}
+            isLoading={remindersLoading}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

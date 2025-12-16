@@ -86,7 +86,7 @@ const ToolCard = ({ tool }) => {
     return (
       <a
         href={tool.href}
-        className={`group ${containerClasses} bg-white border border-blue-100 sm:border-4 sm:border-blue-50 hover:border-blue-200 shadow-sm hover:shadow-lg hover:scale-105`}
+        className={`group ${containerClasses} bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 sm:border-4 sm:border-blue-50 dark:sm:border-slate-800 hover:border-blue-200 dark:hover:border-slate-600 shadow-sm hover:shadow-lg hover:scale-105`}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -104,7 +104,7 @@ const ToolCard = ({ tool }) => {
           {tool.icon}
         </div>
 
-        <h3 className="text-[10px] sm:text-sm font-bold text-gray-900 leading-none sm:leading-tight group-hover:text-blue-600 mt-0.5">
+  <h3 className="text-[10px] sm:text-sm font-bold text-gray-900 dark:text-slate-100 leading-none sm:leading-tight group-hover:text-blue-600 mt-0.5">
           <span className="sm:hidden">{tool.title}</span>
           <span className="hidden sm:block">{tool.fullTitle}</span>
         </h3>
@@ -156,7 +156,7 @@ const ToolCard = ({ tool }) => {
 
 export default function Tools() {
   return (
-    <div className="w-full bg-slate-50 py-6 sm:py-8 px-2 font-sans overflow-hidden">
+    <div className="w-full bg-slate-50 dark:bg-slate-900 py-6 sm:py-8 px-2 font-sans overflow-hidden text-slate-900 dark:text-slate-100">
       <style>{`
         @keyframes gradient-x {
           0%, 100% { background-position: 0% 50%; }

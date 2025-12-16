@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { baseUrl } from '../../util/baseUrl';
+import api from '../../src/util/apiClient';
 
 // Helper functions moved here for now
 const normalizeJob = (job) => {
@@ -31,8 +30,7 @@ const normalizeJob = (job) => {
 
 
 export const fetchSections = createAsyncThunk('sections/fetchSections', async () => {
-    const categoryRes = await axios.get(`${baseUrl}/get-sections`);
-    const categoryPayload = categoryRes.data;
+  const categoryPayload = await api.get('/get-sections');
     const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
     const categories =
       Array.isArray(sectionDocs) && sectionDocs.length > 0 ? sectionDocs[0]?.categories || [] : [];
@@ -42,10 +40,9 @@ export const fetchSections = createAsyncThunk('sections/fetchSections', async ()
     }
 
     const sectionPromises = categories.map(async (cat) => {
-      try {
-        const res = await axios.post(`${baseUrl}/get-postlist`, { url: cat.link });
-        const payload = res.data;
-        const base = payload?.data ?? payload;
+  try {
+  const payload = await api.post('/get-postlist', { url: cat.link });
+  const base = payload?.data ?? payload;
 
         let jobs = [];
         if (Array.isArray(base)) {
