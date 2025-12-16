@@ -24,7 +24,6 @@ const apiCall = async (method, endpoint, data = null, headers = {}) => {
     }
 
     const response = await axios(config);
-    console.log(`✅ ${method.toUpperCase()} ${endpoint}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`❌ ${method.toUpperCase()} ${endpoint}:`, 
@@ -84,64 +83,38 @@ const testEnable = () => apiCall('POST', '/enable', {
 
 // Main test function
 const runTests = async () => {
-  console.log('🚀 Starting Ad Control API Tests...\n');
-
   // Test 1: Health Check
-  console.log('1. Testing Health Check...');
   await testHealthCheck();
-  console.log('');
 
   // Test 2: Initialize (First time only)
-  console.log('2. Testing Initialize...');
   await testInitialize();
-  console.log('');
 
   // Test 3: Get Configuration
-  console.log('3. Testing Get Configuration...');
   await testGetConfig();
-  console.log('');
 
   // Test 4: Get Ad Status
-  console.log('4. Testing Get Ad Status...');
   await testGetStatus('homepage', 'banner');
-  console.log('');
 
   // Test 5: Update Global Settings
-  console.log('5. Testing Update Global Settings...');
   await testUpdateGlobal(true, true, 6);
-  console.log('');
 
   // Test 6: Update Page Settings
-  console.log('6. Testing Update Page Settings...');
   await testUpdatePage('homepage', true, 4);
-  console.log('');
 
   // Test 7: Update Slot Settings
-  console.log('7. Testing Update Slot Settings...');
   await testUpdateSlot('banner', true, 1);
-  console.log('');
 
   // Test 8: Emergency Disable
-  console.log('8. Testing Emergency Disable...');
   await testEmergencyDisable();
-  console.log('');
 
   // Test 9: Check Status After Disable
-  console.log('9. Testing Status After Emergency Disable...');
   await testGetStatus('homepage', 'banner');
-  console.log('');
 
   // Test 10: Re-enable Ads
-  console.log('10. Testing Re-enable Ads...');
   await testEnable();
-  console.log('');
 
   // Test 11: Final Status Check
-  console.log('11. Final Status Check...');
   await testGetStatus('homepage', 'banner');
-  console.log('');
-
-  console.log('✅ All tests completed!');
 };
 
 // Run tests if this file is executed directly

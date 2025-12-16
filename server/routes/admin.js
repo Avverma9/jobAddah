@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/user');
-const { verifyToken, authorizeRoles } = require('../middleware/auth');
-const { ALL_PERMISSIONS } = require('../config/sidebar');
-const MenuItem = require('../models/menuItem');
+const User = require('@/models/user');
+const { verifyToken, authorizeRoles } = require('@/middleware/auth');
+const { ALL_PERMISSIONS } = require('@/config/sidebar');
+const MenuItem = require('@/models/menuItem');
 
 // List users (admin+)
 router.get('/users', verifyToken, authorizeRoles('admin', 'super_admin'), async (req, res) => {

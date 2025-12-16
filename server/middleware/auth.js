@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/user');
+const User = require('@/models/user');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 const TOKEN_EXP = process.env.JWT_EXPIRES_IN || '2h';

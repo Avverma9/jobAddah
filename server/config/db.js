@@ -11,7 +11,6 @@ const connectDB = async () => {
     await mongoose.connect(MONGO_URI, {
       // useUnifiedTopology and useNewUrlParser are defaults in mongoose v6+
     });
-    console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err.message || err);
     process.exit(1);

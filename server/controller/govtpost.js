@@ -1,8 +1,8 @@
 // controllers/postController.js (ya jo bhi file ka naam hai)
 
-const Post = require("../models/govtpost");
-const govPostList = require("../models/postList");
-const Section = require("../models/section");
+const Post = require("@/models/govtpost");
+const govPostList = require("@/models/postList");
+const Section = require("@/models/section");
 
 const getGovPostDetails = async (req, res) => {
   try {
@@ -71,7 +71,6 @@ const getGovPostListBySection = async (req, res) => {
     const getData = await govPostList.find({ section: url }).sort({
       createdAt: -1,
     });
-    console.log(getData);
     return res.status(200).json({
       success: true,
       count: getData.length,

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user");
-const { generateToken, verifyToken } = require("../middleware/auth");
+const User = require("@/models/user");
+const { generateToken, verifyToken } = require("@/middleware/auth");
 
 const findUserByEmail = (email) => {
   return User.findOne({

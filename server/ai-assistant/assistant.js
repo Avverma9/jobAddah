@@ -29,7 +29,6 @@ const searchDatabase = async (userQuery) => {
     // If no meaningful terms (e.g., just "Hello kaise ho"), don't search
     if (terms.length === 0) return null;
 
-    console.log("🔍 Search Terms:", terms);
 
     // STRATEGY 1: High Precision (AND Logic)
     // Result MUST contain ALL extracted terms (e.g. "SSC" AND "CGL")
@@ -49,7 +48,6 @@ const searchDatabase = async (userQuery) => {
     // STRATEGY 2: Fallback (Relaxed Logic)
     // If strict search fails, try to match at least one major term
     if (results.length === 0 && terms.length > 1) {
-      console.log("⚠️ Strict search failed, trying relaxed search...");
       const relaxedConditions = terms.map(term => ({
         postTitle: { $regex: term, $options: 'i' }
       }));
@@ -61,7 +59,6 @@ const searchDatabase = async (userQuery) => {
     }
 
     if (results.length > 0) {
-      console.log(`✅ Found ${results.length} relevant jobs.`);
       return results;
     }
     
@@ -95,7 +92,6 @@ const aiAssistant = async (req, res) => {
     if (!process.env.GEMINI_API_KEY) throw new Error("API Key Missing");
     if (!message) return res.status(400).json({ success: false, message: "Empty message" });
 
-    console.log("\n🔷 User Query:", message);
 
     // Step 1: Search DB (We search first, but let AI decide if it uses the data)
     const dbResults = await searchDatabase(message);
@@ -144,8 +140,6 @@ const aiAssistant = async (req, res) => {
 
     // Clean formatting (remove markdown bolding if excessive)
     const cleanResponse = responseText.replace(/\*\*/g, '').trim();
-
-    console.log("🤖 AI Reply:", cleanResponse);
 
     return res.status(200).json({
       success: true,

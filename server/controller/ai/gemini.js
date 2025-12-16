@@ -1,5 +1,5 @@
-const ApiKey = require("../../models/ai/ai-apiKey");
-const GeminiModel = require("../../models/ai/gemini-model");
+const ApiKey = require("@/models/ai/ai-apiKey");
+const GeminiModel = require("@/models/ai/gemini-model");
 
 
 const setModel = async (req, res) => {
