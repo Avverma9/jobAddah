@@ -481,8 +481,6 @@ const deleteDuplicates = async (req, res) => {
   try {
     const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
 
-    console.log(`\n🔄 Starting duplicate deletion process...`);
-    console.log(`📊 Scanning ${allPosts.length} posts for duplicates\n`);
 
     const duplicatesToDelete = [];
     const processedPairs = new Set();
@@ -535,7 +533,6 @@ const deleteDuplicates = async (req, res) => {
     }
 
     if (duplicatesToDelete.length === 0) {
-      console.log(`✅ No duplicates found (threshold: 60%)`);
       return res.json({
         success: true,
         duplicatesFound: 0,
@@ -544,9 +541,6 @@ const deleteDuplicates = async (req, res) => {
       });
     }
 
-    console.log(
-      `\n🗑️  Found ${duplicatesToDelete.length} duplicates. Deleting older posts...\n`
-    );
 
     // Delete duplicate posts
     const deletionResults = [];
@@ -556,9 +550,6 @@ const deleteDuplicates = async (req, res) => {
         const deleted = await Post.findByIdAndDelete(duplicate.deleteId);
 
         if (deleted) {
-          console.log(`   ✅ Deleted (older): ${duplicate.deleteId}`);
-          console.log(`      Title: ${duplicate.deleteTitle}`);
-          console.log(`      Created: ${duplicate.deleteCreatedAt}`);
           console.log(
             `      Similarity: ${duplicate.similarity.toFixed(1)}%\n`
           );
@@ -574,7 +565,7 @@ const deleteDuplicates = async (req, res) => {
             keptCreatedAt: duplicate.keepCreatedAt,
           });
         } else {
-          console.log(`   ❌ Failed to delete: ${duplicate.deleteId}`);
+         
           deletionResults.push({
             deleted: false,
             deletedId: duplicate.deleteId,
@@ -592,12 +583,6 @@ const deleteDuplicates = async (req, res) => {
     }
 
     const successCount = deletionResults.filter((r) => r.deleted).length;
-
-    console.log(`\n✨ Deletion complete!`);
-    console.log(`   Total duplicates found: ${duplicatesToDelete.length}`);
-    console.log(`   Successfully deleted (older): ${successCount}`);
-    console.log(`   Failed: ${deletionResults.length - successCount}\n`);
-
     res.json({
       success: true,
       duplicatesFound: duplicatesToDelete.length,
@@ -618,10 +603,6 @@ const deleteDuplicates = async (req, res) => {
 const analyzeDuplicates = async (req, res) => {
   try {
     const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
-
-    console.log(`\n📊 Analyzing duplicates (DRY-RUN)...`);
-    console.log(`Scanning ${allPosts.length} posts\n`);
-
     const duplicateAnalysis = [];
     const processedPairs = new Set();
 
@@ -667,10 +648,6 @@ const analyzeDuplicates = async (req, res) => {
         analysis: [],
       });
     }
-
-    console.log(
-      `Found ${duplicateAnalysis.length} potential duplicates (60%+ similarity)\n`
-    );
 
     res.json({
       success: true,

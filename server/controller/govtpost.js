@@ -4,7 +4,6 @@ const Post = require("../models/govtpost");
 const govPostList = require("../models/postList");
 const Section = require("../models/section");
 
-
 const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
@@ -69,13 +68,10 @@ const getGovJobSections = async (req, res) => {
 const getGovPostListBySection = async (req, res) => {
   try {
     const url = req.params.url;
-    const getData = await govPostList
-      .find({ section: url })
-      .select("title link createdAt")
-      .sort({
-        createdAt: -1,
-      });
-
+    const getData = await govPostList.find({ section: url }).sort({
+      createdAt: -1,
+    });
+    console.log(getData);
     return res.status(200).json({
       success: true,
       count: getData.length,
