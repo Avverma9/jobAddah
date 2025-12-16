@@ -24,6 +24,7 @@ import {
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
+import Tools from "./tools/toolswidget";
 
 // ========== STORAGE-BASED RECENT VISITS ==========
 const RECENT_VISITS_KEY = "jobsaddah_recent_visits";
@@ -47,31 +48,30 @@ const saveRecentVisit = async (jobData) => {
   try {
     // Get existing visits
     let visits = await getRecentVisits();
-    
+
     // Create visit entry with complete job data
     const visitEntry = {
       id: jobData.id,
       title: jobData.title,
       timestamp: Date.now(),
     };
-    
+
     // Remove if already exists (by id)
     visits = visits.filter((v) => v.id !== visitEntry.id);
-    
+
     // Add to beginning
     visits.unshift(visitEntry);
-    
+
     // Keep only 8 most recent
     visits = visits.slice(0, 8);
-    
+
     // Save to storage
-    await window.storage.set(RECENT_VISITS_KEY, JSON.stringify(visits));
-    
+    await window.Storage.set(RECENT_VISITS_KEY, JSON.stringify(visits));
+
     console.log("✅ Saved visit to storage:", visitEntry);
-    
+
     // Trigger event for UI update
     window.dispatchEvent(new Event("recent-visits-updated"));
-    
   } catch (error) {
     console.error("❌ Error saving visit to storage:", error);
   }
@@ -80,15 +80,15 @@ const saveRecentVisit = async (jobData) => {
 // ========== LINK GENERATION ==========
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
-  
+
   const val = idOrUrl.toString().trim();
-  
+
   // If it's a URL, encode it
   if (val.startsWith("http://") || val.startsWith("https://")) {
     const encoded = encodeBase64Url(val);
     return `/post?url=${encoded}`;
   }
-  
+
   // If it's an ID, use it directly
   return `/post?id=${val}`;
 };
@@ -272,12 +272,13 @@ export default function HomeScreen() {
     };
 
     loadVisits();
-    
+
     // Listen for updates
     const handleUpdate = () => loadVisits();
     window.addEventListener("recent-visits-updated", handleUpdate);
-    
-    return () => window.removeEventListener("recent-visits-updated", handleUpdate);
+
+    return () =>
+      window.removeEventListener("recent-visits-updated", handleUpdate);
   }, []);
 
   // ========== FETCH DYNAMIC SECTIONS ==========
@@ -285,70 +286,74 @@ export default function HomeScreen() {
     const fetchDynamicData = async () => {
       try {
         setIsDynamicLoading(true);
-        await withLoader(async () => {
-          const categoryRes = await fetch(`${baseUrl}/get-sections`);
-          const categoryPayload = await parseApiResponse(categoryRes);
-          const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
-          const categories =
-            Array.isArray(sectionDocs) && sectionDocs?.length > 0
-              ? sectionDocs[0]?.categories || []
-              : [];
+        await withLoader(
+          async () => {
+            const categoryRes = await fetch(`${baseUrl}/get-sections`);
+            const categoryPayload = await parseApiResponse(categoryRes);
+            const sectionDocs = categoryPayload?.data ?? categoryPayload ?? [];
+            const categories =
+              Array.isArray(sectionDocs) && sectionDocs?.length > 0
+                ? sectionDocs[0]?.categories || []
+                : [];
 
-          if (categories?.length === 0) {
-            setDynamicSections([]);
-            return;
-          }
-
-          const sectionPromises = categories.map(async (cat) => {
-            try {
-              const res = await fetch(`${baseUrl}/get-postlist`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: cat.link }),
-              });
-              const payload = await parseApiResponse(res);
-              const base = payload?.data ?? payload;
-              let jobs = [];
-
-              if (Array.isArray(base)) {
-                const match =
-                  base.find((item) => item.url === cat.link) || base[0];
-                jobs = match?.jobs || [];
-              } else {
-                jobs = base?.jobs || [];
-              }
-
-              const processedData = (jobs || [])
-                .filter(
-                  (job) =>
-                    job.title &&
-                    !job.title.toLowerCase().includes("privacy policy") &&
-                    !job.title.toLowerCase().includes("sarkari result")
-                )
-                .map((job) => ({
-                  ...job,
-                  id: job.link || job.url || job.id || job._id,
-                }));
-
-              return {
-                name: cat.name,
-                data: processedData,
-                ...getCategoryConfig(cat.name),
-              };
-            } catch (err) {
-              console.error(`❌ Error fetching section ${cat.name}:`, err);
-              return {
-                name: cat.name,
-                data: [],
-                ...getCategoryConfig(cat.name),
-              };
+            if (categories?.length === 0) {
+              setDynamicSections([]);
+              return;
             }
-          });
 
-          const sections = await Promise.all(sectionPromises);
-          setDynamicSections(sections);
-          console.log("✅ Loaded sections:", sections.length);
-        }, "Loading latest job sections...", 50);
+            const sectionPromises = categories.map(async (cat) => {
+              try {
+                const res = await fetch(`${baseUrl}/get-postlist`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ url: cat.link }),
+                });
+                const payload = await parseApiResponse(res);
+                const base = payload?.data ?? payload;
+                let jobs = [];
+
+                if (Array.isArray(base)) {
+                  const match =
+                    base.find((item) => item.url === cat.link) || base[0];
+                  jobs = match?.jobs || [];
+                } else {
+                  jobs = base?.jobs || [];
+                }
+
+                const processedData = (jobs || [])
+                  .filter(
+                    (job) =>
+                      job.title &&
+                      !job.title.toLowerCase().includes("privacy policy") &&
+                      !job.title.toLowerCase().includes("sarkari result")
+                  )
+                  .map((job) => ({
+                    ...job,
+                    id: job.link || job.url || job.id || job._id,
+                  }));
+
+                return {
+                  name: cat.name,
+                  data: processedData,
+                  ...getCategoryConfig(cat.name),
+                };
+              } catch (err) {
+                console.error(`❌ Error fetching section ${cat.name}:`, err);
+                return {
+                  name: cat.name,
+                  data: [],
+                  ...getCategoryConfig(cat.name),
+                };
+              }
+            });
+
+            const sections = await Promise.all(sectionPromises);
+            setDynamicSections(sections);
+            console.log("✅ Loaded sections:", sections.length);
+          },
+          "Loading latest job sections...",
+          50
+        );
       } catch (error) {
         console.error("❌ Error fetching dynamic sections:", error);
       } finally {
@@ -363,18 +368,22 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchPrivateJobs = async () => {
       try {
-        await withLoader(async () => {
-          const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-          const payload = await parseApiResponse(res);
-          const base = payload?.data ?? payload;
-          const jobs = Array.isArray(base) ? base : base?.data || [];
-          const processedJobs = jobs.map((j) => ({
-            ...j,
-            id: j._id || j.id,
-            title: j.postTitle || j.title,
-          }));
-          setPrivateJobs(processedJobs || []);
-        }, "Loading private job opportunities...", 50);
+        await withLoader(
+          async () => {
+            const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
+            const payload = await parseApiResponse(res);
+            const base = payload?.data ?? payload;
+            const jobs = Array.isArray(base) ? base : base?.data || [];
+            const processedJobs = jobs.map((j) => ({
+              ...j,
+              id: j._id || j.id,
+              title: j.postTitle || j.title,
+            }));
+            setPrivateJobs(processedJobs || []);
+          },
+          "Loading private job opportunities...",
+          50
+        );
       } catch (error) {
         console.error("❌ Error fetching private jobs:", error);
       } finally {
@@ -389,22 +398,26 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchReminders = async () => {
       try {
-        await withLoader(async () => {
-          const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
-          const data = await parseApiResponse(response);
-          if (data?.success) {
-            const list = Array.isArray(data.reminders) ? data.reminders : [];
-            const expiresToday = list.filter((item) => item.daysLeft === 0);
-            const expiringSoon = list.filter((item) => item.daysLeft > 0);
-            setReminders({
-              expiresToday,
-              expiringSoon,
-              isLoading: false,
-            });
-          } else {
-            setReminders((prev) => ({ ...prev, isLoading: false }));
-          }
-        }, "Loading job reminders and deadlines...", 50);
+        await withLoader(
+          async () => {
+            const response = await fetch(`${baseUrl}/reminders/expiring-jobs`);
+            const data = await parseApiResponse(response);
+            if (data?.success) {
+              const list = Array.isArray(data.reminders) ? data.reminders : [];
+              const expiresToday = list.filter((item) => item.daysLeft === 0);
+              const expiringSoon = list.filter((item) => item.daysLeft > 0);
+              setReminders({
+                expiresToday,
+                expiringSoon,
+                isLoading: false,
+              });
+            } else {
+              setReminders((prev) => ({ ...prev, isLoading: false }));
+            }
+          },
+          "Loading job reminders and deadlines...",
+          50
+        );
       } catch (error) {
         console.error("❌ Error fetching reminders:", error);
         setReminders((prev) => ({ ...prev, isLoading: false }));
@@ -420,19 +433,23 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchFavPosts = async () => {
       try {
-        await withLoader(async () => {
-          const res = await fetch(`${baseUrl}/fav-posts`);
-          const payload = await parseApiResponse(res);
-          let fav = [];
-          if (Array.isArray(payload)) {
-            fav = payload;
-          } else if (Array.isArray(payload?.data)) {
-            fav = payload.data;
-          } else if (Array.isArray(payload?.data?.data)) {
-            fav = payload.data.data;
-          }
-          setFavPosts(fav);
-        }, "Loading featured job posts...", 50);
+        await withLoader(
+          async () => {
+            const res = await fetch(`${baseUrl}/fav-posts`);
+            const payload = await parseApiResponse(res);
+            let fav = [];
+            if (Array.isArray(payload)) {
+              fav = payload;
+            } else if (Array.isArray(payload?.data)) {
+              fav = payload.data;
+            } else if (Array.isArray(payload?.data?.data)) {
+              fav = payload.data.data;
+            }
+            setFavPosts(fav);
+          },
+          "Loading featured job posts...",
+          50
+        );
       } catch (error) {
         console.error("❌ Error fetching fav posts:", error);
         setFavPosts([]);
@@ -449,7 +466,7 @@ export default function HomeScreen() {
 
     try {
       const url = new URL(link.href);
-      
+
       // Only track /post links
       if (!url.pathname.includes("/post")) return;
 
@@ -466,10 +483,10 @@ export default function HomeScreen() {
 
       const jobId = urlParam || idParam;
       const jobData = allJobs.find(
-        (job) => 
-          job.id === jobId || 
-          job._id === jobId || 
-          job.link === jobId || 
+        (job) =>
+          job.id === jobId ||
+          job._id === jobId ||
+          job.link === jobId ||
           job.url === jobId
       );
 
@@ -477,7 +494,11 @@ export default function HomeScreen() {
         console.log("🔗 Tracking job visit:", jobData.title);
         await saveRecentVisit({
           id: jobId,
-          title: jobData.title || jobData.postTitle || jobData.recruitment?.title || "Job Post",
+          title:
+            jobData.title ||
+            jobData.postTitle ||
+            jobData.recruitment?.title ||
+            "Job Post",
         });
       } else if (jobId) {
         console.log("🔗 Tracking unknown job visit:", jobId);
@@ -521,7 +542,9 @@ export default function HomeScreen() {
               <Link
                 key={i}
                 to={getPostLink(job.id)}
-                onClick={() => saveRecentVisit({ id: job.id, title: job.title })}
+                onClick={() =>
+                  saveRecentVisit({ id: job.id, title: job.title })
+                }
                 className="flex items-center gap-1 sm:gap-2 font-medium whitespace-nowrap text-[11px] sm:text-sm hover:text-yellow-200 transition-colors"
               >
                 <Bell
@@ -582,7 +605,10 @@ export default function HomeScreen() {
                     <div className="space-y-1">
                       {searchResults.map((item) => {
                         const itemId = item.url || item._id || item.id;
-                        const itemTitle = item.recruitment?.title || item.title || "Untitled Post";
+                        const itemTitle =
+                          item.recruitment?.title ||
+                          item.title ||
+                          "Untitled Post";
                         return (
                           <Link
                             key={item._id || item.id}
@@ -614,7 +640,11 @@ export default function HomeScreen() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
               {favPosts.map((item) => {
                 const jobId = item.url || item._id;
-                const jobTitle = item.recruitment?.title || item.title || item.postTitle || "Notification";
+                const jobTitle =
+                  item.recruitment?.title ||
+                  item.title ||
+                  item.postTitle ||
+                  "Notification";
                 return (
                   <QuickCard
                     key={item._id}
@@ -643,6 +673,9 @@ export default function HomeScreen() {
             format="rectangle"
             className="my-8"
           />
+
+          
+            <Tools />
 
           {/* Urgent Reminders */}
           <UrgentReminderSection

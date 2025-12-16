@@ -1,963 +1,1286 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Upload, Scissors, Maximize2, Eraser, Download, RotateCcw,
-  Image as ImageIcon, Check, X, Sliders, Eye, EyeOff,
-  Copy, Trash2, Zap, Info, Palette, ArrowLeft, ArrowRight,
-  Home
+import { 
+  Upload, 
+  Layers, 
+  Maximize2, 
+  Download, 
+  Trash2, 
+  Columns,
+  Rows,
+  Eraser,
+  Check,
+  RefreshCw,
+  Clipboard,
+  Scaling,
+  Palette,
+  Move,
+  Scissors,
+  X,
+  Layout,
+  Printer
 } from 'lucide-react';
-import SEO from '../../util/SEO';
 
-const PIXELS_PER_INCH = 96;
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
+    {children}
+  </div>
+);
 
-const BG_COLORS = [
-  { name: 'White', hex: '#FFFFFF', rgb: [255, 255, 255] },
-  { name: 'Blue', hex: '#3B82F6', rgb: [59, 130, 246] },
-  { name: 'Grey', hex: '#6B7280', rgb: [107, 114, 128] },
-  { name: 'Black', hex: '#000000', rgb: [0, 0, 0] },
-  { name: 'Red', hex: '#EF4444', rgb: [239, 68, 68] },
-  { name: 'Green', hex: '#10B981', rgb: [16, 185, 129] },
-];
-
-const ImageEditor = () => {
-  // Main State
-  const [image, setImage] = useState(null);
-  const [processedImage, setProcessedImage] = useState(null);
-  const [activeTool, setActiveTool] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [zoom, setZoom] = useState(100);
-  const [showPreview, setShowPreview] = useState(true);
-  const [imageInfo, setImageInfo] = useState({ width: 0, height: 0, format: '' });
-
-  // Tool Configs
-  const [cropConfig, setCropConfig] = useState({
-    x: 0, y: 0, width: 0, height: 0,
-    isDragging: false, startX: 0, startY: 0
-  });
-
-  const [resizeConfig, setResizeConfig] = useState({
-    width: 0, height: 0, unit: 'px',
-    maintainAspectRatio: true, originalWidth: 0, originalHeight: 0
-  });
-
-  const [bgRemoveConfig, setBgRemoveConfig] = useState({
-    tolerance: 30,
-    targetColor: null,
-    bgColor: BG_COLORS[0],
-    stage: 'idle', // 'idle' -> 'removing' -> 'applying'
-    hasRemovedBg: false
-  });
-
-  const [adjustConfig, setAdjustConfig] = useState({
-    brightness: 100, contrast: 100, saturation: 100,
-    hue: 0, blur: 0
-  });
-
-  // Refs
-  const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const imageRef = useRef(null);
-
-  // ========== FILE HANDLING ==========
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        setImage(img);
-        const imgData = event.target.result;
-        setProcessedImage(imgData);
-        setImageInfo({
-          width: img.width,
-          height: img.height,
-          format: file.type.split('/')[1].toUpperCase()
-        });
-        setResizeConfig({
-          width: img.width,
-          height: img.height,
-          unit: 'px',
-          maintainAspectRatio: true,
-          originalWidth: img.width,
-          originalHeight: img.height
-        });
-        setHistory([imgData]);
-        setHistoryIndex(0);
-        setActiveTool(null);
-        setCropConfig({ x: 0, y: 0, width: 0, height: 0, isDragging: false, startX: 0, startY: 0 });
-        setBgRemoveConfig(prev => ({ ...prev, stage: 'idle', hasRemovedBg: false }));
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+const Button = ({ onClick, children, variant = "primary", className = "", disabled = false }) => {
+  const baseStyle = "px-3 py-2 text-xs md:text-base md:px-4 md:py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-1.5 md:gap-2";
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300",
+    secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-50",
+    danger: "bg-red-50 text-red-600 hover:bg-red-100",
+    outline: "border-2 border-dashed border-gray-300 text-gray-500 hover:border-blue-500 hover:text-blue-500"
   };
-
-  // ========== HISTORY MANAGEMENT ==========
-  const updateHistory = useCallback((newImageData) => {
-    const newIndex = historyIndex + 1;
-    const newHistory = history.slice(0, newIndex);
-    newHistory.push(newImageData);
-    
-    setHistory(newHistory);
-    setHistoryIndex(newIndex);
-    setProcessedImage(newImageData);
-
-    const img = new Image();
-    img.onload = () => {
-      setImageInfo(prev => ({ ...prev, width: img.width, height: img.height }));
-      setImage(img);
-      setResizeConfig(prev => ({
-        ...prev,
-        width: img.width,
-        height: img.height,
-        originalWidth: img.width,
-        originalHeight: img.height
-      }));
-    };
-    img.src = newImageData;
-  }, [history, historyIndex]);
-
-  const undo = () => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      const imgData = history[newIndex];
-      setProcessedImage(imgData);
-      
-      const img = new Image();
-      img.onload = () => {
-        setImage(img);
-      };
-      img.src = imgData;
-    }
-  };
-
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      const imgData = history[newIndex];
-      setProcessedImage(imgData);
-      
-      const img = new Image();
-      img.onload = () => {
-        setImage(img);
-      };
-      img.src = imgData;
-    }
-  };
-
-  const resetImage = () => {
-    if (history.length > 0) {
-      setHistoryIndex(0);
-      setProcessedImage(history[0]);
-      setBgRemoveConfig(prev => ({ ...prev, stage: 'idle', hasRemovedBg: false }));
-    }
-  };
-
-  // ========== RESIZE LOGIC ==========
-  const convertDimensions = (value, fromUnit, toUnit) => {
-    if (fromUnit === toUnit) return value;
-    if (fromUnit === 'px' && toUnit === 'inch') {
-      return (value / PIXELS_PER_INCH).toFixed(2);
-    }
-    if (fromUnit === 'inch' && toUnit === 'px') {
-      return Math.round(value * PIXELS_PER_INCH);
-    }
-    return value;
-  };
-
-  const handleResizeChange = (field, value) => {
-    const numValue = parseFloat(value) || 0;
-
-    if (field === 'unit') {
-      const convertedWidth = convertDimensions(resizeConfig.width, resizeConfig.unit, value);
-      const convertedHeight = convertDimensions(resizeConfig.height, resizeConfig.unit, value);
-      setResizeConfig(prev => ({
-        ...prev,
-        unit: value,
-        width: convertedWidth,
-        height: convertedHeight
-      }));
-    } else if (field === 'width') {
-      let newHeight = resizeConfig.height;
-      if (resizeConfig.maintainAspectRatio && resizeConfig.originalWidth > 0) {
-        newHeight = (numValue * resizeConfig.originalHeight) / resizeConfig.originalWidth;
-      }
-      setResizeConfig(prev => ({
-        ...prev,
-        width: numValue,
-        height: newHeight
-      }));
-    } else if (field === 'height') {
-      let newWidth = resizeConfig.width;
-      if (resizeConfig.maintainAspectRatio && resizeConfig.originalHeight > 0) {
-        newWidth = (numValue * resizeConfig.originalWidth) / resizeConfig.originalHeight;
-      }
-      setResizeConfig(prev => ({
-        ...prev,
-        width: newWidth,
-        height: numValue
-      }));
-    }
-  };
-
-  const applyResize = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    let finalWidth = resizeConfig.width;
-    let finalHeight = resizeConfig.height;
-
-    if (resizeConfig.unit === 'inch') {
-      finalWidth = Math.round(resizeConfig.width * PIXELS_PER_INCH);
-      finalHeight = Math.round(resizeConfig.height * PIXELS_PER_INCH);
-    }
-
-    canvas.width = finalWidth;
-    canvas.height = finalHeight;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, finalWidth, finalHeight);
-      updateHistory(canvas.toDataURL('image/png'));
-      setActiveTool(null);
-    };
-    img.src = processedImage;
-  };
-
-  // ========== CROP LOGIC ==========
-  const startCrop = (e) => {
-    if (activeTool !== 'crop' || !imageRef.current) return;
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / (zoom / 100);
-    const y = (e.clientY - rect.top) / (zoom / 100);
-    setCropConfig({
-      ...cropConfig,
-      x, y, width: 0, height: 0,
-      isDragging: true, startX: x, startY: y
-    });
-  };
-
-  const onCropMove = (e) => {
-    if (!cropConfig.isDragging || activeTool !== 'crop' || !imageRef.current) return;
-    const rect = imageRef.current.getBoundingClientRect();
-    const currentX = (e.clientX - rect.left) / (zoom / 100);
-    const currentY = (e.clientY - rect.top) / (zoom / 100);
-    setCropConfig(prev => ({
-      ...prev,
-      width: currentX - prev.startX,
-      height: currentY - prev.startY
-    }));
-  };
-
-  const endCrop = () => {
-    setCropConfig(prev => ({ ...prev, isDragging: false }));
-  };
-
-  const applyCrop = () => {
-    if (!imageRef.current) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const imgElement = imageRef.current;
-    const scaleX = imgElement.naturalWidth / imgElement.width;
-    const scaleY = imgElement.naturalHeight / imgElement.height;
-
-    let { x, y, width, height, startX, startY } = cropConfig;
-    if (width < 0) {
-      x = startX + width;
-      width = Math.abs(width);
-    }
-    if (height < 0) {
-      y = startY + height;
-      height = Math.abs(height);
-    }
-
-    canvas.width = Math.max(width * scaleX, 1);
-    canvas.height = Math.max(height * scaleY, 1);
-
-    ctx.drawImage(
-      imgElement,
-      x * scaleX, y * scaleY, width * scaleX, height * scaleY,
-      0, 0, width * scaleX, height * scaleY
-    );
-
-    updateHistory(canvas.toDataURL('image/png'));
-    setActiveTool(null);
-    setCropConfig({ x: 0, y: 0, width: 0, height: 0, isDragging: false, startX: 0, startY: 0 });
-  };
-
-  // ========== BACKGROUND REMOVAL ==========
-  const pickColor = (e) => {
-    if (activeTool !== 'bg_remove' || bgRemoveConfig.stage !== 'removing' || !imageRef.current) return;
-    const imgElement = imageRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = imgElement.naturalWidth;
-    canvas.height = imgElement.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(imgElement, 0, 0);
-
-    const rect = imgElement.getBoundingClientRect();
-    const scaleX = imgElement.naturalWidth / imgElement.width;
-    const scaleY = imgElement.naturalHeight / imgElement.height;
-    const x = Math.max(0, Math.min((e.clientX - rect.left) * scaleX, canvas.width - 1));
-    const y = Math.max(0, Math.min((e.clientY - rect.top) * scaleY, canvas.height - 1));
-
-    const pixel = ctx.getImageData(x, y, 1, 1).data;
-    setBgRemoveConfig(prev => ({
-      ...prev,
-      targetColor: [pixel[0], pixel[1], pixel[2]]
-    }));
-  };
-
-  const applyBgRemoval = () => {
-    if (!bgRemoveConfig.targetColor) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imgData.data;
-      const [r, g, b] = bgRemoveConfig.targetColor;
-      const t = bgRemoveConfig.tolerance;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const dist = Math.sqrt(
-          Math.pow(data[i] - r, 2) +
-          Math.pow(data[i + 1] - g, 2) +
-          Math.pow(data[i + 2] - b, 2)
-        );
-
-        if (dist < t * 2) {
-          data[i + 3] = Math.max(0, data[i + 3] - (dist / (t * 2)) * 255);
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-      updateHistory(canvas.toDataURL('image/png'));
-      setBgRemoveConfig(prev => ({
-        ...prev,
-        stage: 'applying',
-        hasRemovedBg: true
-      }));
-    };
-    img.src = processedImage;
-  };
-
-  // ========== APPLY BACKGROUND COLOR ==========
-  const applyBgColor = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      const [bgR, bgG, bgB] = bgRemoveConfig.bgColor.rgb;
-      ctx.fillStyle = `rgb(${bgR}, ${bgG}, ${bgB})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.drawImage(img, 0, 0);
-
-      updateHistory(canvas.toDataURL('image/png'));
-      setActiveTool(null);
-      setBgRemoveConfig(prev => ({
-        ...prev,
-        stage: 'idle',
-        hasRemovedBg: false
-      }));
-    };
-    img.src = processedImage;
-  };
-
-  // ========== ADJUSTMENTS ==========
-  const applyAdjustments = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      const filters = [
-        `brightness(${adjustConfig.brightness}%)`,
-        `contrast(${adjustConfig.contrast}%)`,
-        `saturate(${adjustConfig.saturation}%)`,
-        `hue-rotate(${adjustConfig.hue}deg)`,
-        `blur(${adjustConfig.blur}px)`
-      ];
-
-      ctx.filter = filters.join(' ');
-      ctx.drawImage(img, 0, 0);
-
-      updateHistory(canvas.toDataURL('image/png'));
-      setActiveTool(null);
-    };
-    img.src = processedImage;
-  };
-
-  // ========== DOWNLOAD ==========
-  const downloadImage = () => {
-    const link = document.createElement('a');
-    const timestamp = new Date().toISOString().slice(0, 10);
-    link.download = `edited-image-${timestamp}.png`;
-    link.href = processedImage;
-    link.click();
-  };
-
-  const copyToClipboard = async () => {
-    try {
-      const blob = await (await fetch(processedImage)).blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob })
-      ]);
-      alert('✅ Image copied to clipboard!');
-    } catch (error) {
-      console.error('Copy failed:', error);
-    }
-  };
-
-  const tools = [
-    { id: 'crop', icon: Scissors, label: 'Crop', title: 'Crop Image' },
-    { id: 'resize', icon: Maximize2, label: 'Resize', title: 'Resize Image' },
-    { id: 'bg_remove', icon: Eraser, label: 'Remove BG', title: 'Background Tools' },
-    { id: 'adjust', icon: Sliders, label: 'Adjust', title: 'Adjust Settings' },
-  ];
-
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 text-slate-900 font-sans">
-      <SEO
-        title="JobsAddah – Professional Image Editor | Crop, Resize, Remove & Replace Background"
-        description="JobsAddah Professional Image Editor: Advanced features for cropping, resizing, background removal with color replacement. Perfect for job applications and professional photos."
-        keywords="image editor, crop tool, resize image, background remover, photo editor, free image tools"
-        canonical="/image-editor"
-      />
-
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-              <Sliders className="text-white" size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                JobsAddah Image Editor
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {processedImage && (
-              <div className="flex gap-2 bg-slate-100 rounded-lg p-1">
-                <button
-                  onClick={undo}
-                  disabled={historyIndex <= 0}
-                  title="Undo"
-                  className="p-2 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <button
-                  onClick={redo}
-                  disabled={historyIndex >= history.length - 1}
-                  title="Redo"
-                  className="p-2 rounded hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <ArrowRight size={18} />
-                </button>
-                <button
-                  onClick={resetImage}
-                  title="Reset to Original"
-                  className="p-2 rounded hover:bg-slate-200 transition-all"
-                >
-                  <RotateCcw size={18} />
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-            >
-              <Upload size={18} />
-              <span className="hidden sm:inline">Upload Image</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 flex gap-6 h-[calc(100vh-120px)] overflow-hidden">
-        {/* Toolbar - Left Side */}
-        <aside className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm p-3 gap-3 w-20">
-          {tools.map(tool => (
-            <button
-              key={tool.id}
-              onClick={() => processedImage && setActiveTool(tool.id)}
-              disabled={!processedImage}
-              title={tool.title}
-              className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all w-14 h-14 ${
-                activeTool === tool.id
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40'
-              }`}
-            >
-              <tool.icon size={22} strokeWidth={1.5} />
-            </button>
-          ))}
-
-          <div className="flex-1" />
-
-          {processedImage && (
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={downloadImage}
-                title="Download"
-                className="p-3 rounded-lg text-green-600 hover:bg-green-50 transition-all"
-              >
-                <Download size={22} />
-              </button>
-              <button
-                onClick={copyToClipboard}
-                title="Copy"
-                className="p-3 rounded-lg text-blue-600 hover:bg-blue-50 transition-all"
-              >
-                <Copy size={22} />
-              </button>
-            </div>
-          )}
-        </aside>
-
-        {/* Canvas Area - Center */}
-        <section className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm relative overflow-hidden flex items-center justify-center">
-          {!processedImage ? (
-            <div className="text-center">
-              <div className="w-32 h-32 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6 border-2 border-slate-300 border-dashed">
-                <ImageIcon size={64} className="text-slate-400" />
-              </div>
-              <p className="text-xl font-semibold text-slate-800 mb-2">No Image Loaded</p>
-              <p className="text-sm text-slate-500 mb-6">Upload an image to start editing</p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                Choose Image
-              </button>
-            </div>
-          ) : (
-            <div
-              className="relative"
-              style={{ transform: `scale(${zoom / 100})` }}
-              onMouseDown={startCrop}
-              onMouseMove={onCropMove}
-              onMouseUp={endCrop}
-              onMouseLeave={endCrop}
-            >
-              {activeTool === 'bg_remove' && bgRemoveConfig.stage === 'removing' ? (
-                <img
-                  ref={imageRef}
-                  src={processedImage}
-                  alt="Workspace"
-                  onClick={pickColor}
-                  className="max-h-[75vh] max-w-full object-contain rounded-lg border border-slate-300 cursor-copy"
-                />
-              ) : (
-                <img
-                  ref={imageRef}
-                  src={processedImage}
-                  alt="Workspace"
-                  className={`max-h-[75vh] max-w-full object-contain rounded-lg border border-slate-300 ${
-                    activeTool === 'crop' ? 'cursor-crosshair' : ''
-                  }`}
-                />
-              )}
-
-              {/* Crop Overlay */}
-              {activeTool === 'crop' && Math.abs(cropConfig.width) > 5 && (
-                <div
-                  className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none rounded-lg"
-                  style={{
-                    left: cropConfig.width > 0 ? cropConfig.x : cropConfig.x + cropConfig.width,
-                    top: cropConfig.height > 0 ? cropConfig.y : cropConfig.y + cropConfig.height,
-                    width: Math.abs(cropConfig.width),
-                    height: Math.abs(cropConfig.height)
-                  }}
-                >
-                  <div className="absolute -top-3 -left-3 w-3 h-3 border-t-2 border-l-2 border-blue-500"></div>
-                  <div className="absolute -top-3 -right-3 w-3 h-3 border-t-2 border-r-2 border-blue-500"></div>
-                  <div className="absolute -bottom-3 -left-3 w-3 h-3 border-b-2 border-l-2 border-blue-500"></div>
-                  <div className="absolute -bottom-3 -right-3 w-3 h-3 border-b-2 border-r-2 border-blue-500"></div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Zoom Controls */}
-          {processedImage && (
-            <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-slate-300 shadow-md">
-              <button
-                onClick={() => setZoom(Math.max(50, zoom - 10))}
-                className="text-slate-600 hover:text-slate-900"
-              >
-                −
-              </button>
-              <span className="text-sm font-medium w-12 text-center">{zoom}%</span>
-              <button
-                onClick={() => setZoom(Math.min(200, zoom + 10))}
-                className="text-slate-600 hover:text-slate-900"
-              >
-                +
-              </button>
-            </div>
-          )}
-
-          {/* Image Info */}
-          {processedImage && (
-            <div className="absolute top-6 right-6 text-xs bg-white rounded-lg px-3 py-2 border border-slate-300 text-slate-700 shadow-md">
-              <div className="flex gap-2 items-center">
-                <Info size={14} />
-                <span>{imageInfo.width}×{imageInfo.height}px</span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Properties Panel - Right Side */}
-        {activeTool && (
-          <aside className="w-96 bg-white rounded-xl border border-slate-200 shadow-sm p-6 overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-lg text-slate-900">
-                {tools.find(t => t.id === activeTool)?.title}
-              </h3>
-              <button onClick={() => setActiveTool(null)} className="text-slate-500 hover:text-slate-900">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* CROP */}
-              {activeTool === 'crop' && (
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-600">Drag on the image to select the area to crop</p>
-                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-2">Selection Size</p>
-                    <div className="flex gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-600">W:</span>
-                        <p className="font-mono font-bold text-blue-600">{Math.round(Math.abs(cropConfig.width))}px</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-600">H:</span>
-                        <p className="font-mono font-bold text-blue-600">{Math.round(Math.abs(cropConfig.height))}px</p>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={applyCrop}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold flex justify-center items-center gap-2 hover:shadow-lg transition-all"
-                  >
-                    <Check size={18} /> Apply Crop
-                  </button>
-                </div>
-              )}
-
-              {/* RESIZE */}
-              {activeTool === 'resize' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-2 block">Unit</label>
-                    <select
-                      value={resizeConfig.unit}
-                      onChange={(e) => handleResizeChange('unit', e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                    >
-                      <option value="px">Pixels (px)</option>
-                      <option value="inch">Inches (in)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-2 block">
-                      Width ({resizeConfig.unit})
-                    </label>
-                    <input
-                      type="number"
-                      step={resizeConfig.unit === 'inch' ? '0.1' : '1'}
-                      value={Math.round(resizeConfig.width * 100) / 100}
-                      onChange={(e) => handleResizeChange('width', e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 mb-2 block">
-                      Height ({resizeConfig.unit})
-                    </label>
-                    <input
-                      type="number"
-                      step={resizeConfig.unit === 'inch' ? '0.1' : '1'}
-                      value={Math.round(resizeConfig.height * 100) / 100}
-                      onChange={(e) => handleResizeChange('height', e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
-
-                  <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg cursor-pointer border border-slate-200">
-                    <input
-                      type="checkbox"
-                      checked={resizeConfig.maintainAspectRatio}
-                      onChange={(e) => setResizeConfig(prev => ({ ...prev, maintainAspectRatio: e.target.checked }))}
-                      className="w-4 h-4 rounded accent-blue-600"
-                    />
-                    <span className="text-sm text-slate-700">Maintain Aspect Ratio</span>
-                  </label>
-
-                  <button
-                    onClick={applyResize}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold flex justify-center items-center gap-2 hover:shadow-lg transition-all"
-                  >
-                    <Check size={18} /> Apply Resize
-                  </button>
-                </div>
-              )}
-
-              {/* BACKGROUND REMOVAL & COLOR */}
-              {activeTool === 'bg_remove' && (
-                <div className="space-y-4">
-                  {bgRemoveConfig.stage === 'idle' && (
-                    <>
-                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <p className="text-sm font-semibold text-slate-900 mb-2">Step 1: Remove Background</p>
-                        <p className="text-xs text-slate-600">Click on the background color you want to remove</p>
-                      </div>
-
-                      <button
-                        onClick={() => setBgRemoveConfig(prev => ({ ...prev, stage: 'removing' }))}
-                        className="w-full bg-gradient-to-r from-pink-600 to-red-600 text-white py-3 rounded-lg font-semibold flex justify-center items-center gap-2 hover:shadow-lg transition-all"
-                      >
-                        <Eraser size={18} /> Start Removing
-                      </button>
-                    </>
-                  )}
-
-                  {bgRemoveConfig.stage === 'removing' && (
-                    <>
-                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                        <p className="text-sm font-semibold text-slate-900 mb-2">Removing Background</p>
-                        <p className="text-xs text-slate-600">Click on the background color in the image</p>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-14 h-14 rounded-lg border-2 border-slate-300 shadow-inner flex-shrink-0"
-                          style={{
-                            backgroundColor: bgRemoveConfig.targetColor
-                              ? `rgb(${bgRemoveConfig.targetColor.join(',')})`
-                              : 'transparent'
-                          }}
-                        ></div>
-                        <div>
-                          <p className="text-xs text-slate-500">Selected Color</p>
-                          <p className="text-sm font-mono text-slate-700">
-                            {bgRemoveConfig.targetColor
-                              ? `RGB(${bgRemoveConfig.targetColor.join(', ')})`
-                              : 'Click to select'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-slate-700 mb-2 block flex justify-between">
-                          <span>Tolerance</span>
-                          <span className="text-blue-600">{bgRemoveConfig.tolerance}</span>
-                        </label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="100"
-                          value={bgRemoveConfig.tolerance}
-                          onChange={(e) =>
-                            setBgRemoveConfig(prev => ({ ...prev, tolerance: Number(e.target.value) }))
-                          }
-                          className="w-full accent-pink-600"
-                        />
-                      </div>
-
-                      <button
-                        onClick={applyBgRemoval}
-                        disabled={!bgRemoveConfig.targetColor}
-                        className="w-full bg-gradient-to-r from-pink-600 to-red-600 hover:shadow-lg disabled:opacity-50 text-white py-3 rounded-lg font-semibold flex justify-center items-center gap-2 transition-all"
-                      >
-                        <Check size={18} /> Remove Background
-                      </button>
-                    </>
-                  )}
-
-                  {bgRemoveConfig.stage === 'applying' && (
-                    <>
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <p className="text-sm font-semibold text-slate-900 mb-2">Step 2: Choose Background Color</p>
-                        <p className="text-xs text-slate-600">Select a preset or custom color</p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <p className="text-xs font-semibold text-slate-700">Preset Colors</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {BG_COLORS.map(color => (
-                            <button
-                              key={color.hex}
-                              onClick={() =>
-                                setBgRemoveConfig(prev => ({ ...prev, bgColor: color }))
-                              }
-                              className={`relative p-3 rounded-lg border-2 transition-all ${
-                                bgRemoveConfig.bgColor.hex === color.hex
-                                  ? 'border-slate-900 shadow-lg'
-                                  : 'border-slate-300 hover:border-slate-400'
-                              }`}
-                              style={{ backgroundColor: color.hex }}
-                            >
-                              {bgRemoveConfig.bgColor.hex === color.hex && (
-                                <Check size={16} className="text-white drop-shadow-lg absolute top-1 right-1" />
-                              )}
-                              <span className="text-xs font-semibold text-slate-900 drop-shadow block mt-1">
-                                {color.name}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold text-slate-700">Custom Color</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="color"
-                            value={bgRemoveConfig.bgColor.hex}
-                            onChange={(e) => {
-                              const hex = e.target.value;
-                              const rgb = [
-                                parseInt(hex.slice(1, 3), 16),
-                                parseInt(hex.slice(3, 5), 16),
-                                parseInt(hex.slice(5, 7), 16)
-                              ];
-                              setBgRemoveConfig(prev => ({
-                                ...prev,
-                                bgColor: { name: 'Custom', hex, rgb }
-                              }));
-                            }}
-                            className="w-16 h-10 rounded-lg cursor-pointer border border-slate-300"
-                          />
-                          <input
-                            type="text"
-                            value={bgRemoveConfig.bgColor.hex}
-                            onChange={(e) => {
-                              const hex = e.target.value;
-                              if (/^#[0-9A-F]{6}$/i.test(hex)) {
-                                const rgb = [
-                                  parseInt(hex.slice(1, 3), 16),
-                                  parseInt(hex.slice(3, 5), 16),
-                                  parseInt(hex.slice(5, 7), 16)
-                                ];
-                                setBgRemoveConfig(prev => ({
-                                  ...prev,
-                                  bgColor: { name: 'Custom', hex, rgb }
-                                }));
-                              }
-                            }}
-                            placeholder="#FFFFFF"
-                            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() =>
-                            setBgRemoveConfig(prev => ({
-                              ...prev,
-                              stage: 'removing',
-                              targetColor: null
-                            }))
-                          }
-                          className="flex-1 bg-slate-300 hover:bg-slate-400 text-slate-900 py-2 rounded-lg font-semibold transition-all"
-                        >
-                          ← Back
-                        </button>
-                        <button
-                          onClick={applyBgColor}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold flex justify-center items-center gap-2 hover:shadow-lg transition-all"
-                        >
-                          <Palette size={16} /> Apply Color
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* ADJUST */}
-              {activeTool === 'adjust' && (
-                <div className="space-y-5">
-                  {[
-                    { key: 'brightness', label: 'Brightness', min: 0, max: 200 },
-                    { key: 'contrast', label: 'Contrast', min: 0, max: 200 },
-                    { key: 'saturation', label: 'Saturation', min: 0, max: 200 },
-                    { key: 'hue', label: 'Hue Rotation', min: -180, max: 180 },
-                    { key: 'blur', label: 'Blur', min: 0, max: 20 },
-                  ].map(({ key, label, min, max }) => (
-                    <div key={key}>
-                      <label className="text-xs font-semibold text-slate-700 mb-2 block flex justify-between">
-                        <span>{label}</span>
-                        <span className="text-blue-600">
-                          {adjustConfig[key]}{key === 'blur' ? 'px' : '%'}
-                        </span>
-                      </label>
-                      <input
-                        type="range"
-                        min={min}
-                        max={max}
-                        value={adjustConfig[key]}
-                        onChange={(e) => setAdjustConfig(prev => ({ ...prev, [key]: Number(e.target.value) }))}
-                        className="w-full accent-blue-600"
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={applyAdjustments}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold flex justify-center items-center gap-2 hover:shadow-lg transition-all"
-                  >
-                    <Zap size={18} /> Apply Adjustments
-                  </button>
-                </div>
-              )}
-            </div>
-          </aside>
-        )}
-      </main>
-    </div>
+    <button 
+      onClick={onClick} 
+      className={`${baseStyle} ${variants[variant]} ${className}`}
+      disabled={disabled}
+    >
+      {children}
+    </button>
   );
 };
 
-export default ImageEditor;
+const Slider = ({ label, value, min, max, onChange }) => (
+  <div className="mb-2 md:mb-4">
+    <div className="flex justify-between mb-1">
+      <span className="text-xs md:text-sm font-medium text-gray-700">{label}</span>
+      <span className="text-xs md:text-sm text-gray-500">{value}</span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full h-1.5 md:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+    />
+  </div>
+);
+
+const ImageUploader = ({ label, image, onUpload, onRemove }) => {
+  if (image) {
+    return (
+      <div className="bg-white border border-blue-100 rounded-lg p-2 md:p-3 flex items-center justify-between shadow-sm animate-fade-in">
+        <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0 border border-gray-200">
+                <img src={image.src} alt="thumbnail" className="w-full h-full object-cover rounded-md" />
+            </div>
+            <div className="min-w-0">
+                <p className="text-xs md:text-sm font-bold text-gray-700 truncate">{label}</p>
+                <p className="text-[10px] md:text-xs text-green-600 font-medium flex items-center gap-1">
+                  <Check size={10} /> Loaded
+                </p>
+            </div>
+        </div>
+        <div className="flex gap-1 md:gap-2">
+            <label className="cursor-pointer p-1.5 md:p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors flex flex-col items-center" title="Replace Image">
+                <input type="file" className="hidden" accept="image/*" onChange={onUpload} />
+                <RefreshCw className="w-4 h-4 md:w-5 md:h-5" />
+            </label>
+            <button onClick={onRemove} className="p-1.5 md:p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors flex flex-col items-center" title="Remove Image">
+                <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <label className="flex flex-col items-center justify-center p-3 md:p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all group h-20 md:h-32 bg-gray-50 relative overflow-hidden">
+      <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-gray-100 text-gray-500 text-[8px] md:text-[10px] px-1.5 py-0.5 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+        Ctrl+V
+      </div>
+      <Upload className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-blue-500 mb-1 md:mb-2 transition-transform group-hover:-translate-y-1" />
+      <span className="text-xs md:text-sm font-medium text-gray-500 group-hover:text-blue-600 text-center leading-tight">{label}</span>
+      <span className="hidden md:block text-xs text-gray-400 mt-1">Click / Paste</span>
+      <input type="file" className="hidden" accept="image/*" onChange={onUpload} />
+    </label>
+  );
+};
+
+const getClipboardImage = (e, callback) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const blob = items[i].getAsFile();
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => callback(img);
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(blob);
+      e.preventDefault(); 
+      break;
+    }
+  }
+};
+
+export default function ImageEditor() {
+  const [activeTab, setActiveTab] = useState('photo-maker');
+  
+  const renderContent = () => {
+    switch(activeTab) {
+      case 'photo-maker': return <PhotoMakerTool />;
+      case 'bg-remover': return <BgRemover />;
+      case 'overlay': return <OverlayTool />;
+      case 'resizer': return <ResizerTool />;
+      case 'joiner': return <JoinerTool />;
+      default: return <PhotoMakerTool />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-2 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-4 md:mb-8 text-center">
+          <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 mb-1 md:mb-2">Image Master Pro</h1>
+          <p className="text-xs md:text-base text-gray-500 mb-3 md:mb-4">Passport Photos, Edit, Overlay & Resize Tool</p>
+          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-sm font-medium border border-blue-100">
+            <Clipboard className="w-3 h-3 md:w-4 md:h-4" />
+            <span>Paste (Ctrl+V) Supported</span>
+          </div>
+        </header>
+
+        <div className="flex flex-wrap justify-center gap-1.5 md:gap-2 mb-4 md:mb-8">
+          {[
+            { id: 'photo-maker', icon: Layout, label: 'Photo Maker' },
+            { id: 'bg-remover', icon: Eraser, label: 'Remover' },
+            { id: 'overlay', icon: Layers, label: 'Overlay' },
+            { id: 'resizer', icon: Maximize2, label: 'Resizer' },
+            { id: 'joiner', icon: Columns, label: 'Joiner' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1 md:gap-2 px-3 py-2 md:px-6 md:py-3 rounded-full font-semibold transition-all text-xs md:text-base ${
+                activeTab === tab.id 
+                  ? 'bg-blue-600 text-white shadow-lg scale-105' 
+                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'
+              }`}
+            >
+              <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="transition-all duration-300">
+          {renderContent()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PhotoMakerTool = () => {
+  const canvasRef = useRef(null);
+  const [image, setImage] = useState(null);
+  const [settings, setSettings] = useState({
+    paperSize: 'a4', // a4, 4x6, 5x7
+    photoSize: 'passport', // passport, stamp, pan, custom
+    rows: 6,
+    cols: 5,
+    gap: 10, // px
+    margin: 20 // px
+  });
+
+  // Dimensions in pixels (scaled)
+  const PAPER_SIZES = {
+    'a4': { w: 2480, h: 3508, label: 'A4 Paper (21x29.7cm)' }, // 300 DPI
+    '4x6': { w: 1200, h: 1800, label: '4x6 Inch (10x15cm)' },
+    '5x7': { w: 1500, h: 2100, label: '5x7 Inch (13x18cm)' },
+  };
+
+  const PHOTO_SIZES = {
+    'passport': { w: 413, h: 531, label: 'Passport (3.5x4.5cm)' }, // 35mm x 45mm @ 300dpi
+    'stamp': { w: 236, h: 295, label: 'Stamp (2x2.5cm)' },
+    'pan': { w: 295, h: 413, label: 'Pan/Defense (2.5x3.5cm)' },
+  };
+
+  const processImage = (img) => {
+    setImage(img);
+  };
+
+  useEffect(() => {
+    const handlePaste = (e) => getClipboardImage(e, processImage);
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const handleUpload = (e) => {
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => processImage(img);
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    if (!canvasRef.current || !image) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const paper = PAPER_SIZES[settings.paperSize];
+    const photo = PHOTO_SIZES[settings.photoSize];
+
+    // Set Canvas Size (scaled down for preview, but internal calc is high res)
+    // We will draw high res then style it down
+    canvas.width = paper.w;
+    canvas.height = paper.h;
+
+    // Fill White Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, paper.w, paper.h);
+
+    // Calculate positions
+    const { rows, cols, gap, margin } = settings;
+    
+    const startX = margin;
+    const startY = margin;
+
+    // Draw Grid
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = startX + c * (photo.w + gap);
+        const y = startY + r * (photo.h + gap);
+        
+        // Ensure we don't draw outside paper
+        if (x + photo.w < paper.w && y + photo.h < paper.h) {
+          ctx.drawImage(image, x, y, photo.w, photo.h);
+          
+          // Optional: Cut lines (faint)
+          ctx.strokeStyle = '#e5e7eb';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x, y, photo.w, photo.h);
+        }
+      }
+    }
+
+  }, [image, settings]);
+
+  const download = () => {
+    const link = document.createElement('a');
+    link.download = `printable-sheet-${settings.photoSize}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  // Helper to auto calc max rows/cols based on paper
+  const autoFit = () => {
+    const paper = PAPER_SIZES[settings.paperSize];
+    const photo = PHOTO_SIZES[settings.photoSize];
+    const margin = settings.margin;
+    const gap = settings.gap;
+    
+    const availW = paper.w - (2 * margin);
+    const availH = paper.h - (2 * margin);
+    
+    const c = Math.floor(availW / (photo.w + gap));
+    const r = Math.floor(availH / (photo.h + gap));
+    
+    setSettings(prev => ({...prev, rows: r, cols: c}));
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+        <div className="w-full md:w-1/3 space-y-3 md:space-y-6 order-2 md:order-1">
+          <ImageUploader 
+            label="Upload Photo" 
+            image={image} 
+            onUpload={handleUpload} 
+            onRemove={() => setImage(null)}
+          />
+
+          {image && (
+            <div className="space-y-3 md:space-y-4 bg-gray-50 p-3 md:p-6 rounded-xl animate-fade-in">
+              <div className="space-y-3">
+                <div>
+                   <label className="block text-xs font-bold text-gray-500 mb-1">PAPER SIZE</label>
+                   <select 
+                     value={settings.paperSize}
+                     onChange={(e) => setSettings({...settings, paperSize: e.target.value})}
+                     className="w-full p-2 text-sm border rounded bg-white"
+                   >
+                     {Object.entries(PAPER_SIZES).map(([k, v]) => (
+                       <option key={k} value={k}>{v.label}</option>
+                     ))}
+                   </select>
+                </div>
+                
+                <div>
+                   <label className="block text-xs font-bold text-gray-500 mb-1">PHOTO TYPE</label>
+                   <select 
+                     value={settings.photoSize}
+                     onChange={(e) => setSettings({...settings, photoSize: e.target.value})}
+                     className="w-full p-2 text-sm border rounded bg-white"
+                   >
+                     {Object.entries(PHOTO_SIZES).map(([k, v]) => (
+                       <option key={k} value={k}>{v.label}</option>
+                     ))}
+                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">ROWS</label>
+                      <input 
+                        type="number" 
+                        value={settings.rows}
+                        onChange={(e) => setSettings({...settings, rows: Number(e.target.value)})}
+                        className="w-full p-2 text-sm border rounded"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1">COLUMNS</label>
+                      <input 
+                        type="number" 
+                        value={settings.cols}
+                        onChange={(e) => setSettings({...settings, cols: Number(e.target.value)})}
+                        className="w-full p-2 text-sm border rounded"
+                      />
+                   </div>
+                </div>
+
+                <Button onClick={autoFit} variant="secondary" className="w-full text-xs">
+                   Auto-Fill Sheet (Max Photos)
+                </Button>
+
+                <div className="pt-2">
+                   <Slider 
+                    label="Gap between photos" 
+                    value={settings.gap} min={0} max={100} 
+                    onChange={(v) => setSettings({...settings, gap: v})}
+                   />
+                </div>
+              </div>
+
+              <Button onClick={download} variant="primary" className="w-full">
+                <Printer className="w-4 h-4" /> Download Printable
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        <div className="w-full md:w-2/3 order-1 md:order-2 bg-gray-200 rounded-xl overflow-auto flex items-center justify-center p-2 md:p-4 min-h-[300px] md:min-h-[500px]">
+           {/* Preview logic: show image scaled down */}
+           <canvas 
+             ref={canvasRef} 
+             className={`shadow-xl bg-white ${!image ? 'hidden' : ''}`}
+             style={{ maxHeight: '500px', maxWidth: '100%', width: 'auto', height: 'auto' }}
+           />
+           {!image && <p className="text-gray-500 text-sm">Upload a photo to create sheet</p>}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const BgRemover = () => {
+  const canvasRef = useRef(null);
+  const [image, setImage] = useState(null);
+  const [tolerance, setTolerance] = useState(30);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [originalImageData, setOriginalImageData] = useState(null);
+  
+  const [isTransparent, setIsTransparent] = useState(true);
+  const [bgColor, setBgColor] = useState('#ffffff');
+
+  const processLoadedImage = (img) => {
+    setImage(img);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      setOriginalImageData(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      setSelectedColor(null);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => processLoadedImage(img);
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    const handlePaste = (e) => getClipboardImage(e, processLoadedImage);
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const handleRemoveImage = () => {
+    setImage(null);
+    setOriginalImageData(null);
+    setSelectedColor(null);
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  };
+
+  const handleCanvasClick = (e) => {
+    if (!image || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const color = { r: pixel[0], g: pixel[1], b: pixel[2] };
+    setSelectedColor(color);
+    removeColor(color);
+  };
+
+  const removeColor = (targetColor) => {
+    if (!originalImageData || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const newData = new ImageData(
+      new Uint8ClampedArray(originalImageData.data),
+      originalImageData.width,
+      originalImageData.height
+    );
+    
+    const data = newData.data;
+    const t = tolerance; 
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      if (
+        Math.abs(r - targetColor.r) < t &&
+        Math.abs(g - targetColor.g) < t &&
+        Math.abs(b - targetColor.b) < t
+      ) {
+        data[i + 3] = 0;
+      }
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.putImageData(newData, 0, 0);
+
+    if (!isTransparent) {
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
+    }
+  };
+
+  useEffect(() => {
+    if (selectedColor) {
+      removeColor(selectedColor);
+    }
+  }, [tolerance, isTransparent, bgColor]);
+
+  const downloadImage = () => {
+    const link = document.createElement('a');
+    link.download = 'bg-removed.png';
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <Card>
+      <div className="grid md:grid-cols-3 gap-4 md:gap-8">
+        <div className="space-y-3 md:space-y-6 order-2 md:order-1">
+          <div className="bg-blue-50 p-2 md:p-4 rounded-lg border border-blue-100">
+            <h3 className="font-bold text-blue-900 mb-1 text-xs md:text-base">Instructions</h3>
+            <ol className="list-decimal ml-4 text-[10px] md:text-sm text-blue-800 space-y-0.5">
+              <li>Image upload/paste karein.</li>
+              <li>Background color par click karein.</li>
+              <li>Tolerance slider adjust karein.</li>
+            </ol>
+          </div>
+          
+          <div className="space-y-3 md:space-y-4">
+            <ImageUploader 
+              label="Upload Image" 
+              image={image} 
+              onUpload={handleImageUpload} 
+              onRemove={handleRemoveImage}
+            />
+
+            {image && (
+              <div className="animate-fade-in space-y-3 md:space-y-4">
+                <Slider 
+                  label="Color Tolerance" 
+                  value={tolerance} 
+                  min={1} 
+                  max={150} 
+                  onChange={setTolerance} 
+                />
+
+                <div className="bg-gray-50 p-2 md:p-4 rounded-lg border border-gray-200">
+                    <h4 className="text-xs md:text-sm font-bold text-gray-700 mb-2 md:mb-3 flex items-center gap-2">
+                        <Palette className="w-4 h-4" /> Background
+                    </h4>
+                    <div className="flex flex-col gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="radio" 
+                                name="bgType"
+                                checked={isTransparent} 
+                                onChange={() => setIsTransparent(true)}
+                                className="text-blue-600 scale-75 md:scale-100"
+                            />
+                            <span className="text-xs md:text-sm text-gray-700">Transparent</span>
+                        </label>
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                  type="radio" 
+                                  name="bgType"
+                                  checked={!isTransparent} 
+                                  onChange={() => setIsTransparent(false)}
+                                  className="text-blue-600 scale-75 md:scale-100"
+                              />
+                              <span className="text-xs md:text-sm text-gray-700">Color</span>
+                          </label>
+                          {!isTransparent && (
+                              <input 
+                                  type="color" 
+                                  value={bgColor}
+                                  onChange={(e) => setBgColor(e.target.value)}
+                                  className="h-6 w-12 md:h-8 md:w-16 cursor-pointer border rounded"
+                              />
+                          )}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button onClick={() => {
+                    const ctx = canvasRef.current.getContext('2d');
+                    ctx.putImageData(originalImageData, 0, 0);
+                    setSelectedColor(null);
+                  }} variant="secondary" className="flex-1">
+                    Reset
+                  </Button>
+                  <Button onClick={downloadImage} className="flex-1">
+                    <Download className="w-4 h-4" /> Save
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="md:col-span-2 order-1 md:order-2 bg-gray-100 rounded-lg flex items-center justify-center min-h-[300px] md:min-h-[500px] p-2 md:p-4 relative overflow-hidden bg-checkered">
+          <style jsx>{`
+            .bg-checkered {
+              background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+              background-size: 20px 20px;
+              background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            }
+          `}</style>
+          <canvas 
+            ref={canvasRef} 
+            onClick={handleCanvasClick}
+            className={`max-w-full max-h-[300px] md:max-h-[500px] shadow-xl cursor-crosshair object-contain ${!image ? 'hidden' : ''}`}
+          />
+          {!image && <p className="text-gray-400 text-sm md:text-base">Preview Area</p>}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const OverlayTool = () => {
+  const canvasRef = useRef(null);
+  const [baseImage, setBaseImage] = useState(null);
+  const [overlayImage, setOverlayImage] = useState(null);
+  const [settings, setSettings] = useState({
+    x: 0, y: 0, scale: 0.5, opacity: 0.8
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handlePaste = (e) => getClipboardImage(e, (img) => {
+        if (!baseImage) {
+            setBaseImage(img);
+        } else {
+            setOverlayImage(img);
+        }
+    });
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [baseImage]); 
+
+  const handleImageLoad = (e, type) => {
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => type === 'base' ? setBaseImage(img) : setOverlayImage(img);
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!baseImage) {
+      ctx.clearRect(0,0, canvas.width, canvas.height);
+      return;
+    }
+
+    canvas.width = baseImage.width;
+    canvas.height = baseImage.height;
+
+    ctx.globalAlpha = 1.0;
+    ctx.drawImage(baseImage, 0, 0);
+
+    if (overlayImage) {
+      ctx.globalAlpha = settings.opacity;
+      const w = overlayImage.width * settings.scale;
+      const h = overlayImage.height * settings.scale;
+      
+      const posX = (baseImage.width * settings.x) / 100;
+      const posY = (baseImage.height * settings.y) / 100;
+
+      ctx.drawImage(overlayImage, posX, posY, w, h);
+      
+      if (isDragging) {
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(posX, posY, w, h);
+      }
+    }
+  }, [baseImage, overlayImage, settings, isDragging]);
+
+  const getCanvasCoordinates = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  const handlePointerDown = (e) => {
+    if (!overlayImage || !baseImage || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const coords = getCanvasCoordinates(e, canvas);
+    
+    const w = overlayImage.width * settings.scale;
+    const h = overlayImage.height * settings.scale;
+    const posX = (baseImage.width * settings.x) / 100;
+    const posY = (baseImage.height * settings.y) / 100;
+
+    if (coords.x >= posX && coords.x <= posX + w && coords.y >= posY && coords.y <= posY + h) {
+      setIsDragging(true);
+      setDragStart({
+        x: coords.x - posX,
+        y: coords.y - posY
+      });
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging || !baseImage) return;
+    e.preventDefault(); 
+
+    const canvas = canvasRef.current;
+    const coords = getCanvasCoordinates(e, canvas);
+
+    let newX = coords.x - dragStart.x;
+    let newY = coords.y - dragStart.y;
+
+    const newXPercent = (newX / baseImage.width) * 100;
+    const newYPercent = (newY / baseImage.height) * 100;
+
+    setSettings(prev => ({
+      ...prev,
+      x: newXPercent,
+      y: newYPercent
+    }));
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
+
+  const download = () => {
+    const link = document.createElement('a');
+    link.download = 'merged-image.png';
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <Card>
+      <div className="grid md:grid-cols-3 gap-4 md:gap-8">
+        <div className="space-y-3 md:space-y-6 order-2 md:order-1">
+          <div className="bg-blue-50 p-2 md:p-3 rounded-lg text-xs md:text-sm text-blue-800 border border-blue-100 mb-2 md:mb-4">
+             <strong>Tip:</strong> Paste works! Touch & Drag image to move.
+          </div>
+          <div className="space-y-2 md:space-y-4">
+            <div>
+              <label className="text-xs md:text-sm font-medium mb-1 block">1. Base (Back)</label>
+              <ImageUploader 
+                label="Base Image" 
+                image={baseImage} 
+                onUpload={(e) => handleImageLoad(e, 'base')} 
+                onRemove={() => setBaseImage(null)}
+              />
+            </div>
+            <div>
+              <label className="text-xs md:text-sm font-medium mb-1 block">2. Overlay (Front)</label>
+              <ImageUploader 
+                label="Overlay Image" 
+                image={overlayImage} 
+                onUpload={(e) => handleImageLoad(e, 'overlay')} 
+                onRemove={() => setOverlayImage(null)}
+              />
+            </div>
+          </div>
+
+          {baseImage && overlayImage && (
+            <div className="bg-gray-50 p-2 md:p-4 rounded-lg space-y-2 md:space-y-4 animate-fade-in">
+              <h4 className="font-semibold text-gray-700 text-xs md:text-base flex items-center gap-2">
+                 <Move className="w-4 h-4" /> Controls
+              </h4>
+              <p className="text-[10px] md:text-xs text-gray-500 italic">Drag image on canvas to move.</p>
+              <Slider 
+                label="Scale" 
+                value={settings.scale} min={0.1} max={2} 
+                onChange={(v) => setSettings({...settings, scale: v})} 
+              />
+              <Slider 
+                label="Opacity" 
+                value={settings.opacity} min={0} max={1} 
+                onChange={(v) => setSettings({...settings, opacity: v})} 
+              />
+            </div>
+          )}
+
+          <Button onClick={download} disabled={!baseImage} className="w-full">
+            <Download className="w-4 h-4" /> Save
+          </Button>
+        </div>
+
+        <div className="md:col-span-2 order-1 md:order-2 bg-gray-200 rounded-lg flex items-center justify-center p-2 md:p-4 min-h-[300px] md:min-h-[500px] overflow-hidden">
+          <canvas 
+            ref={canvasRef} 
+            onMouseDown={handlePointerDown}
+            onMouseMove={handlePointerMove}
+            onMouseUp={handlePointerUp}
+            onMouseLeave={handlePointerUp}
+            onTouchStart={handlePointerDown}
+            onTouchMove={handlePointerMove}
+            onTouchEnd={handlePointerUp}
+            className={`max-w-full max-h-[300px] md:max-h-[500px] shadow-xl ${!baseImage ? 'hidden' : ''} ${overlayImage ? 'cursor-move' : ''}`} 
+          />
+          {!baseImage && <p className="text-gray-500 text-sm">Preview</p>}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const ResizerTool = () => {
+  const canvasRef = useRef(null);
+  const [image, setImage] = useState(null);
+  const [dims, setDims] = useState({ w: 0, h: 0 });
+  const [aspectRatio, setAspectRatio] = useState(true);
+  const [isCropping, setIsCropping] = useState(false);
+  const [selection, setSelection] = useState(null); 
+
+  const processImage = (img) => {
+    setImage(img);
+    setDims({ w: img.width, h: img.height });
+  };
+
+  useEffect(() => {
+    const handlePaste = (e) => getClipboardImage(e, processImage);
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const handleUpload = (e) => {
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => processImage(img);
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const updateDims = (key, value) => {
+    let newW = dims.w;
+    let newH = dims.h;
+
+    if (key === 'w') {
+      newW = value;
+      if (aspectRatio && image) {
+        newH = Math.round(value * (image.height / image.width));
+      }
+    } else {
+      newH = value;
+      if (aspectRatio && image) {
+        newW = Math.round(value * (image.width / image.height));
+      }
+    }
+    setDims({ w: newW, h: newH });
+  };
+
+  const getCanvasCoordinates = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+  };
+
+  const startCrop = (e) => {
+     if (!isCropping) return;
+     const coords = getCanvasCoordinates(e, canvasRef.current);
+     setSelection({ startX: coords.x, startY: coords.y, x: coords.x, y: coords.y, w: 0, h: 0, active: true });
+  }
+
+  const moveCrop = (e) => {
+     if (!isCropping || !selection?.active) return;
+     e.preventDefault();
+     const coords = getCanvasCoordinates(e, canvasRef.current);
+     
+     const currentW = coords.x - selection.startX;
+     const currentH = coords.y - selection.startY;
+
+     setSelection(prev => ({
+       ...prev,
+       w: currentW,
+       h: currentH,
+       x: currentW < 0 ? coords.x : prev.startX,
+       y: currentH < 0 ? coords.y : prev.startY
+     }));
+  }
+
+  const endCrop = () => {
+     if (selection) setSelection(prev => ({ ...prev, active: false }));
+  }
+
+  const applyCrop = () => {
+     if (!selection || selection.w === 0 || selection.h === 0) return;
+
+     const canvas = document.createElement('canvas');
+     const absW = Math.abs(selection.w);
+     const absH = Math.abs(selection.h);
+     canvas.width = absW;
+     canvas.height = absH;
+     const ctx = canvas.getContext('2d');
+     
+     // Draw cropped region from the displayed canvas state
+     ctx.drawImage(
+         canvasRef.current, 
+         selection.w > 0 ? selection.x : selection.x, 
+         selection.h > 0 ? selection.y : selection.y, 
+         absW, absH, 
+         0, 0, absW, absH
+     );
+
+     const newImg = new Image();
+     newImg.onload = () => {
+         setImage(newImg);
+         setDims({ w: absW, h: absH });
+         setIsCropping(false);
+         setSelection(null);
+     };
+     newImg.src = canvas.toDataURL();
+  };
+
+  // Draw Logic
+  useEffect(() => {
+    if (!canvasRef.current || !image) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    // Always ensure canvas matches dims for resizing
+    if (canvas.width !== dims.w || canvas.height !== dims.h) {
+        canvas.width = dims.w;
+        canvas.height = dims.h;
+    }
+
+    // Clear and Draw Image
+    ctx.clearRect(0,0, dims.w, dims.h);
+    ctx.drawImage(image, 0, 0, dims.w, dims.h);
+
+    // Draw Crop Selection
+    if (isCropping && selection) {
+        ctx.strokeStyle = '#2563eb'; // Blue
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        
+        // Normalize rect for drawing
+        const drawX = selection.w < 0 ? selection.startX + selection.w : selection.startX;
+        const drawY = selection.h < 0 ? selection.startY + selection.h : selection.startY;
+        const drawW = Math.abs(selection.w);
+        const drawH = Math.abs(selection.h);
+
+        ctx.strokeRect(drawX, drawY, drawW, drawH);
+        
+        // Dim outside
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.setLineDash([]);
+        
+        // Draw 4 rectangles around to dim
+        ctx.fillRect(0, 0, dims.w, drawY); // Top
+        ctx.fillRect(0, drawY + drawH, dims.w, dims.h - (drawY + drawH)); // Bottom
+        ctx.fillRect(0, drawY, drawX, drawH); // Left
+        ctx.fillRect(drawX + drawW, drawY, dims.w - (drawX + drawW), drawH); // Right
+    }
+  }, [image, dims, selection, isCropping]);
+
+  const download = () => {
+    const link = document.createElement('a');
+    link.download = `resized-${dims.w}x${dims.h}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
+        <div className="w-full md:w-1/3 space-y-3 md:space-y-6 order-2 md:order-1">
+          <ImageUploader 
+            label="Upload Image" 
+            image={image} 
+            onUpload={handleUpload} 
+            onRemove={() => { setImage(null); setDims({w:0, h:0}); setIsCropping(false); }}
+          />
+
+          {image && (
+            <div className="space-y-3 md:space-y-4 bg-gray-50 p-3 md:p-6 rounded-xl animate-fade-in">
+              {/* Dimensions Section */}
+              {!isCropping ? (
+                <>
+                    <div className="flex items-center justify-between mb-2 md:mb-4">
+                        <h3 className="font-bold text-gray-700 text-xs md:text-base">Dimensions</h3>
+                        <label className="flex items-center gap-1.5 text-xs md:text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" checked={aspectRatio} onChange={(e) => setAspectRatio(e.target.checked)} className="rounded text-blue-600 scale-75 md:scale-100" />
+                        Lock Ratio
+                        </label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                        <div>
+                            <label className="block text-[10px] md:text-xs font-bold text-gray-500 mb-1">WIDTH (px)</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    value={dims.w} 
+                                    onChange={(e) => updateDims('w', Number(e.target.value))}
+                                    className="w-full p-1.5 md:p-2 pr-6 text-sm border rounded focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">px</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] md:text-xs font-bold text-gray-500 mb-1">HEIGHT (px)</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    value={dims.h} 
+                                    onChange={(e) => updateDims('h', Number(e.target.value))}
+                                    className="w-full p-1.5 md:p-2 pr-6 text-sm border rounded focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">px</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2 md:pt-4">
+                        <Button onClick={() => setIsCropping(true)} variant="secondary">
+                            <Scissors className="w-4 h-4" /> Crop Image
+                        </Button>
+                        <Button onClick={download} variant="primary">Download</Button>
+                    </div>
+                </>
+              ) : (
+                  <div className="space-y-4">
+                      <div className="bg-blue-100 text-blue-800 p-2 rounded text-xs md:text-sm text-center font-medium">
+                          Draw a box on image to crop
+                      </div>
+                      <div className="flex gap-2">
+                          <Button onClick={applyCrop} className="flex-1 bg-green-600 hover:bg-green-700">
+                             <Check className="w-4 h-4" /> Apply
+                          </Button>
+                          <Button onClick={() => { setIsCropping(false); setSelection(null); }} className="flex-1 bg-gray-500 hover:bg-gray-600">
+                             <X className="w-4 h-4" /> Cancel
+                          </Button>
+                      </div>
+                  </div>
+              )}
+            </div>
+          )}
+        </div>
+        
+        <div className="w-full md:w-2/3 order-1 md:order-2 bg-gray-200 rounded-xl overflow-auto flex items-center justify-center p-2 md:p-4 min-h-[300px] md:min-h-[400px]">
+           <canvas 
+                ref={canvasRef} 
+                onMouseDown={startCrop}
+                onMouseMove={moveCrop}
+                onMouseUp={endCrop}
+                onMouseLeave={endCrop}
+                onTouchStart={startCrop}
+                onTouchMove={moveCrop}
+                onTouchEnd={endCrop}
+                className={`shadow-lg max-w-full ${!image ? 'hidden' : ''} ${isCropping ? 'cursor-crosshair' : ''}`} 
+            />
+           {!image && <p className="text-gray-500 text-sm">Preview</p>}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const JoinerTool = () => {
+  const canvasRef = useRef(null);
+  const [images, setImages] = useState({ img1: null, img2: null });
+  const [direction, setDirection] = useState('horizontal'); 
+  const [gap, setGap] = useState(0);
+  const [autoResize, setAutoResize] = useState(true);
+
+  useEffect(() => {
+    const handlePaste = (e) => getClipboardImage(e, (img) => {
+        if (!images.img1) {
+            setImages(prev => ({ ...prev, img1: img }));
+        } else {
+            setImages(prev => ({ ...prev, img2: img }));
+        }
+    });
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [images]); 
+
+  const handleUpload = (e, key) => {
+    const file = e.target.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => setImages(prev => ({ ...prev, [key]: img }));
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const { img1, img2 } = images;
+
+    if (!img1 && !img2) {
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        return;
+    }
+
+    let w = 0, h = 0;
+    let w1, h1, w2, h2;
+    
+    if (img1 && img2 && autoResize) {
+        if (direction === 'horizontal') {
+            const commonH = Math.max(img1.height, img2.height);
+            const scale1 = commonH / img1.height;
+            const scale2 = commonH / img2.height;
+            
+            w1 = img1.width * scale1;
+            h1 = commonH;
+            w2 = img2.width * scale2;
+            h2 = commonH;
+            
+            w = w1 + w2 + gap;
+            h = commonH;
+        } else {
+            const commonW = Math.max(img1.width, img2.width);
+            const scale1 = commonW / img1.width;
+            const scale2 = commonW / img2.width;
+            
+            w1 = commonW;
+            h1 = img1.height * scale1;
+            w2 = commonW;
+            h2 = img2.height * scale2;
+            
+            w = commonW;
+            h = h1 + h2 + gap;
+        }
+    } else if (img1 && img2) {
+        if (direction === 'horizontal') {
+            w = img1.width + img2.width + gap;
+            h = Math.max(img1.height, img2.height);
+            w1 = img1.width; h1 = img1.height;
+            w2 = img2.width; h2 = img2.height;
+        } else {
+            w = Math.max(img1.width, img2.width);
+            h = img1.height + img2.height + gap;
+            w1 = img1.width; h1 = img1.height;
+            w2 = img2.width; h2 = img2.height;
+        }
+    } else if (img1) {
+        w = img1.width; h = img1.height;
+        w1 = w; h1 = h;
+    } else if (img2) {
+        w = img2.width; h = img2.height;
+        w2 = w; h2 = h;
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,w,h);
+    
+    if (img1) ctx.drawImage(img1, 0, 0, w1, h1);
+    
+    if (img2) {
+        if (img1) {
+             if (direction === 'horizontal') {
+                ctx.drawImage(img2, w1 + gap, 0, w2, h2);
+             } else {
+                ctx.drawImage(img2, 0, h1 + gap, w2, h2);
+             }
+        } else {
+            ctx.drawImage(img2, 0, 0, w2, h2);
+        }
+    }
+
+  }, [images, direction, gap, autoResize]);
+
+  const download = () => {
+    const link = document.createElement('a');
+    link.download = `joined-${direction}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  return (
+    <Card>
+      <div className="grid md:grid-cols-4 gap-4 md:gap-6">
+        <div className="md:col-span-1 space-y-3 md:space-y-6 order-2 md:order-1">
+           <div className="bg-blue-50 p-2 md:p-3 rounded-lg text-xs md:text-sm text-blue-800 border border-blue-100 mb-2 md:mb-4">
+             <strong>Tip:</strong> Paste supported.
+          </div>
+          <div className="space-y-2 md:space-y-4">
+            <div>
+              <label className="block text-xs md:text-sm font-medium mb-1">Image 1</label>
+              <ImageUploader 
+                label="Upload 1" 
+                image={images.img1} 
+                onUpload={(e) => handleUpload(e, 'img1')} 
+                onRemove={() => setImages(prev => ({...prev, img1: null}))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs md:text-sm font-medium mb-1">Image 2</label>
+              <ImageUploader 
+                label="Upload 2" 
+                image={images.img2} 
+                onUpload={(e) => handleUpload(e, 'img2')} 
+                onRemove={() => setImages(prev => ({...prev, img2: null}))}
+              />
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-2 md:p-4 rounded-lg space-y-2 md:space-y-4">
+            <h4 className="font-semibold text-gray-700 text-xs md:text-base">Settings</h4>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setDirection('horizontal')}
+                className={`flex-1 py-1.5 md:py-2 rounded-md flex items-center justify-center gap-2 text-xs md:text-base ${direction === 'horizontal' ? 'bg-blue-600 text-white' : 'bg-white border text-gray-600'}`}
+              >
+                <Columns className="w-4 h-4" /> Horiz
+              </button>
+              <button 
+                onClick={() => setDirection('vertical')}
+                className={`flex-1 py-1.5 md:py-2 rounded-md flex items-center justify-center gap-2 text-xs md:text-base ${direction === 'vertical' ? 'bg-blue-600 text-white' : 'bg-white border text-gray-600'}`}
+              >
+                <Rows className="w-4 h-4" /> Vert
+              </button>
+            </div>
+            
+            <label className="flex items-center gap-2 p-1.5 md:p-2 border rounded-lg cursor-pointer bg-white hover:bg-gray-50">
+                <input 
+                  type="checkbox" 
+                  checked={autoResize} 
+                  onChange={(e) => setAutoResize(e.target.checked)} 
+                  className="rounded text-blue-600 w-3 h-3 md:w-4 md:h-4"
+                />
+                <span className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-700 font-medium">
+                   <Maximize2 className="w-3 h-3 md:w-4 md:h-4" /> Auto Match Size
+                </span>
+            </label>
+
+            <Slider label="Gap" value={gap} min={0} max={100} onChange={setGap} />
+          </div>
+
+          <Button onClick={download} disabled={!images.img1 && !images.img2} className="w-full">
+            <Download className="w-4 h-4" /> Download
+          </Button>
+        </div>
+
+        <div className="md:col-span-3 order-1 md:order-2 bg-gray-200 rounded-xl overflow-auto flex items-center justify-center p-2 md:p-4 min-h-[300px] md:min-h-[500px]">
+           <canvas ref={canvasRef} className={`shadow-lg max-w-full ${(!images.img1 && !images.img2) ? 'hidden' : ''}`} />
+           {(!images.img1 && !images.img2) && <p className="text-gray-500 text-sm">Preview</p>}
+        </div>
+      </div>
+    </Card>
+  );
+};
