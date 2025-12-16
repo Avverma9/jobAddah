@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { baseUrl } from "../../util/baseUrl";
+import { baseUrl } from "../util/baseUrl";
 
 const PUBLISHER_ID = "ca-pub-7416335110977682";
 

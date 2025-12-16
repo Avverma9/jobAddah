@@ -12,7 +12,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
-import { baseUrl } from "../../util/baseUrl";
+import { baseUrl } from "../util/baseUrl";
 import { PrivateJobCard } from "./sections/private";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
@@ -20,7 +20,7 @@ import {
   decryptResponse,
   encodeBase64Url,
   parseApiResponse,
-} from "../../util/encode-decode";
+} from "../util/encode-decode";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";

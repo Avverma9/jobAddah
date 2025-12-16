@@ -19,7 +19,7 @@ const tools = [
     icon: <ImageIcon className="w-5 h-5 sm:w-6 sm:h-6" />,
     status: "active",
     href: "/jobsaddah-image-tools",
-    badge: "Hot",
+    badge: "Trending",
     color: "blue"
   },
   {
@@ -28,7 +28,9 @@ const tools = [
     fullTitle: "PDF Reducer",
     description: "Shrink PDF size.",
     icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6" />,
-    status: "coming_soon",
+    status: "active",
+    badge: "Most Used",
+    href: "/jobsaddah-pdf-tools",
     color: "red"
   },
   {
@@ -37,7 +39,9 @@ const tools = [
     fullTitle: "Typing Test",
     description: "Check speed.",
     icon: <Keyboard className="w-5 h-5 sm:w-6 sm:h-6" />,
-    status: "coming_soon",
+    href: "/jobsaddah-typing-tools",
+    badge: "Most Demanded",
+    status: "active",
     color: "orange"
   },
   {
