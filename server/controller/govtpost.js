@@ -69,9 +69,12 @@ const getGovJobSections = async (req, res) => {
 const getGovPostListBySection = async (req, res) => {
   try {
     const url = req.params.url;
-    const getData = await govPostList.find({ section: url }).sort({
-      createdAt: -1,
-    });
+    const getData = await govPostList
+      .find({ section: url })
+      .select("title link createdAt")
+      .sort({
+        createdAt: -1,
+      });
 
     return res.status(200).json({
       success: true,
