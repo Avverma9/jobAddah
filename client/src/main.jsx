@@ -4,12 +4,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { initGtag, pageview } from './util/gtag'
+import { Provider } from 'react-redux'
+import { store } from '../redux/store'
 
 // SSG entrypoint for `vite-plugin-ssg`
 export function createApp() {
   return (
     <StrictMode>
-      <App />
+      <Provider store={store}>
+        <App />
+      </Provider>
     </StrictMode>
   );
 }

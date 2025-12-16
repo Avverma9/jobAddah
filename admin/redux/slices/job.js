@@ -51,10 +51,7 @@ export const getJobById = createAsyncThunk("job/getJobById", async (id) => {
   return data;
 });
 
-export const getStats = createAsyncThunk("job/getStats", async () => {
-  const { data } = await api.get("/admin/stats");
-  return data?.stats;
-});
+
 
 // ⭐ mark/unmark favourite – same API, fav param se toggle
 export const markFav = createAsyncThunk("job/markFav", async ({ id, fav }) => {
@@ -168,9 +165,7 @@ const jobSlice = createSlice({
       state.currentJob = action.payload.data || action.payload;
     });
 
-    builder.addCase(getStats.fulfilled, (state, action) => {
-      state.stats = action.payload;
-    });
+
     builder.addCase(getSite.fulfilled, (state, action) => {
       state.site = action.payload;
     });
