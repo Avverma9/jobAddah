@@ -1,4 +1,4 @@
-import axios from 'axios';
+import api from './apiClient';
 
 // Utility function to make API calls with automatic loader
 export const createApiWithLoader = (loaderHook) => {
@@ -6,8 +6,8 @@ export const createApiWithLoader = (loaderHook) => {
 
   const apiCall = async (config, loaderMessage = 'Loading...', timeout = 50) => {
     return withLoader(async () => {
-      const response = await axios(config);
-      return response.data;
+      const response = await api.request(config);
+      return response;
     }, loaderMessage, timeout);
   };
 

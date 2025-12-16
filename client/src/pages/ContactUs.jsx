@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import AdContainer from "../components/ads/AdContainer";
+import api from '../util/apiClient';
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -34,14 +35,12 @@ export default function ContactUs() {
     }
 
     try {
-      // Replace with your actual backend endpoint
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      // Post to same-origin contact endpoint using axios instance via absolute URL
+      const origin = window?.location?.origin || '';
+      const resData = await api.rawInstance.post(`${origin}/api/contact`, formData, { headers: { 'Content-Type': 'application/json' } });
 
-      if (res.ok) {
+      // axios resolves non-2xx as throw; if we get here treat as success
+      if (resData) {
         toast.success("Message sent successfully! We'll get back to you soon.");
         setSubmitted(true);
         setFormData({ name: "", email: "", subject: "", message: "" });

@@ -12,6 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { baseUrl } from "../util/baseUrl";
+import api from '../util/apiClient';
 import Header from "../components/Header";
 import {
   ErrorScreen,
@@ -71,12 +72,9 @@ const PostDetails = () => {
 
       try {
         await withLoader(async () => {
-          const response = await fetch(fetchUrl);
-          if (!response.ok) throw new Error("Failed to fetch data");
-
-          // ✅ encrypted → decrypt | normal → return
-          const result = await parseApiResponse(response);
-
+          // Build path relative to configured baseUrl
+          const urlParam = encodeURIComponent(paramUrl || paramId);
+          const result = await api.get(`/get-post/details?url=${urlParam}`);
           const validData = result?.data || result?.job || result;
 
           if (validData) {

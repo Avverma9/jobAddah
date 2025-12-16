@@ -1,10 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { baseUrl } from '../../util/baseUrl';
+import api from '../../src/util/apiClient';
 
 export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
-  const response = await axios.post(`${baseUrl}/get-postlist`);
-  return response.data;
+  const payload = await api.post('/get-postlist');
+  return payload;
 });
 
 const postsSlice = createSlice({

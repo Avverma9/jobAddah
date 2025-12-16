@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { baseUrl } from "../util/baseUrl";
+import api from '../util/apiClient';
 import { Link, useLocation } from "react-router-dom";
 import {
   ChevronRight,
@@ -161,18 +162,11 @@ export default function ViewAll() {
       try {
         await withLoader(async () => {
           if (type === "PRIVATE_JOB") {
-            const res = await fetch(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-            const data = await res.json();
-            if (!res.ok) throw new Error("Failed to fetch private jobs");
-
+            const data = await api.get('/get-jobs?postType=PRIVATE_JOB');
             const jobs = Array.isArray(data) ? data : data.data || [];
             setAllPosts(jobs);
           } else {
-            const catRes = await fetch(`${baseUrl}/scrapper/get-categories`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-            });
-            const catData = await catRes.json();
+            const catData = await api.post('/scrapper/get-categories');
 
             let targetUrl = null;
 
@@ -186,12 +180,7 @@ export default function ViewAll() {
             }
 
             if (targetUrl) {
-              const scrapeRes = await fetch(`${baseUrl}/scrapper/scrape-category`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: targetUrl }),
-              });
-              const scrapeData = await scrapeRes.json();
+              const scrapeData = await api.post('/scrapper/scrape-category', { url: targetUrl });
 
               if (scrapeData.success) {
                 const cleanData = scrapeData.jobs
@@ -213,8 +202,7 @@ export default function ViewAll() {
                 throw new Error("Failed to load category data");
               }
             } else {
-              const fallbackRes = await fetch(`${baseUrl}/get-all`);
-              const fallbackData = await fallbackRes.json();
+              const fallbackData = await api.get('/get-all');
               const raw = Array.isArray(fallbackData) ? fallbackData : fallbackData.jobs || [];
               setAllPosts(raw.filter((p) => p.postType === type));
             }

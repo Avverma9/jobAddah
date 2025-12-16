@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 import { baseUrl } from '../util/baseUrl.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -8,12 +9,9 @@ const __dirname = path.dirname(__filename);
 
 async function fetchPosts() {
   try {
-    const res = await fetch(`${baseUrl.replace(/\/api\/v1$/, '')}/posts`);
-    if (!res.ok) {
-      console.error('Failed to fetch posts:', res.status, res.statusText);
-      return [];
-    }
-    const data = await res.json();
+    const url = `${baseUrl.replace(/\/api\/v1$/, '')}/posts`;
+    const res = await axios.get(url);
+    const data = res.data;
     // try common shapes
     if (Array.isArray(data)) return data;
     if (Array.isArray(data.data)) return data.data;

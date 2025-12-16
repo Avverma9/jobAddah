@@ -1,6 +1,8 @@
 // src/util/AdController.js
 // Dynamic Ad Control System
 
+import api from './apiClient';
+
 class AdController {
   constructor() {
     this.adConfig = null;
@@ -18,15 +20,10 @@ class AdController {
         return this.adConfig;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/ad-config`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        this.adConfig = await response.json();
+      // Use shared api client (baseUrl is configured in apiClient)
+      try {
+        const cfg = await api.get('/ad-config');
+        this.adConfig = cfg;
         this.lastFetch = now;
         
         // Store in localStorage for offline fallback
@@ -36,8 +33,8 @@ class AdController {
         }));
         
         return this.adConfig;
-      } else {
-        throw new Error('Failed to fetch ad config');
+      } catch (err) {
+        throw err;
       }
     } catch (error) {
       console.warn('Ad config fetch failed, using fallback:', error);

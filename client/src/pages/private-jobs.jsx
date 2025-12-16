@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { baseUrl } from "../util/baseUrl";
+import api from '../util/apiClient';
 import { Building2, Calendar, ExternalLink, Briefcase } from "lucide-react";
 
 export default function PrivateJobs() {
@@ -10,9 +11,9 @@ export default function PrivateJobs() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${baseUrl}/get-all`)
-      .then((res) => res.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const data = await api.get('/get-all');
         const all = Array.isArray(data) ? data : data.jobs || [];
         const privateList = all
           .map((p) => ({
@@ -31,12 +32,12 @@ export default function PrivateJobs() {
           );
 
         setPosts(privateList);
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         setError(err.message);
+      } finally {
         setLoading(false);
-      });
+      }
+    })();
   }, []);
 
   if (loading)

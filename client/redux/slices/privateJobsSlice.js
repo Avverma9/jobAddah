@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { baseUrl } from '../../util/baseUrl';
+import api from '../../src/util/apiClient';
 
 // Helper functions from homescreen.jsx
 const normalizeJob = (job) => {
@@ -30,8 +29,7 @@ const normalizeJob = (job) => {
   };
 
 export const fetchPrivateJobs = createAsyncThunk('privateJobs/fetchPrivateJobs', async () => {
-  const response = await axios.get(`${baseUrl}/get-jobs?postType=PRIVATE_JOB`);
-  const payload = response.data;
+  const payload = await api.get('/get-jobs?postType=PRIVATE_JOB');
   const base = payload?.data ?? payload;
   const jobs = Array.isArray(base) ? base : base?.data || [];
   const processed = sortLatestFirst(
