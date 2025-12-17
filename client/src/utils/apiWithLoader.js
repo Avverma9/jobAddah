@@ -5,8 +5,19 @@ export const createApiWithLoader = (loaderHook) => {
   const { withLoader } = loaderHook;
 
   const apiCall = async (config, loaderMessage = 'Loading...', timeout = 50) => {
+    const requestConfig = {
+      ...config,
+      showLoader: false,
+    };
+
+    if (config?.loader) {
+      requestConfig.loader = { ...config.loader, enabled: false };
+    } else {
+      requestConfig.loader = { enabled: false };
+    }
+
     return withLoader(async () => {
-      const response = await api.request(config);
+      const response = await api.request(requestConfig);
       return response;
     }, loaderMessage, timeout);
   };

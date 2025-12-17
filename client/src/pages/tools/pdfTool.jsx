@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, X, Scissors, RefreshCw, FileDown, Plus, Image as ImageIcon, Trash2, Check, AlertCircle, Settings, Calculator } from 'lucide-react';
+import SEO from '../../util/SEO';
 
 const PDF_LIB_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 
@@ -370,6 +371,13 @@ export default function PdfTool() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans" onPaste={(e) => {}}>
+      <SEO
+        title="Free Image to PDF Converter | Compress PDF Online - JobsAddah"
+        description="Convert images to PDF online for free. Compress PDF size, merge multiple images into single PDF. Perfect for government job applications and document submissions."
+        keywords="image to pdf, pdf converter, compress pdf, merge pdf, photo to pdf, jpg to pdf, png to pdf, pdf compressor, free pdf tool"
+        canonical="/tools/pdf-tool"
+        section="Tools"
+      />
       <LoadScript src={PDF_LIB_URL} onLoad={() => setLibLoaded(true)} />
 
       {cropTarget && (

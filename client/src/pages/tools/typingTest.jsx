@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCcw, Trophy, Zap, Settings, Type, AlignLeft, BookOpen, CheckCircle } from 'lucide-react';
 import { dataStore, funnyJokes, getFeedback } from '../../utils/typingAssest';
+import SEO from '../../util/SEO';
 
 
 
@@ -67,6 +68,13 @@ export default function TypingTest() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col items-center p-6 selection:bg-indigo-100 selection:text-indigo-900">
+      <SEO
+        title="Free Typing Test Online | Check Typing Speed WPM - JobsAddah"
+        description="Free online typing test to check your typing speed in WPM. Practice typing for SSC, Railway, Bank exams. Improve accuracy with easy, medium, and hard levels."
+        keywords="typing test, typing speed test, wpm test, online typing test, free typing test, ssc typing test, bank typing test, typing practice"
+        canonical="/tools/typing-test"
+        section="Tools"
+      />
       
       <header className="w-full max-w-5xl flex justify-between items-center mb-12 mt-4">
         <div className="flex items-center gap-2">

@@ -1,0 +1,68 @@
+{
+  "name": "JobsAddah - Sarkari Result 2025",
+  "short_name": "JobsAddah",
+  "description": "India's #1 Sarkari Result portal for latest government jobs, admit cards, exam results, and job notifications.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["employment", "education", "news"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "JobsAddah Homepage"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Latest Jobs",
+      "short_name": "Jobs",
+      "description": "View latest government job notifications",
+      "url": "/view-all?type=JOB",
+      "icons": [{ "src": "/logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Admit Cards",
+      "short_name": "Admit Card",
+      "description": "Download exam admit cards",
+      "url": "/view-all?type=ADMIT_CARD",
+      "icons": [{ "src": "/logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Results",
+      "short_name": "Results",
+      "description": "Check exam results",
+      "url": "/view-all?type=RESULT",
+      "icons": [{ "src": "/logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Private Jobs",
+      "short_name": "Private",
+      "description": "Browse private job openings",
+      "url": "/private-jobs",
+      "icons": [{ "src": "/logo.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

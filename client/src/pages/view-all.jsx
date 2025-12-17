@@ -96,46 +96,46 @@ const ListSkeleton = () => (
 const getSEOData = (type) => {
   const seoConfig = {
     JOB: {
-      title: "JobsAddah – Your Career Gateway | Latest Govt Jobs 2025, Sarkari Naukri Notifications",
-      description: "JobsAddah – Your Career Gateway: Latest government jobs 2025, sarkari naukri notifications. SSC, Railway, Bank, UPSC, Defence, Police jobs. 10th, 12th pass govt jobs. Apply online for govt job vacancies today.",
-      keywords: "JobsAddah, latest govt jobs 2025, sarkari naukri, government jobs, bihar sarkari naukri, up sarkari result, ssc gd constable vacancy, railway group d recruitment, sarkari job alert, govt job alert, employment news, govt job notifications, sarkari naukri vacancy, ssc jobs, railway jobs, bank jobs, upsc exam, defence jobs, army bharti, police vacancy, 10th pass govt job, 12th pass govt job, graduate govt job, govt job apply online, direct recruitment govt job, govt job without exam, sarkari recruitment 2025, sarkari career portal"
+      title: "Latest Government Jobs 2025 | Sarkari Naukri Vacancy - JobsAddah",
+      description: "Find latest government jobs 2025, sarkari naukri notifications. SSC, Railway, Bank, UPSC, Defence, Police, Teaching jobs. 10th, 12th pass & graduate govt job vacancies. Apply online today!",
+      keywords: "govt jobs 2025, sarkari naukri, government jobs, latest govt jobs, ssc jobs, railway jobs, bank jobs, upsc jobs, defence jobs, police vacancy, teacher vacancy, 10th pass govt job, 12th pass govt job, graduate govt job, central govt jobs, state govt jobs"
     },
     ADMIT_CARD: {
-      title: "JobsAddah – Your Career Gateway | Admit Card Download 2025, Sarkari Admit Card",
-      description: "JobsAddah – Your Career Gateway: Download admit cards 2025 for SSC, Railway, Bank, UPSC, State PSC exams. Sarkari admit card, hall ticket download, call letter govt exam. Get exam roll number.",
-      keywords: "JobsAddah, admit card, sarkari admit card, ssc admit card 2025, railway admit card download, up police si admit card, ssc cpo admit card, ctet admit card 2026, rrb ntpc admit card, ssc delhi police admit card, emrs teacher admit card, bihar bpsc admit card, afcat admit card 2026, govt exam admit card, hall ticket download, exam admit card 2025, roll number download, call letter govt exam, admit card download, exam hall ticket, sarkari exam admit card"
+      title: "Admit Card 2025 Download | Sarkari Exam Hall Ticket - JobsAddah",
+      description: "Download admit cards 2025 for SSC, Railway, Bank, UPSC, State PSC exams. Sarkari admit card, hall ticket, call letter download. Get exam roll number and exam date details.",
+      keywords: "admit card 2025, sarkari admit card, hall ticket download, call letter, exam admit card, ssc admit card, railway admit card, upsc admit card, bank exam admit card, roll number download"
     },
     RESULT: {
-      title: "JobsAddah – Your Career Gateway | Sarkari Result 2025, Latest Govt Exam Results",
-      description: "JobsAddah – Your Career Gateway: Sarkari Result 2025, latest government exam results, cut off marks, merit list PDF. SSC, Railway, Bank exam results. Check result declared today.",
-      keywords: "JobsAddah, sarkari result 2025, sarkari result bihar board, up board result 2025, ssc result 2025, railway result 2025, ibps clerk result, ssc gd result 2026, up police result 2025, bihar bssc result, jpsc result 2025, bseb deled result, govt exam result, result declared, exam result today, cut off marks, merit list pdf, final result govt job, selection list, sarkari result latest, sarkari result official website 2025"
+      title: "Sarkari Result 2025 | Govt Exam Result, Cut Off, Merit List - JobsAddah",
+      description: "Check sarkari result 2025, government exam results, cut off marks, merit list PDF. SSC, Railway, Bank, UPSC exam results declared today. Download score card and selection list.",
+      keywords: "sarkari result 2025, govt exam result, result declared, cut off marks, merit list, final result, selection list, ssc result, railway result, bank result, upsc result"
     },
     ANSWER_KEY: {
-      title: "JobsAddah – Your Career Gateway | Answer Key 2025, Official Answer Key PDF",
-      description: "JobsAddah – Your Career Gateway: Download official answer key 2025 for government exams. SSC, Railway, Banking exam answer key PDF, response sheet, exam solution PDF with objections.",
-      keywords: "JobsAddah, answer key, ssc chsl answer key, official answer key, govt exam answer key, answer key pdf, response sheet, exam solution pdf, answer key download, sarkari exam answer key, sarkari result answer key check"
+      title: "Answer Key 2025 | Official Exam Answer Key PDF Download - JobsAddah",
+      description: "Download official answer key 2025 for government exams. SSC, Railway, Bank exam answer key PDF with response sheet. Check correct answers and raise objections.",
+      keywords: "answer key 2025, official answer key, answer key pdf, response sheet, exam answer key, ssc answer key, railway answer key, upsc answer key, objection form"
     },
     ADMISSION: {
-      title: "JobsAddah – Your Career Gateway | Government College Admission 2025, Apply Online",
-      description: "JobsAddah – Your Career Gateway: Government college admission 2025, university admission notifications. Engineering, Medical, Management college admissions. Apply online for govt college admission.",
-      keywords: "JobsAddah, government college admission, sarkari admission form, nvs class 9 admission, nvs class 11 admission, bihar deled admission, up deled admission, bcece counselling 2025, iti admission bihar, polytechnic admission 2025, clat admission form, cmat admission 2026, university admission, engineering admission, medical college admission, govt college admission 2025, admission notification, college admission form"
+      title: "Admission 2025 | University & College Admission Form - JobsAddah",
+      description: "Government college admission 2025, university admission notifications. Engineering, Medical, B.Ed, D.El.Ed admissions. Apply online for govt college admission form.",
+      keywords: "admission 2025, college admission, university admission, govt admission, engineering admission, medical admission, nvs admission, polytechnic admission, iti admission"
     },
     SYLLABUS: {
-      title: "JobsAddah – Your Career Gateway | Govt Exam Syllabus 2025, Exam Pattern PDF",
-      description: "JobsAddah – Your Career Gateway: Download government exam syllabus 2025 and exam pattern for SSC, Railway, Bank, UPSC exams. Complete study material PDF for sarkari exam preparation.",
-      keywords: "JobsAddah, govt exam syllabus, ssc gd syllabus 2025, railway exam pattern, upsc syllabus pdf, ssc cgl syllabus, ssc chsl syllabus, ctet syllabus 2026, bihar police syllabus, up police syllabus, rrb group d syllabus, ibps po syllabus, exam pattern, government exam syllabus, study material, sarkari exam syllabus, exam syllabus pdf, govt exam pattern, sarkari result exam syllabus pdf"
+      title: "Govt Exam Syllabus 2025 | Exam Pattern & Study Material - JobsAddah",
+      description: "Download government exam syllabus 2025 and exam pattern for SSC, Railway, Bank, UPSC exams. Complete study material, previous year papers, and mock tests for preparation.",
+      keywords: "exam syllabus 2025, govt exam syllabus, exam pattern, study material, previous year paper, mock test, ssc syllabus, railway syllabus, bank syllabus, upsc syllabus"
     },
     PRIVATE_JOB: {
-      title: "JobsAddah – Your Career Gateway | Private Jobs 2025, IT Jobs, MNC Recruitment",
-      description: "JobsAddah – Your Career Gateway: Latest private jobs 2025, IT jobs, Non-IT jobs, MNC recruitment, startup hiring. Private sector job vacancies, company jobs, apply for private jobs online.",
-      keywords: "JobsAddah, private jobs, private jobs in india, it jobs for freshers, work from home jobs, naukri.com jobs, pvtjob.in updates, latest private vacancy, digital marketing jobs, software developer jobs, android developer jobs, react native jobs, IT jobs, MNC jobs, private sector recruitment, job vacancies, company jobs, private job vacancy, IT job vacancy"
+      title: "Private Jobs 2025 | IT Jobs, Fresher Jobs, WFH Jobs - JobsAddah",
+      description: "Latest private jobs 2025, IT jobs for freshers, work from home jobs, MNC recruitment. Software developer, data analyst, digital marketing jobs. Apply for private sector vacancies.",
+      keywords: "private jobs 2025, it jobs, fresher jobs, work from home, wfh jobs, mnc jobs, software developer jobs, data analyst jobs, digital marketing jobs, startup jobs"
     }
   };
 
   return seoConfig[type] || {
-    title: `JobsAddah – Your Career Gateway | ${formatTitle(type)} - Latest Updates 2025`,
-    description: `JobsAddah – Your Career Gateway: Browse all latest ${formatTitle(type).toLowerCase()} notifications and updates. Updated daily with official links.`,
-    keywords: `JobsAddah, ${formatTitle(type).toLowerCase()}, sarkari updates, government notifications, sarkari result 2025, career gateway`
+    title: `${formatTitle(type)} 2025 | Latest Updates & Notifications - JobsAddah`,
+    description: `Browse all latest ${formatTitle(type).toLowerCase()} notifications and updates 2025. Official links, eligibility, and how to apply online.`,
+    keywords: `${formatTitle(type).toLowerCase()} 2025, sarkari updates, government notifications, jobsaddah`
   };
 };
 
@@ -272,6 +272,7 @@ export default function ViewAll() {
         description={currentSEO.description}
         keywords={currentSEO.keywords}
         canonical={`/view-all?type=${postType || 'all'}`}
+        section={formatTitle(postType)}
       />
 
       <div

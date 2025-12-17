@@ -19,6 +19,7 @@ import {
   Layout,
   Printer
 } from 'lucide-react';
+import SEO from '../../util/SEO';
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
@@ -140,6 +141,13 @@ export default function ImageEditor() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-2 md:p-8 font-sans text-slate-900 dark:text-slate-100">
+      <SEO
+        title="Free Photo Editor Online | Resize, Crop, Passport Photo - JobsAddah"
+        description="Free online photo editor tool. Create passport size photos, resize images, remove background, merge images. Perfect for government job applications and ID photos."
+        keywords="photo editor, image resize, passport photo maker, photo crop, image compressor, background remover, photo joiner, resize image online"
+        canonical="/tools/image-resize"
+        section="Tools"
+      />
       <div className="max-w-6xl mx-auto">
         <header className="mb-4 md:mb-8 text-center">
           <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 mb-1 md:mb-2">Image Master Pro</h1>

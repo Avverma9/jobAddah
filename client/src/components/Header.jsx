@@ -52,9 +52,7 @@ export default function Header() {
   // Theme Init
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    const isDark =
-      saved === "dark" ||
-      (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    const isDark = saved === "dark";
 
     document.documentElement.classList.toggle("dark", isDark);
     setDarkMode(isDark);

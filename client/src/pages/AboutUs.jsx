@@ -1,11 +1,18 @@
 // src/pages/AboutUs.jsx
-// React import removed - not needed
 import { Shield, Target, Users, Zap, BookOpen, TrendingUp } from "lucide-react";
 import AdContainer from "../components/ads/AdContainer";
+import SEO from "../util/SEO";
 
 export default function AboutUs() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <SEO
+        title="About Us | JobsAddah - India's Leading Sarkari Result Portal"
+        description="JobsAddah is India's trusted sarkari result portal providing latest government job notifications, admit cards, exam results, and career guidance for job seekers across India."
+        keywords="about jobsaddah, sarkari result portal, government job portal india, job notification website, career guidance, employment portal"
+        canonical="/about-us"
+        section="About Us"
+      />
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 px-6">
         <div className="max-w-4xl mx-auto">
