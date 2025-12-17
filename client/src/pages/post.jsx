@@ -23,7 +23,7 @@ import {
 import { decryptResponse } from "../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
-import SEO from "../util/SEO";
+import SEO, { generateJobPostingSchema } from "../util/SEO";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -102,10 +102,24 @@ const PostDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
       <SEO
-        title={`${data.title} | JobsAddah – Your Career Gateway`}
-        description={`${data.title} - Complete details, application process, important dates, eligibility criteria. Apply online at JobsAddah – Your Career Gateway for latest government job notifications.`}
-        keywords={`${data.title}, ${data.organization || 'government job'}, sarkari result 2025, latest govt jobs 2025, sarkari naukri, govt job notification, online application, admit card, result, answer key, JobsAddah career gateway`}
-        canonical={`/post?${paramUrl ? `url=${paramUrl}` : `id=${paramId}`}`}
+        title={`${data.title} | Recruitment 2025 - JobsAddah`}
+        description={`${data.title} Recruitment 2025 - Check eligibility, vacancy details, important dates, application process. Apply online for ${data.organization || 'government job'} vacancy at JobsAddah.`}
+        keywords={`${data.title}, ${data.organization || 'government job'} recruitment 2025, vacancy, online form, admit card, result, eligibility, apply online, sarkari naukri`}
+        canonical={`/post?${paramUrl ? `url=${encodeURIComponent(paramUrl)}` : `id=${encodeURIComponent(paramId || "")}`}`}
+        section="Job Details"
+        ogType="article"
+        jsonLd={generateJobPostingSchema({
+          title: data.title,
+          organization: data.organization,
+          description: data.shortDescription || `Apply for ${data.title} recruitment`,
+          applicationStartDate: data.importantDates?.applicationStartDate,
+          applicationLastDate: data.importantDates?.applicationLastDate,
+          vacancies: data.totalVacancies,
+          salary: data.salary,
+          location: data.location || "India",
+          qualification: data.qualification,
+          link: paramUrl || paramId
+        })}
       />
       <Header />
 

@@ -4,6 +4,7 @@ import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import AdContainer from "../components/ads/AdContainer";
 import api from '../util/apiClient';
+import SEO from "../util/SEO";
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -57,6 +58,13 @@ export default function ContactUs() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <SEO
+        title="Contact Us | JobsAddah - Get in Touch"
+        description="Contact JobsAddah for any queries about government jobs, sarkari result, admit cards, or exam results. We're here to help you with your career journey."
+        keywords="contact jobsaddah, sarkari result help, govt job query, career support, job portal contact"
+        canonical="/contact-us"
+        section="Contact"
+      />
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 px-6">
         <div className="max-w-4xl mx-auto">

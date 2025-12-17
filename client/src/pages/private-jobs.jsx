@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import { baseUrl } from "../util/baseUrl";
 import api from '../util/apiClient';
 import { Building2, Calendar, ExternalLink, Briefcase } from "lucide-react";
+import SEO from "../util/SEO";
 
 export default function PrivateJobs() {
   const [posts, setPosts] = useState([]);
@@ -60,6 +61,13 @@ export default function PrivateJobs() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <SEO
+        title="Private Jobs 2025 | IT Jobs, Fresher Jobs, Work From Home - JobsAddah"
+        description="Browse latest private sector jobs 2025. IT jobs for freshers, software developer jobs, work from home opportunities, MNC recruitment. Apply for private company vacancies online."
+        keywords="private jobs 2025, it jobs, fresher jobs, work from home jobs, wfh jobs, software developer jobs, mnc jobs, startup jobs, private sector jobs, company jobs"
+        canonical="/private-jobs"
+        section="Private Jobs"
+      />
       <Header />
 
       {/* Header block */}

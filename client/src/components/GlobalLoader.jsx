@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Loader from './Loader';
+import { registerLoaderHandlers, unregisterLoaderHandlers } from '../util/loaderManager';
 
 const LoaderContext = createContext();
 
@@ -46,6 +47,11 @@ export const LoaderProvider = ({ children }) => {
     setIsLoading(false);
     console.warn('Global loader timeout reached');
   }, []);
+
+  useEffect(() => {
+    registerLoaderHandlers({ showLoader, hideLoader });
+    return () => unregisterLoaderHandlers();
+  }, [showLoader, hideLoader]);
 
   const value = {
     isLoading,

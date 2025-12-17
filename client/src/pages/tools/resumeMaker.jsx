@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, Layout, User, Briefcase, GraduationCap, Sparkles, Plus, Trash2, Printer, Palette, Linkedin, Mail, Phone, MapPin, FileText, Camera } from 'lucide-react';
+import SEO from '../../util/SEO';
 
 const HTML2PDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
 
@@ -390,6 +391,13 @@ export default function ResumeMaker() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col h-screen text-slate-800">
+      <SEO
+        title="Free Resume Maker Online | Create Professional CV - JobsAddah"
+        description="Create professional resume online for free. Multiple templates, easy customization, instant PDF download. Best resume builder for freshers and experienced professionals."
+        keywords="resume maker, free resume builder, online cv maker, professional resume, fresher resume, resume pdf download, resume template, curriculum vitae"
+        canonical="/tools/resume-maker"
+        section="Tools"
+      />
       <LoadScript src={HTML2PDF_URL} onLoad={() => setLibLoaded(true)} />
       
       <header className="bg-white p-4 shadow-sm border-b border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-4">

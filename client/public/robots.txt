@@ -1,23 +1,64 @@
-# JobsAddah - Sarkari Result 2025
+# JobsAddah - Sarkari Result 2025 | Latest Govt Jobs Portal
+# https://jobsaddah.com
+
+# Allow all search engines
 User-agent: *
 Allow: /
 
-# Important pages for SEO
+# Important pages - High Priority
 Allow: /view-all
 Allow: /post
+Allow: /private-jobs
 Allow: /about-us
 Allow: /contact-us
 Allow: /privacy-policy
 Allow: /terms
+
+# Tools pages
+Allow: /tools
+Allow: /tools/resume-maker
+Allow: /tools/pdf-tool
+Allow: /tools/image-resize
+Allow: /tools/typing-test
 
 # Disallow admin or private areas
 Disallow: /dashboard/
 Disallow: /api/
 Disallow: /admin/
 Disallow: /*.json$
+Disallow: /node_modules/
+Disallow: /.git/
+
+# Google specific
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Google Image Bot
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Yandex
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+# Baidu
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
 
 # Sitemap location
 Sitemap: https://jobsaddah.com/sitemap.xml
 
-# Crawl rate for better indexing
-Crawl-delay: 1
+# Host
+Host: https://jobsaddah.com
