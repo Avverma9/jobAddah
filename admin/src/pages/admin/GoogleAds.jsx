@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { baseUrl as API_BASE } from "../../../util/url";
 
-const PUBLISHER_ID = "ca-pub-7416335110977682";
+const PUBLISHER_ID = "ca-pub-5390089359360512";
 
 /**
  * Central Axios Instance
