@@ -25,17 +25,22 @@ const ensureProtocol = (inputUrl) => {
 
 const formatWithAI = async (scrapedData) => {
   try {
-    const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
-    if (!apiKeyData) {
-      throw new Error("No API key configured in the database");
-    }
-
     const modelNameData = await GeminiModel.findOne().sort({ createdAt: -1 });
     if (!modelNameData) {
       throw new Error("No Gemini model configured in the database");
     }
 
-    const genAI = new GoogleGenerativeAI(apiKeyData.apiKey);
+    // Prefer environment variable GEMINI_API_KEY; fallback to DB-stored key
+    let effectiveKey = process.env.GEMINI_API_KEY;
+    if (!effectiveKey) {
+      const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
+      if (!apiKeyData) {
+        throw new Error("No API key configured (env or DB)");
+      }
+      effectiveKey = apiKeyData.apiKey;
+    }
+
+    const genAI = new GoogleGenerativeAI(effectiveKey);
     const model = genAI.getGenerativeModel({
       model: modelNameData.modelName,
       generationConfig: { responseMimeType: "application/json" },
