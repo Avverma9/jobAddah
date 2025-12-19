@@ -29,16 +29,11 @@ const formatWithAI = async (scrapedData) => {
     if (!modelNameData) {
       throw new Error("No Gemini model configured in the database");
     }
-
-    // Prefer environment variable GEMINI_API_KEY; fallback to DB-stored key
-    let effectiveKey = process.env.GEMINI_API_KEY;
-    if (!effectiveKey) {
-      const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
-      if (!apiKeyData) {
-        throw new Error("No API key configured (env or DB)");
-      }
-      effectiveKey = apiKeyData.apiKey;
+    const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
+    if (!apiKeyData) {
+      throw new Error("No API key configured (env or DB)");
     }
+    effectiveKey = apiKeyData.apiKey;
 
     const genAI = new GoogleGenerativeAI(effectiveKey);
     const model = genAI.getGenerativeModel({
