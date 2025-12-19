@@ -1,13 +1,19 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const postListSchema = new mongoose.Schema(
-  {},
+const jobSchema = new mongoose.Schema(
   {
-    strict: false, // <-- yeh magic line, ab schema kuch bhi allow karega
-    timestamps: true,
-  }
+    title: { type: String, required: true },
+    link: { type: String, required: true, index: true },
+  },
+  { _id: false, timestamps: true }
 );
 
-const postList = mongoose.model('postList', postListSchema);
+const postListSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true, unique: true, index: true },
+    jobs: { type: [jobSchema], default: [] },
+  },
+  { timestamps: true }
+);
 
-module.exports = postList;
+module.exports = mongoose.model("postList", postListSchema);
