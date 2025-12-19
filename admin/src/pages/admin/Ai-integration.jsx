@@ -1,22 +1,22 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import {
-  Loader2,
+  AlertCircle,
   CheckCircle,
+  Code2,
+  Cpu,
   KeyRound,
-  Sparkles,
+  Loader2,
   Server,
   ShieldCheck,
-  Cpu,
-  Code2,
-  AlertCircle,
+  Sparkles,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
 import {
-  getModel,
-  setModel,
   getApiKey,
+  getModel,
   setApiKey,
+  setModel,
 } from "../../../redux/slices/ai";
 
 const FLASH_MODELS = [
@@ -53,30 +53,32 @@ const FLASH_MODELS = [
   // --- Reliable Fallback (Agar naye models fail ho jayein) ---
   { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (Reliable Old)" },
 ];
+// Preset API keys are now read from environment variables (Vite).
+// Add these to your `.env` or `.env.local` (see `.env.example` in project root).
 const PRESET_API_KEYS = [
   {
     id: "key_1",
     label: "Production Key",
-    value: "AIzaSyAu2WiQ14z1S2JYgiUJSP_bkscObP0G2nQ",
+    // Vite env vars must be prefixed with VITE_
+    value: import.meta.env.VITE_PRESET_API_KEY_1 || "",
     hint: "Primary App Usage",
   },
   {
     id: "key_2",
     label: "Testing Key",
-    value: "AIzaSyCLGISCeIx91XJOe0N1lutxKTBO3bXc_4I",
+    value: import.meta.env.VITE_PRESET_API_KEY_2 || "",
     hint: "QA Environment",
   },
-
   {
     id: "key_3",
     label: "Development Key",
-    value: "AIzaSyAMv0sBqzlMfmN9c2cEHXr-36NUKO6sGgI",
+    value: import.meta.env.VITE_PRESET_API_KEY_3 || "",
     hint: "Local Dev",
   },
   {
     id: "key_4",
     label: "Local Dev Key",
-    value: "AIzaSyC_BCsVnsd8uoep_2ZJN15Z-vgI35E98XA",
+    value: import.meta.env.VITE_PRESET_API_KEY_4 || "",
     hint: "Backup",
   },
 ];
@@ -300,8 +302,8 @@ const GeminiSettingsPage = () => {
                       {isGettingApiKey
                         ? "Checking..."
                         : currentApiKey
-                        ? "Active"
-                        : "Not Configured"}
+                          ? "Active"
+                          : "Not Configured"}
                     </span>
                   </div>
                   <button
