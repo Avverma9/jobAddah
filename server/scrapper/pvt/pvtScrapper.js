@@ -459,6 +459,8 @@ const getCategories = async (req, res) => {
       }
     });
 
+
+    
     const uniqueCategories = [
       ...new Map(categories.map((i) => [i.link, i])).values(),
     ];
