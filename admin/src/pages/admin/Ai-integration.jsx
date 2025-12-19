@@ -58,26 +58,26 @@ const FLASH_MODELS = [
 const PRESET_API_KEYS = [
   {
     id: "key_1",
-    label: "Production Key",
+    label: "anv9576",
     // Vite env vars must be prefixed with VITE_
     value: import.meta.env.VITE_PRESET_API_KEY_1 || "",
     hint: "Primary App Usage",
   },
   {
     id: "key_2",
-    label: "Testing Key",
+    label: "av95766",
     value: import.meta.env.VITE_PRESET_API_KEY_2 || "",
     hint: "QA Environment",
   },
   {
     id: "key_3",
-    label: "Development Key",
+    label: "codesweeper",
     value: import.meta.env.VITE_PRESET_API_KEY_3 || "",
     hint: "Local Dev",
   },
   {
     id: "key_4",
-    label: "Local Dev Key",
+    label: "romrom",
     value: import.meta.env.VITE_PRESET_API_KEY_4 || "",
     hint: "Backup",
   },
