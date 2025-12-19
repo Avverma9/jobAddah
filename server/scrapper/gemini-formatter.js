@@ -37,8 +37,11 @@ Return ONLY JSON like:
 }
 ONLY JSON. No extra words. No markdown.`;
 
+    const key = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY;
+    if (!key) throw new Error('GEMINI API key not set in environment');
+
     const response = await axios.post(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=" + process.env.GEMINI_KEY,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=" + key,
       {
         contents: [
           {
