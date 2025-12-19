@@ -11,6 +11,7 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MONGO_URI = process.env.MONGO_URI;
 
