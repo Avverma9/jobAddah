@@ -1,5 +1,52 @@
-import { AlertCircle, Calendar, Clock, ChevronRight, Sparkles, Loader } from "lucide-react";
+import { AlertCircle, Calendar, Clock, ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+
+const ReminderSkeleton = () => {
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex flex-col max-h-[450px]">
+      {/* Header skeleton */}
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-rose-50/40 to-orange-50/40 dark:from-rose-950/20 dark:to-orange-950/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          <div className="space-y-1">
+            <div className="h-3 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-2 w-36 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="h-4 w-7 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+      </div>
+
+      {/* Body skeleton */}
+      <div className="overflow-y-auto p-2 space-y-3">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <div className="h-2 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          </div>
+
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900/40 dark:to-gray-900 overflow-hidden"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <div className="space-y-1 flex-1">
+                  <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-3 w-3/5 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-14 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+
+              <div className="flex items-center justify-between mt-2">
+                <div className="h-2 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                <div className="h-3 w-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const UrgentReminderSection = ({
   expiresToday,
@@ -30,15 +77,8 @@ export const UrgentReminderSection = ({
     }
   };
 
-  // Loading State - Minimal
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm h-48">
-        <Loader className="w-6 h-6 text-rose-500 animate-spin mb-2" />
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Checking deadlines...</p>
-      </div>
-    );
-  }
+  // Loading State - Skeleton
+  if (isLoading) return <ReminderSkeleton />;
 
   if (allUrgent.length === 0) return null;
 

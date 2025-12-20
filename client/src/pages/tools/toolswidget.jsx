@@ -58,11 +58,13 @@ const tools = [
   },
   {
     id: 5,
-    title: "Quiz",
-    fullTitle: "Skill Quiz",
-    description: "Practice MCQs.",
+    title: "Quiz MCQ",
+    fullTitle: "Play Quiz",
+    description: "Khelo aur Jeeto",
     icon: <BrainCircuit className="w-5 h-5 sm:w-6 sm:h-6" />,
-    status: "coming_soon",
+    status: "active",
+    href: "/jobsaddah-quiz-tools",
+    badge: "Earn 10rs",
     color: "purple",
   },
 ];
