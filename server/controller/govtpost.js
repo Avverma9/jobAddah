@@ -245,12 +245,22 @@ const getFavPosts = async (req, res) => {
 
 const getReminders = async (req, res) => {
   try {
+    // Scalability notes:
+    // - Don't load entire collection into memory.
+    // - Stream candidates with a cursor + small projection.
+    // - Limit candidates with a coarse DB-side $or filter, then do strict parsing in JS.
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const twoDaysLater = new Date(today);
-    twoDaysLater.setDate(twoDaysLater.getDate() + 2);
-    twoDaysLater.setHours(23, 59, 59, 999);
+    const daysWindowRaw = Number(req.query.days ?? 2);
+    const daysWindow = Number.isFinite(daysWindowRaw)
+      ? Math.min(Math.max(daysWindowRaw, 1), 30)
+      : 2;
+
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + daysWindow);
+    endDate.setHours(23, 59, 59, 999);
 
     const dateKeyPatterns = [
       "recruitment.importantDates.applicationLastDate",
@@ -267,127 +277,123 @@ const getReminders = async (req, res) => {
     const orConditions = dateKeyPatterns.map((field) => ({
       [field]: {
         $exists: true,
-        $ne: null,
+        $type: "string",
         $ne: "",
-        $ne: "Will Be Updated Here Soon",
-        $ne: "Available Soon",
-        $ne: "Notify Soon",
       },
     }));
 
-    const postsWithDates = await Post.find({
-      $or: orConditions,
-    }).lean();
+    // Only fetch minimal fields needed for reminder output + date extraction
+    const projection = {
+      _id: 1,
+      url: 1,
+      recruitment: 1,
+    };
+
+    const cursor = Post.find({ $or: orConditions }, projection)
+      .lean()
+      .cursor();
 
     const reminders = [];
 
-    const parseDate = (dateString) => {
+    // small helper optimized for repeated calls
+    const MONTHS = {
+      january: 0,
+      february: 1,
+      march: 2,
+      april: 3,
+      may: 4,
+      june: 5,
+      july: 6,
+      august: 7,
+      september: 8,
+      october: 9,
+      november: 10,
+      december: 11,
+    };
+
+    const parseDateFast = (dateString) => {
       if (!dateString || typeof dateString !== "string") return null;
-
       const trimmed = dateString.trim();
+      if (!trimmed) return null;
 
-      if (!isNaN(Date.parse(trimmed))) {
-        return new Date(trimmed);
+      // Ignore common placeholders early
+      const lower = trimmed.toLowerCase();
+      if (
+        lower.includes("will be updated") ||
+        lower.includes("available soon") ||
+        lower.includes("notify soon") ||
+        lower.includes("notify later")
+      ) {
+        return null;
       }
 
-      const dateRegex = /(\d{1,2})\s+(\w+)\s+(\d{4})/;
-      const match = trimmed.match(dateRegex);
+      const parsed = Date.parse(trimmed);
+      if (!Number.isNaN(parsed)) return new Date(parsed);
 
-      if (match) {
-        const months = {
-          january: 0,
-          february: 1,
-          march: 2,
-          april: 3,
-          may: 4,
-          june: 5,
-          july: 6,
-          august: 7,
-          september: 8,
-          october: 9,
-          november: 10,
-          december: 11,
-        };
-
-        const day = parseInt(match[1]);
-        const month = months[match[2].toLowerCase()];
-        const year = parseInt(match[3]);
-
-        if (month !== undefined && !isNaN(day) && !isNaN(year)) {
-          return new Date(year, month, day, 23, 59, 59, 999);
-        }
-      }
-
-      return null;
+      // e.g. "12 January 2025"
+      const m = trimmed.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+      if (!m) return null;
+      const day = Number(m[1]);
+      const month = MONTHS[m[2].toLowerCase()];
+      const year = Number(m[3]);
+      if (month === undefined || Number.isNaN(day) || Number.isNaN(year)) return null;
+      return new Date(year, month, day, 23, 59, 59, 999);
     };
 
-    const getNestedValue = (obj, path) => {
-      return path.split(".").reduce((acc, part) => acc?.[part], obj);
-    };
+    const getNestedValue = (obj, path) =>
+      path.split(".").reduce((acc, part) => acc?.[part], obj);
 
-    for (const post of postsWithDates) {
+    // Safety cap to protect node process in pathological cases
+    const HARD_REMINDER_CAP = 5000;
+
+    for (
+      let post = await cursor.next();
+      post != null;
+      post = await cursor.next()
+    ) {
       let dateValue = null;
       let usedKey = null;
 
       for (const keyPath of dateKeyPatterns) {
         const value = getNestedValue(post, keyPath);
+        if (typeof value === "string" && value.trim() !== "") {
+          const parsedDate = parseDateFast(value);
+          if (!parsedDate) continue;
+          if (parsedDate >= today && parsedDate <= endDate) {
+            dateValue = value;
+            usedKey = keyPath;
+            const daysLeft = Math.ceil(
+              (parsedDate - today) / (1000 * 60 * 60 * 24)
+            );
 
-        if (
-          value &&
-          typeof value === "string" &&
-          value.trim() !== "" &&
-          !value.toLowerCase().includes("will be updated") &&
-          !value.toLowerCase().includes("available soon") &&
-          !value.toLowerCase().includes("notify soon") &&
-          !value.toLowerCase().includes("notify later")
-        ) {
-          dateValue = value;
-          usedKey = keyPath;
-          break;
+            reminders.push({
+              _id: post._id,
+              title: post.recruitment?.title || "Untitled",
+              organization: post.recruitment?.organization?.name || "N/A",
+              applicationLastDate: dateValue,
+              daysLeft,
+              totalPosts: post.recruitment?.vacancyDetails?.totalPosts || 0,
+              url: post.url,
+              usedDateField: usedKey.split(".").pop(),
+            });
+            break;
+          }
         }
       }
 
-      if (!dateValue) continue;
-
-      try {
-        const parsedDate = parseDate(dateValue);
-
-        if (!parsedDate || isNaN(parsedDate.getTime())) {
-          continue;
-        }
-
-        if (parsedDate >= today && parsedDate <= twoDaysLater) {
-          const daysLeft = Math.ceil(
-            (parsedDate - today) / (1000 * 60 * 60 * 24)
-          );
-
-          reminders.push({
-            _id: post._id,
-            title: post.recruitment?.title || "Untitled",
-            organization: post.recruitment?.organization?.name || "N/A",
-            applicationLastDate: dateValue,
-            daysLeft,
-            totalPosts: post.recruitment?.vacancyDetails?.totalPosts || 0,
-            url: post.url,
-            usedDateField: usedKey.split(".").pop(),
-          });
-        }
-      } catch (error) {
-        console.error(`Date parsing error for post ${post._id}:`, error);
-        continue;
-      }
+      if (reminders.length >= HARD_REMINDER_CAP) break;
     }
 
-    const sortedReminders = reminders.sort((a, b) => a.daysLeft - b.daysLeft);
+    reminders.sort((a, b) => a.daysLeft - b.daysLeft);
 
     return res.status(200).json({
       success: true,
-      count: sortedReminders.length,
-      reminders: sortedReminders,
+      count: reminders.length,
+      reminders,
       message:
-        sortedReminders.length === 0
-          ? "No reminders within 2 days"
-          : `Found ${sortedReminders.length} reminders`,
+        reminders.length === 0
+          ? `No reminders within ${daysWindow} days`
+          : `Found ${reminders.length} reminders`,
     });
   } catch (error) {
     console.error("Error fetching reminders:", error);
