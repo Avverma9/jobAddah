@@ -18,6 +18,7 @@ import { LoaderProvider } from "./components/GlobalLoader";
 import TypingTest from "./pages/tools/typingTest";
 import PdfTool from "./pages/tools/pdfTool";
 import ResumeMaker from "./pages/tools/resumeMaker";
+import QuizApp from "./pages/tools/quizApp";
 function App() {
   return (
     <HelmetProvider>
@@ -55,6 +56,7 @@ function App() {
               <Route path="/jobsaddah-pdf-tools" element={<PdfTool />} />
               <Route path="/jobsaddah-resume-tools" element={< ResumeMaker/>} />
 
+              <Route path="/jobsaddah-quiz-tools" element={<QuizApp />} />
 
 
 

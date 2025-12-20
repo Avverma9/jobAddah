@@ -145,6 +145,29 @@ const sortLatestFirst = (list) => {
   return arr.sort((a, b) => getTimeValue(b) - getTimeValue(a));
 };
 
+const SectionSkeleton = () => (
+  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-pulse">
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+      <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700" />
+      <div className="space-y-2 flex-1">
+        <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-2 w-44 bg-gray-100 dark:bg-gray-800 rounded" />
+      </div>
+    </div>
+    <div className="p-4 space-y-3">
+      {Array.from({ length: 6 }).map((_, idx) => (
+        <div key={idx} className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-2 w-3/5 bg-gray-100 dark:bg-gray-800 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const QuickCard = ({ icon: Icon, title, id, color, jobData }) => {
   const colorMap = {
     orange:
@@ -222,6 +245,7 @@ export default function HomeScreen() {
 
   // Build job index for quick lookups
   const allJobsIndex = useMemo(() => {
+    if (isDynamicLoading) return new Map();
     const all = [
       ...dynamicSections.flatMap((s) => s.data || []),
       ...privateJobs,
@@ -244,6 +268,13 @@ export default function HomeScreen() {
 
   const showSearchDropdown = searchQuery.length > 0;
 
+  const latestTickerItems = useMemo(() => {
+    const firstSection = dynamicSections?.[0];
+    const data = firstSection?.data;
+    if (!Array.isArray(data) || data.length === 0) return [];
+    return data.slice(0, 5);
+  }, [dynamicSections]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
       <SEO
@@ -259,8 +290,8 @@ export default function HomeScreen() {
         <div className="animate-marquee whitespace-nowrap flex gap-8 items-center px-4">
           {isDynamicLoading ? (
             <span className="text-sm">Loading latest updates...</span>
-          ) : dynamicSections?.[0]?.data?.length > 0 ? (
-            dynamicSections[0].data.slice(0, 5).map((job, i) => (
+          ) : latestTickerItems.length > 0 ? (
+            latestTickerItems.map((job, i) => (
               <Link
                 key={i}
                 to={getPostLink(job.id)}
@@ -398,33 +429,36 @@ export default function HomeScreen() {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {!isDynamicLoading &&
-              dynamicSections.map((section, idx) => {
-                const shouldShowAd =
-                  (idx + 1) % 3 === 0 && idx < dynamicSections.length - 1;
-                return (
-                  <React.Fragment key={`${section.name}-${idx}`}>
-                    <SectionColumn
-                      title={section.name}
-                      icon={Briefcase}
-                      data={section.data}
-                      colorTheme={section.color}
-                      postType={section.postType}
-                      isLoading={false}
-                    />
-                    {shouldShowAd && (
-                      <div className="md:col-span-2 lg:col-span-3">
-                        <AdContainer
-                          placement="inFeed"
-                          pageType="homepage"
-                          format="fluid"
-                          className="my-6"
-                        />
-                      </div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+            {isDynamicLoading
+              ? Array.from({ length: 6 }).map((_, idx) => (
+                  <SectionSkeleton key={`section-skeleton-${idx}`} />
+                ))
+              : dynamicSections.map((section, idx) => {
+                  const shouldShowAd =
+                    (idx + 1) % 3 === 0 && idx < dynamicSections.length - 1;
+                  return (
+                    <React.Fragment key={`${section.name}-${idx}`}>
+                      <SectionColumn
+                        title={section.name}
+                        icon={Briefcase}
+                        data={section.data}
+                        colorTheme={section.color}
+                        postType={section.postType}
+                        isLoading={false}
+                      />
+                      {shouldShowAd && (
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <AdContainer
+                            placement="inFeed"
+                            pageType="homepage"
+                            format="fluid"
+                            className="my-6"
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
           </div>
 
           <AdContainer
