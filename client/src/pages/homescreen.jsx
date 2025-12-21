@@ -18,69 +18,9 @@ import Tools from "./tools/toolswidget";
 import MobileHomeScreen from "./mobile/MobileHomeScreen";
 import useIsMobile from "../hooks/useIsMobile";
 
-// Helper to extract path from URL (remove domain)
-const extractPath = (url) => {
-  if (!url) return "";
-  try {
-    // If it's a full URL, extract just the path
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      const urlObj = new URL(url);
-      return urlObj.pathname;
-    }
-    // Already a path
-    return url.startsWith("/") ? url : `/${url}`;
-  } catch {
-    return url.startsWith("/") ? url : `/${url}`;
-  }
-};
-
-const getPostLink = (idOrUrl) => {
-  if (!idOrUrl) return "#";
-  const val = idOrUrl.toString().trim();
-  // Pass path only with encodeURIComponent (no domain, no base64)
-  // API expects: /get-post/details?url=/some-path/
-  if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
-    const path = extractPath(val);
-    return `/post?url=${encodeURIComponent(path)}`;
-  }
-  return `/post?id=${val}`;
-};
-
-const normalizeJob = (job) => {
-  const id = job?.link || job?.url || job?.id || job?._id;
-  const title =
-    job?.recruitment?.title || job?.title || job?.postTitle || "Job Post";
-  const createdAt =
-    job?.createdAt ||
-    job?.recruitment?.createdAt ||
-    job?.date ||
-    job?.recruitment?.date ||
-    job?.updatedAt ||
-    null;
-
-  return { ...job, id, title, createdAt };
-};
-
-const SEARCH_DATE_PRIORITY = [
-  { key: "admitCardDate", label: "Admit Card" },
-  { key: "examDate", label: "Exam" },
-  { key: "applicationLastDate", label: "Last Date" },
-  { key: "applicationStartDate", label: "Start Date" },
-  { key: "notificationDate", label: "Notification" },
-];
-
-const formatDisplayDate = (value) => {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
+// Import shared utilities
+import { extractPath, getPostLink, normalizeJob, formatDisplayDate } from "../utils/helpers";
+import { SEARCH_DATE_PRIORITY } from "../constants";
 
 const buildHighlight = (importantDates = {}, fallbackDate) => {
   for (const entry of SEARCH_DATE_PRIORITY) {

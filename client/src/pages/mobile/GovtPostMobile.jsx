@@ -138,9 +138,16 @@ const EligibilitySection = ({ eligibility }) => {
   const getItemText = (item) => {
     if (typeof item === 'string') return item;
     if (item && typeof item === 'object') {
+      // Handle {name, criteria} format
+      if (item.name && item.criteria) return `${item.name}: ${item.criteria}`;
       // Handle {type, text} format
-      if (item.text) return item.text;
+      if (item.text) return typeof item.text === 'object' ? JSON.stringify(item.text) : item.text;
       if (item.type && item.text) return `${item.type}: ${item.text}`;
+      // Handle {label, text} format
+      if (item.label && item.text) return `${item.label}: ${typeof item.text === 'object' ? JSON.stringify(item.text) : item.text}`;
+      if (item.label) return item.label;
+      if (item.name) return item.name;
+      if (item.value) return typeof item.value === 'object' ? JSON.stringify(item.value) : item.value;
       // Fallback to JSON string for other objects
       return JSON.stringify(item);
     }
