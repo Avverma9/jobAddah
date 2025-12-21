@@ -1,8 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Layout, User, Briefcase, GraduationCap, Sparkles, Plus, Trash2, Printer, Palette, Linkedin, Mail, Phone, MapPin, FileText, Camera } from 'lucide-react';
+import { 
+  Download, Layout, User, Briefcase, GraduationCap, Sparkles, Plus, 
+  Trash2, Printer, Palette, Linkedin, Mail, Phone, MapPin, FileText, 
+  Camera, X, Globe, Github 
+} from 'lucide-react';
 import SEO from '../../util/SEO';
-import useIsMobile from '../../hooks/useIsMobile';
-import MobileLayout from '../../components/MobileLayout';
+
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return isMobile;
+};
+const MobileLayout = ({ children, title }) => (
+  <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="bg-white p-4 shadow-sm font-bold text-lg sticky top-0 z-10">{title}</div>
+    {children}
+  </div>
+);
 
 const HTML2PDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
 
@@ -279,12 +298,182 @@ const TemplateCreative = ({ data, themeColor }) => (
   </div>
 );
 
+const TemplateProfessional = ({ data, themeColor }) => (
+  <div className="bg-white h-full min-h-[1100px] text-slate-800 p-10 font-sans" id="resume-content">
+    <div className="border-b-4 pb-6 mb-8" style={{ borderColor: themeColor }}>
+      <div className="flex justify-between items-center">
+        <div>
+            <h1 className="text-4xl font-bold uppercase tracking-wide mb-2" style={{ color: themeColor }}>
+                {data.personal.name || 'Your Name'}
+            </h1>
+            <p className="text-lg font-medium text-slate-600 uppercase tracking-wider">
+                {data.personal.title || 'Professional Title'}
+            </p>
+        </div>
+        {data.personal.profilePic && (
+             <img src={data.personal.profilePic} alt="Profile" className="w-20 h-20 rounded-lg object-cover shadow-sm" />
+        )}
+      </div>
+      <div className="flex flex-wrap gap-4 mt-4 text-sm text-slate-500 font-medium">
+        {data.personal.phone && <div className="flex items-center gap-1"><Phone size={14}/> {data.personal.phone}</div>}
+        {data.personal.email && <div className="flex items-center gap-1"><Mail size={14}/> {data.personal.email}</div>}
+        {data.personal.location && <div className="flex items-center gap-1"><MapPin size={14}/> {data.personal.location}</div>}
+        {data.personal.linkedin && <div className="flex items-center gap-1"><Linkedin size={14}/> {data.personal.linkedin}</div>}
+      </div>
+    </div>
+
+    <div className="space-y-6">
+        {data.summary && (
+            <section>
+                <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-3 text-slate-400">Professional Profile</h3>
+                <p className="text-sm leading-6 text-slate-700 text-justify">{data.summary}</p>
+            </section>
+        )}
+
+        {data.experience.length > 0 && (
+            <section>
+                <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Experience</h3>
+                <div className="space-y-5">
+                    {data.experience.map((exp) => (
+                        <div key={exp.id}>
+                            <div className="flex justify-between items-baseline mb-1">
+                                <h4 className="font-bold text-base text-slate-800">{exp.role}</h4>
+                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-600">{exp.date}</span>
+                            </div>
+                            <div className="text-sm font-semibold text-slate-500 mb-2" style={{color: themeColor}}>{exp.company}</div>
+                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{exp.description}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        )}
+
+        <div className="grid grid-cols-2 gap-8">
+             {data.education.length > 0 && (
+                <section>
+                    <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Education</h3>
+                    <div className="space-y-4">
+                        {data.education.map((edu) => (
+                            <div key={edu.id}>
+                                <div className="font-bold text-slate-800 text-sm">{edu.degree}</div>
+                                <div className="text-xs text-slate-500">{edu.school}</div>
+                                <div className="text-xs text-slate-400 italic mt-1">{edu.date}</div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+             )}
+
+            {data.skills.length > 0 && (
+                <section>
+                    <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Technical Skills</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {data.skills.map((skill, index) => (
+                            <span key={index} className="px-2 py-1 border border-slate-200 rounded text-xs font-semibold text-slate-600">
+                                {skill}
+                            </span>
+                        ))}
+                    </div>
+                </section>
+            )}
+        </div>
+    </div>
+  </div>
+);
+
+const TemplateExecutive = ({ data, themeColor }) => (
+  <div className="flex h-full min-h-[1100px] bg-slate-100 font-sans" id="resume-content">
+      <div className="w-[30%] bg-slate-900 text-white p-6 flex flex-col gap-8">
+          <div className="text-center">
+               {data.personal.profilePic ? (
+                  <img src={data.personal.profilePic} alt="Profile" className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-slate-700" />
+               ) : (
+                  <div className="w-32 h-32 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl text-slate-600 font-bold">{data.personal.name?.[0]}</div>
+               )}
+               <h2 className="text-lg font-bold tracking-wide">Contact</h2>
+          </div>
+
+          <div className="space-y-4 text-sm text-slate-300">
+                {data.personal.email && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Email</span><span>{data.personal.email}</span></div>}
+                {data.personal.phone && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Phone</span><span>{data.personal.phone}</span></div>}
+                {data.personal.location && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Location</span><span>{data.personal.location}</span></div>}
+                {data.personal.linkedin && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">LinkedIn</span><span className="break-words">{data.personal.linkedin}</span></div>}
+          </div>
+
+          {data.skills.length > 0 && (
+              <div>
+                  <h2 className="text-lg font-bold tracking-wide border-b border-slate-700 pb-2 mb-4">Core Competencies</h2>
+                  <div className="flex flex-wrap gap-2">
+                      {data.skills.map((skill, idx) => (
+                          <span key={idx} className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">{skill}</span>
+                      ))}
+                  </div>
+              </div>
+          )}
+          
+          {data.education.length > 0 && (
+              <div>
+                  <h2 className="text-lg font-bold tracking-wide border-b border-slate-700 pb-2 mb-4">Education</h2>
+                  <div className="space-y-4">
+                    {data.education.map((edu) => (
+                        <div key={edu.id}>
+                            <div className="font-bold text-white text-sm">{edu.degree}</div>
+                            <div className="text-xs text-slate-400">{edu.school}</div>
+                            <div className="text-xs text-slate-500 mt-1">{edu.date}</div>
+                        </div>
+                    ))}
+                  </div>
+              </div>
+          )}
+      </div>
+
+      <div className="w-[70%] bg-white p-8">
+            <div className="mb-8 border-l-8 pl-6 py-2" style={{ borderColor: themeColor }}>
+                <h1 className="text-4xl font-bold text-slate-900 uppercase">{data.personal.name || 'Your Name'}</h1>
+                <p className="text-xl text-slate-500 uppercase tracking-widest mt-1">{data.personal.title || 'Executive Title'}</p>
+            </div>
+
+            {data.summary && (
+                <div className="mb-8">
+                    <h3 className="text-lg font-bold uppercase text-slate-800 mb-3 flex items-center gap-2">
+                        <span className="w-8 h-1 bg-slate-900"></span> Profile
+                    </h3>
+                    <p className="text-slate-600 leading-relaxed text-sm">{data.summary}</p>
+                </div>
+            )}
+
+            {data.experience.length > 0 && (
+                <div>
+                    <h3 className="text-lg font-bold uppercase text-slate-800 mb-6 flex items-center gap-2">
+                         <span className="w-8 h-1 bg-slate-900"></span> Professional Experience
+                    </h3>
+                    <div className="space-y-8">
+                        {data.experience.map((exp) => (
+                            <div key={exp.id} className="relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-xl text-slate-800">{exp.role}</h4>
+                                    <span className="font-bold text-sm bg-slate-100 px-3 py-1 rounded-full text-slate-600">{exp.date}</span>
+                                </div>
+                                <div className="text-md font-semibold mb-3 flex items-center gap-2" style={{ color: themeColor }}>
+                                    {exp.company}
+                                </div>
+                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{exp.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+      </div>
+  </div>
+);
+
 export default function ResumeMaker() {
-  const isMobile = useIsMobile(640);
+  const isMobile = useIsMobile();
   const [libLoaded, setLibLoaded] = useState(false);
   const [template, setTemplate] = useState('modern');
   const [themeColor, setThemeColor] = useState('#2563eb');
   const [activeTab, setActiveTab] = useState('editor');
+  const skillInputRef = useRef(null);
   
   const [resumeData, setResumeData] = useState({
     personal: {
@@ -377,6 +566,11 @@ export default function ResumeMaker() {
       ...prev,
       skills: prev.skills.filter(s => s !== skill)
     }));
+    setTimeout(() => {
+      if (skillInputRef.current) {
+        skillInputRef.current.focus();
+      }
+    }, 0);
   };
 
   const handleDownloadPDF = () => {
@@ -392,15 +586,9 @@ export default function ResumeMaker() {
     window.html2pdf().set(opt).from(element).save();
   };
 
-  const ResumeMakerContent = () => (
+  const content = (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col h-screen text-slate-800">
-      <SEO
-        title="Free Resume Maker Online | Create Professional CV - JobsAddah"
-        description="Create professional resume online for free. Multiple templates, easy customization, instant PDF download. Best resume builder for freshers and experienced professionals."
-        keywords="resume maker, free resume builder, online cv maker, professional resume, fresher resume, resume pdf download, resume template, curriculum vitae"
-        canonical="/tools/resume-maker"
-        section="Tools"
-      />
+      <SEO />
       <LoadScript src={HTML2PDF_URL} onLoad={() => setLibLoaded(true)} />
       
       <header className="bg-white p-4 shadow-sm border-b border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-4">
@@ -410,15 +598,21 @@ export default function ResumeMaker() {
         </div>
         
         <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 justify-center md:justify-end no-scrollbar">
-           <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
-             <button onClick={() => setTemplate('simple')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${template === 'simple' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Simple</button>
-             <button onClick={() => setTemplate('modern')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${template === 'modern' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Modern</button>
-             <button onClick={() => setTemplate('creative')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${template === 'creative' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Creative</button>
+           <div className="flex bg-gray-100 p-1 rounded-lg shrink-0 overflow-x-auto max-w-[200px] md:max-w-none">
+             {['simple', 'modern', 'creative', 'professional', 'executive'].map((t) => (
+                <button 
+                  key={t}
+                  onClick={() => setTemplate(t)} 
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize ${template === t ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  {t}
+                </button>
+             ))}
            </div>
            
            <div className="flex items-center gap-2 px-2 shrink-0">
              <div className="relative overflow-hidden w-8 h-8 rounded-full border-2 border-gray-200 cursor-pointer hover:border-blue-400 transition shadow-sm">
-               <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0" title="Change Theme Color"/>
+               <input type="color" value={themeColor || '#000000'} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0" title="Change Theme Color"/>
              </div>
            </div>
 
@@ -444,7 +638,7 @@ export default function ResumeMaker() {
               
               <div className="flex items-center gap-4 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
                 {resumeData.personal.profilePic ? (
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 group shadow-sm">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 group shadow-sm shrink-0">
                     <img src={resumeData.personal.profilePic} alt="Profile" className="w-full h-full object-cover" />
                     <button 
                       onClick={() => updatePersonal('profilePic', '')}
@@ -454,7 +648,7 @@ export default function ResumeMaker() {
                     </button>
                   </div>
                 ) : (
-                  <label className="w-16 h-16 rounded-full bg-white flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition shadow-sm">
+                  <label className="w-16 h-16 rounded-full bg-white flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition shadow-sm shrink-0">
                     <Camera size={20} className="text-gray-400" />
                     <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                   </label>
@@ -466,14 +660,17 @@ export default function ResumeMaker() {
               </div>
 
               <div className="space-y-4">
-                <input type="text" placeholder="Full Name" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.name} onChange={(e) => updatePersonal('name', e.target.value)} />
-                <input type="text" placeholder="Job Title (e.g. Software Engineer)" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.title} onChange={(e) => updatePersonal('title', e.target.value)} />
+                <input type="text" placeholder="Full Name" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.name || ''} onChange={(e) => updatePersonal('name', e.target.value)} />
+                <input type="text" placeholder="Job Title (e.g. Software Engineer)" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.title || ''} onChange={(e) => updatePersonal('title', e.target.value)} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input type="text" placeholder="Email" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.email} onChange={(e) => updatePersonal('email', e.target.value)} />
-                  <input type="text" placeholder="Phone" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.phone} onChange={(e) => updatePersonal('phone', e.target.value)} />
+                  <input type="text" placeholder="Email" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.email || ''} onChange={(e) => updatePersonal('email', e.target.value)} />
+                  <input type="text" placeholder="Phone" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.phone || ''} onChange={(e) => updatePersonal('phone', e.target.value)} />
                 </div>
-                <input type="text" placeholder="Location (City, Country)" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.location} onChange={(e) => updatePersonal('location', e.target.value)} />
-                <textarea placeholder="Professional Summary" rows="4" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none bg-gray-50 focus:bg-white transition" value={resumeData.summary} onChange={(e) => setResumeData({...resumeData, summary: e.target.value})}></textarea>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="text" placeholder="Location" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.location || ''} onChange={(e) => updatePersonal('location', e.target.value)} />
+                    <input type="text" placeholder="LinkedIn URL" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.linkedin || ''} onChange={(e) => updatePersonal('linkedin', e.target.value)} />
+                </div>
+                <textarea placeholder="Professional Summary" rows="4" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none bg-gray-50 focus:bg-white transition" value={resumeData.summary || ''} onChange={(e) => setResumeData({...resumeData, summary: e.target.value})}></textarea>
               </div>
             </div>
 
@@ -486,12 +683,12 @@ export default function ResumeMaker() {
                 {resumeData.experience.map((exp) => (
                   <div key={exp.id} className="p-4 border border-gray-200 rounded-xl bg-gray-50 group hover:shadow-sm transition">
                     <div className="flex justify-between mb-2">
-                       <input type="text" placeholder="Job Role" className="bg-transparent font-bold w-full outline-none text-slate-700 placeholder-slate-400" value={exp.role} onChange={(e) => updateExperience(exp.id, 'role', e.target.value)} />
-                       <button onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 transition"><Trash2 size={16}/></button>
+                        <input type="text" placeholder="Job Role" className="bg-transparent font-bold w-full outline-none text-slate-700 placeholder-slate-400" value={exp.role || ''} onChange={(e) => updateExperience(exp.id, 'role', e.target.value)} />
+                        <button onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 transition"><Trash2 size={16}/></button>
                     </div>
-                    <input type="text" placeholder="Company Name" className="w-full bg-transparent text-sm mb-2 outline-none text-slate-600" value={exp.company} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} />
-                    <input type="text" placeholder="Date (e.g. 2020 - Present)" className="w-full bg-transparent text-xs text-gray-500 mb-2 outline-none" value={exp.date} onChange={(e) => updateExperience(exp.id, 'date', e.target.value)} />
-                    <textarea placeholder="Job Description..." rows="2" className="w-full p-2 border border-gray-200 bg-white rounded-lg text-sm outline-none resize-none focus:ring-1 focus:ring-blue-400 transition" value={exp.description} onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}></textarea>
+                    <input type="text" placeholder="Company Name" className="w-full bg-transparent text-sm mb-2 outline-none text-slate-600" value={exp.company || ''} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} />
+                    <input type="text" placeholder="Date (e.g. 2020 - Present)" className="w-full bg-transparent text-xs text-gray-500 mb-2 outline-none" value={exp.date || ''} onChange={(e) => updateExperience(exp.id, 'date', e.target.value)} />
+                    <textarea placeholder="Job Description..." rows="2" className="w-full p-2 border border-gray-200 bg-white rounded-lg text-sm outline-none resize-none focus:ring-1 focus:ring-blue-400 transition" value={exp.description || ''} onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}></textarea>
                   </div>
                 ))}
                 {resumeData.experience.length === 0 && <p className="text-sm text-gray-400 italic text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">No experience added yet.</p>}
@@ -507,9 +704,9 @@ export default function ResumeMaker() {
                 {resumeData.education.map((edu) => (
                   <div key={edu.id} className="p-3 border border-gray-200 rounded-xl bg-gray-50 relative hover:shadow-sm transition">
                     <button onClick={() => removeEducation(edu.id)} className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition"><Trash2 size={16}/></button>
-                    <input type="text" placeholder="Degree / Course" className="w-full bg-transparent font-medium text-sm outline-none mb-1 text-slate-700" value={edu.degree} onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)} />
-                    <input type="text" placeholder="School / University" className="w-full bg-transparent text-sm text-gray-600 outline-none mb-1" value={edu.school} onChange={(e) => updateEducation(edu.id, 'school', e.target.value)} />
-                    <input type="text" placeholder="Year (e.g. 2022)" className="w-full bg-transparent text-xs text-gray-400 outline-none" value={edu.date} onChange={(e) => updateEducation(edu.id, 'date', e.target.value)} />
+                    <input type="text" placeholder="Degree / Course" className="w-full bg-transparent font-medium text-sm outline-none mb-1 text-slate-700" value={edu.degree || ''} onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)} />
+                    <input type="text" placeholder="School / University" className="w-full bg-transparent text-sm text-gray-600 outline-none mb-1" value={edu.school || ''} onChange={(e) => updateEducation(edu.id, 'school', e.target.value)} />
+                    <input type="text" placeholder="Year (e.g. 2022)" className="w-full bg-transparent text-xs text-gray-400 outline-none" value={edu.date || ''} onChange={(e) => updateEducation(edu.id, 'date', e.target.value)} />
                   </div>
                 ))}
               </div>
@@ -520,11 +717,12 @@ export default function ResumeMaker() {
               <div className="flex flex-wrap gap-2 mb-3">
                 {resumeData.skills.map((skill, idx) => (
                   <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-blue-100">
-                    {skill} <button onClick={() => removeSkill(skill)} className="hover:text-blue-900"><XIcon size={12}/></button>
+                    {skill} <button onMouseDown={(e) => e.preventDefault()} onClick={() => removeSkill(skill)} className="hover:text-blue-900"><X size={12}/></button>
                   </span>
                 ))}
               </div>
               <input 
+                ref={skillInputRef}
                 type="text" 
                 placeholder="Type skill & press Enter" 
                 className="w-full p-3 border border-gray-200 rounded-lg outline-none bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" 
@@ -545,6 +743,8 @@ export default function ResumeMaker() {
              {template === 'simple' && <TemplateSimple data={resumeData} themeColor={themeColor} />}
              {template === 'modern' && <TemplateModern data={resumeData} themeColor={themeColor} />}
              {template === 'creative' && <TemplateCreative data={resumeData} themeColor={themeColor} />}
+             {template === 'professional' && <TemplateProfessional data={resumeData} themeColor={themeColor} />}
+             {template === 'executive' && <TemplateExecutive data={resumeData} themeColor={themeColor} />}
           </div>
         </div>
       </div>
@@ -562,15 +762,11 @@ export default function ResumeMaker() {
 
   if (isMobile) {
     return (
-      <MobileLayout title="Resume Maker" showBack={true}>
-        <ResumeMakerContent />
+      <MobileLayout title="Resume Maker">
+        {content}
       </MobileLayout>
     );
   }
 
-  return <ResumeMakerContent />;
+  return content;
 }
-
-const XIcon = ({size}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-);
