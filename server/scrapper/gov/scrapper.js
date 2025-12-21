@@ -52,12 +52,25 @@ const formatWithAI = async (scrapedData) => {
       '6) If some data is missing in scrapedData, keep the key but leave it empty ("", {}, [], or 0 exactly as in the structure).\n' +
       "7) JSON MUST NOT contain comments, trailing commas, undefined, NaN, functions, or any explanation text.\n" +
       "8) Output MUST NOT be wrapped in markdown or any extra text. Return ONLY pure JSON.\n\n" +
-      "CRITICAL TITLE REPHRASING RULE (PLAGIARISM CHECK):\n" +
-      "- The 'title' field MUST be completely rephrased and unique.\n" +
-      "- Do NOT simply copy the scraped title.\n" +
-      "- Keep the core meaning (Organization, Post Name, Year) but change the sentence structure.\n" +
-      "- Example: If scraped title is 'UP Police Constable Recruitment 2025 Apply Online', change it to 'Uttar Pradesh Police Constable 2025 Vacancy - Online Application Open'.\n" +
-      "- Make it SEO-friendly and professional.\n\n" +
+      "⚠️ CRITICAL TITLE REPHRASING RULE (PLAGIARISM DETECTION - AUTOMATIC REJECTION) ⚠️\n" +
+      "⛔ WARNING: If you copy the title directly, the output will be REJECTED and DELETED immediately.\n" +
+      "⛔ WARNING: Any title with >70% similarity to the original will trigger AUTOMATIC STRIKE and PENALTY.\n" +
+      "⛔ WARNING: Repeated violations will result in PERMANENT BAN from the system.\n\n" +
+      "MANDATORY TITLE TRANSFORMATION RULES:\n" +
+      "- The 'title' field MUST be 100% ORIGINAL and COMPLETELY REPHRASED.\n" +
+      "- You MUST rewrite the title in your OWN WORDS with a DIFFERENT sentence structure.\n" +
+      "- You MUST NOT copy ANY phrase longer than 2-3 words from the original title.\n" +
+      "- Keep the core information (Organization, Post, Year) but express it DIFFERENTLY.\n" +
+      "- Make it SEO-friendly, professional, and engaging.\n" +
+      "- Use synonyms, different word order, and alternative phrasing.\n\n" +
+      "TITLE TRANSFORMATION EXAMPLES (MANDATORY TO FOLLOW THIS PATTERN):\n" +
+      "❌ BAD (Will be REJECTED): 'UP Police Constable Recruitment 2025 Apply Online'\n" +
+      "✅ GOOD (Accepted): 'Uttar Pradesh Police 2025: Constable Position - Online Applications Now Open'\n\n" +
+      "❌ BAD (Will be REJECTED): 'SSC CGL 2025 Notification Released Apply Online'\n" +
+      "✅ GOOD (Accepted): 'Staff Selection Commission Combined Graduate Level 2025 - Application Process Started'\n\n" +
+      "❌ BAD (Will be REJECTED): 'Railway Recruitment 2025 for 10000 Posts'\n" +
+      "✅ GOOD (Accepted): 'Indian Railways 2025: Massive Hiring Drive for Ten Thousand Positions'\n\n" +
+      "⚠️ FINAL WARNING: DO NOT COPY-PASTE THE TITLE. WRITE IT COMPLETELY NEW. THIS IS NON-NEGOTIABLE.\n\n" +
       "ALLOWED JSON STRUCTURE (YOU MUST FOLLOW THIS EXACTLY):\n" +
       "{\n" +
       '  "recruitment": {\n' +
