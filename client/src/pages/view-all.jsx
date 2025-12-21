@@ -19,6 +19,8 @@ import {
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
+import useIsMobile from "../hooks/useIsMobile";
+import { MobileLayout } from "../components/MobileLayout";
 
 const VISIT_STORAGE_KEY = "jobsaddah_recent_visits_v2";
 
@@ -45,9 +47,24 @@ const saveRecentVisit = (id) => {
   }
 };
 
+// Helper to extract path from URL (remove domain)
+const extractPath = (url) => {
+  if (!url) return "";
+  try {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const urlObj = new URL(url);
+      return urlObj.pathname;
+    }
+    return url.startsWith("/") ? url : `/${url}`;
+  } catch {
+    return url.startsWith("/") ? url : `/${url}`;
+  }
+};
+
 const getPostLink = (post) => {
-  if (post.link && (post.link.startsWith("http") || post.link.startsWith("https"))) {
-    return `/post?url=${post.link}`;
+  if (post.link && (post.link.startsWith("http") || post.link.startsWith("https") || post.link.startsWith("/"))) {
+    const path = extractPath(post.link);
+    return `/post?url=${encodeURIComponent(path)}`;
   }
   return `/post?id=${post._id}`;
 };
@@ -140,6 +157,7 @@ const getSEOData = (type) => {
 };
 
 export default function ViewAll() {
+  const isMobile = useIsMobile(640);
   const [allPosts, setAllPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -264,7 +282,8 @@ export default function ViewAll() {
   // Get SEO data based on postType
   const currentSEO = getSEOData(postType);
 
-  return (
+  // Main content component
+  const ViewAllContent = () => (
     <>
       {/* SEO Component - Render once at top level */}
       <SEO
@@ -276,7 +295,7 @@ export default function ViewAll() {
       />
 
       <div
-        className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900"
+        className={`min-h-screen bg-gray-50 dark:bg-gray-950 font-sans selection:bg-blue-100 dark:selection:bg-blue-900 ${isMobile ? 'pb-24' : ''}`}
         onClickCapture={handleGlobalClick}
       >
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
@@ -420,4 +439,16 @@ export default function ViewAll() {
       </div>
     </>
   );
+
+  // Return with mobile layout wrapper for mobile devices
+  if (isMobile) {
+    return (
+      <MobileLayout title={formatTitle(postType)} showBack={true}>
+        <ViewAllContent />
+      </MobileLayout>
+    );
+  }
+
+  // Desktop view
+  return <ViewAllContent />;
 }

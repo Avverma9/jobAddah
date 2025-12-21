@@ -12,16 +12,36 @@ import {
 import { fetchReminders } from "../../redux/slices/remindersSlice";
 import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
-import { encodeBase64Url } from "../util/encode-decode";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import Tools from "./tools/toolswidget";
+import MobileHomeScreen from "./mobile/MobileHomeScreen";
+import useIsMobile from "../hooks/useIsMobile";
+
+// Helper to extract path from URL (remove domain)
+const extractPath = (url) => {
+  if (!url) return "";
+  try {
+    // If it's a full URL, extract just the path
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const urlObj = new URL(url);
+      return urlObj.pathname;
+    }
+    // Already a path
+    return url.startsWith("/") ? url : `/${url}`;
+  } catch {
+    return url.startsWith("/") ? url : `/${url}`;
+  }
+};
 
 const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString().trim();
-  if (val.startsWith("http://") || val.startsWith("https://")) {
-    return `/post?url=${encodeBase64Url(val)}`;
+  // Pass path only with encodeURIComponent (no domain, no base64)
+  // API expects: /get-post/details?url=/some-path/
+  if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
+    const path = extractPath(val);
+    return `/post?url=${encodeURIComponent(path)}`;
   }
   return `/post?id=${val}`;
 };
@@ -192,7 +212,8 @@ const QuickCard = ({ icon: Icon, title, id, color, jobData }) => {
   );
 };
 
-export default function HomeScreen() {
+// Desktop HomeScreen content
+function DesktopHomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const dispatch = useDispatch();
@@ -513,4 +534,15 @@ export default function HomeScreen() {
       `}</style>
     </div>
   );
+}
+
+// Main export: switches between Mobile and Desktop HomeScreen
+export default function HomeScreen() {
+  const isMobile = useIsMobile(640);
+
+  if (isMobile) {
+    return <MobileHomeScreen />;
+  }
+
+  return <DesktopHomeScreen />;
 }

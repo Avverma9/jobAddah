@@ -138,6 +138,23 @@ export default function SEO({
 export function generateJobPostingSchema(job) {
   if (!job) return null;
   const { title = "Government Job Vacancy", organization = "Government of India", description = "", applicationStartDate, applicationLastDate, vacancies, salary, location = "India", qualification, link } = job;
+  
+  // Helper to extract path from URL (remove domain)
+  const extractPath = (url) => {
+    if (!url) return "";
+    try {
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        const urlObj = new URL(url);
+        return urlObj.pathname;
+      }
+      return url.startsWith("/") ? url : `/${url}`;
+    } catch {
+      return url.startsWith("/") ? url : `/${url}`;
+    }
+  };
+  
+  const urlPath = link ? extractPath(link) : "";
+  
   return {
     "@context": "https://schema.org",
     "@type": "JobPosting",
@@ -151,8 +168,8 @@ export function generateJobPostingSchema(job) {
     ...(vacancies && { totalJobOpenings: String(vacancies) }),
     ...(salary && { baseSalary: { "@type": "MonetaryAmount", currency: "INR", value: { "@type": "QuantitativeValue", value: salary, unitText: "MONTH" } } }),
     ...(qualification && { qualifications: qualification }),
-    url: link ? "https://jobsaddah.com/post?url=" + encodeURIComponent(link) : "https://jobsaddah.com",
-    identifier: { "@type": "PropertyValue", name: "JobsAddah", value: link || title },
+    url: urlPath ? "https://jobsaddah.com/post?url=" + encodeURIComponent(urlPath) : "https://jobsaddah.com",
+    identifier: { "@type": "PropertyValue", name: "JobsAddah", value: urlPath || title },
   };
 }
 

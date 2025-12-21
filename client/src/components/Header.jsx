@@ -20,7 +20,7 @@ import {
 
 const NAV_ITEMS = [
   { label: "Jobs", path: "/view-all?type=JOB", icon: Briefcase },
-  { label: "Private Jobs", path: "/not-available", icon: Award },
+  { label: "Private Jobs", path: "/private-jobs", icon: Award },
   { label: "Answer Key", path: "/view-all?type=ANSWER_KEY", icon: Key },
 ];
 

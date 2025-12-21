@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, X, Scissors, RefreshCw, FileDown, Plus, Image as ImageIcon, Trash2, Check, AlertCircle, Settings, Calculator } from 'lucide-react';
 import SEO from '../../util/SEO';
+import useIsMobile from '../../hooks/useIsMobile';
+import { MobileLayout } from '../../components/MobileLayout';
 
 const PDF_LIB_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 
@@ -189,6 +191,7 @@ const CropModal = ({ image, onClose, onCrop }) => {
 };
 
 export default function PdfTool() {
+  const isMobile = useIsMobile(640);
   const [libLoaded, setLibLoaded] = useState(false);
   const [images, setImages] = useState([]);
   const [quality, setQuality] = useState(0.8);
@@ -369,8 +372,8 @@ export default function PdfTool() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans" onPaste={(e) => {}}>
+  const PdfToolContent = () => (
+    <div className={`min-h-screen bg-gray-50 text-gray-800 font-sans ${isMobile ? 'pb-24' : ''}`} onPaste={(e) => {}}>
       <SEO
         title="Free Image to PDF Converter | Compress PDF Online - JobsAddah"
         description="Convert images to PDF online for free. Compress PDF size, merge multiple images into single PDF. Perfect for government job applications and document submissions."
@@ -591,4 +594,14 @@ export default function PdfTool() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileLayout title="PDF Tools" showBack={true}>
+        <PdfToolContent />
+      </MobileLayout>
+    );
+  }
+
+  return <PdfToolContent />;
 }

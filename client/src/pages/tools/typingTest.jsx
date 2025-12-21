@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCcw, Trophy, Zap, Settings, Type, AlignLeft, BookOpen, CheckCircle } from 'lucide-react';
 import { dataStore, funnyJokes, getFeedback } from '../../utils/typingAssest';
 import SEO from '../../util/SEO';
+import useIsMobile from '../../hooks/useIsMobile';
+import { MobileLayout } from '../../components/MobileLayout';
 
 
 
 export default function TypingTest() {
+  const isMobile = useIsMobile(640);
   const [config, setConfig] = useState({ type: 'sentences', difficulty: 'medium' });
   const [text, setText] = useState('');
   const [input, setInput] = useState('');
@@ -66,8 +69,8 @@ export default function TypingTest() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col items-center p-6 selection:bg-indigo-100 selection:text-indigo-900">
+  const TypingTestContent = () => (
+    <div className={`min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col items-center p-6 selection:bg-indigo-100 selection:text-indigo-900 ${isMobile ? 'pb-24' : ''}`}>
       <SEO
         title="Free Typing Test Online | Check Typing Speed WPM - JobsAddah"
         description="Free online typing test to check your typing speed in WPM. Practice typing for SSC, Railway, Bank exams. Improve accuracy with easy, medium, and hard levels."
@@ -235,4 +238,14 @@ export default function TypingTest() {
 
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileLayout title="Typing Test" showBack={true}>
+        <TypingTestContent />
+      </MobileLayout>
+    );
+  }
+
+  return <TypingTestContent />;
 }
