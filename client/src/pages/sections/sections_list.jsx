@@ -33,16 +33,6 @@ const ListItem = ({
   showTrending = false,
   showUrgent = false,
 }) => {
-  // --- Check if the post is new ---
-  const isNew = useMemo(() => {
-    if (!item.createdAt) return false;
-    const postDate = new Date(item.createdAt);
-    const now = new Date();
-    const differenceInTime = now.getTime() - postDate.getTime();
-    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
-    return differenceInDays <= 2;
-  }, [item.createdAt]);
-
   // Theme logic
   const getThemeColors = () => {
     switch (colorTheme) {
@@ -132,11 +122,6 @@ const ListItem = ({
               {showTrending && (
                 <span className="text-[9px] sm:text-[10px] font-bold bg-orange-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-0.5">
                   <TrendingUp size={8} /> HOT
-                </span>
-              )}
-              {isNew && (
-                <span className="text-[9px] sm:text-[10px] font-bold bg-red-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
-                  NEW
                 </span>
               )}
             </div>
