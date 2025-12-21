@@ -146,8 +146,21 @@ const formatWithAI = async (scrapedData) => {
 
 const scrapper = async (req, res) => {
   try {
-    const jobUrl = req.body.url;
-    if (!jobUrl) return res.status(400).json({ error: "URL is required" });
+    let jobUrl = req.body.url;
+    if (!jobUrl) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
+    // If URL is relative (e.g., /ssc-delhi-police...), prepend the base site URL
+    if (jobUrl.startsWith('/')) {
+      const siteConfig = await Site.findOne().sort({ createdAt: -1 });
+      if (!siteConfig || !siteConfig.url) {
+        return res.status(500).json({ error: "Base site URL is not configured" });
+      }
+      // Ensure base URL doesn't have a trailing slash before joining
+      const baseUrl = siteConfig.url.endsWith('/') ? siteConfig.url.slice(0, -1) : siteConfig.url;
+      jobUrl = baseUrl + jobUrl;
+    }
 
     const response = await axios.get(jobUrl, {
       headers: {
