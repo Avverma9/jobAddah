@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, Clock, AlertCircle, IndianRupee, Wallet, Play, RotateCcw, CheckCircle } from 'lucide-react';
-import { gkQuestions } from '../../util/quiz';
+import { getShuffledQuestions } from '../../util/quiz';
 import useIsMobile from '../../hooks/useIsMobile';
 import { MobileLayout } from '../../components/MobileLayout';
 
@@ -10,12 +10,13 @@ const TIME_PER_QUESTION = 10;
 const REWARD_AMOUNT = 10;
 
 // --- QUESTION GENERATOR ---
-// 100 Questions generate karne ke liye hum 20 GK aur 80 Math questions mix karenge
+// 500 Questions generate karne ke liye hum GK aur Math questions mix karenge
 const generateQuestions = () => {
- 
+  // Get shuffled GK questions with randomized options
+  const shuffledGkQuestions = getShuffledQuestions();
 
   // Generate math questions to fill the rest up to 500
-  const remainingCount = 500 - gkQuestions.length;
+  const remainingCount = 500 - shuffledGkQuestions.length;
   const mathQuestions = [];
   for (let i = 0; i < remainingCount; i++) {
     const a = Math.floor(Math.random() * 30) + 1; // Slightly harder numbers
@@ -38,7 +39,7 @@ const generateQuestions = () => {
     });
   }
 
-  return [...gkQuestions, ...mathQuestions];
+  return [...shuffledGkQuestions, ...mathQuestions];
 };
 
 export default function QuizApp() {

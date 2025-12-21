@@ -1,4 +1,22 @@
- export const  gkQuestions = [
+// Helper function to shuffle array (Fisher-Yates shuffle algorithm)
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Function to shuffle options for all questions
+const shuffleQuizOptions = (questions) => {
+  return questions.map(question => ({
+    ...question,
+    options: shuffleArray(question.options)
+  }));
+};
+
+export const  gkQuestions = [
   { q: "Rutherford scattering experiment se atom ke kis part ka pata chala?", options: ["Nucleus", "Electron shell", "Neutron cloud", "Valence band"], ans: "Nucleus" },
   { q: "Planck constant ki SI unit kya hoti hai?", options: ["J·s", "N·m", "W·s", "C·V"], ans: "J·s" },
   { q: "p-n junction diode ka principal effect kya hai?", options: ["Rectification", "Amplification", "Induction", "Capacitance increase"], ans: "Rectification" },
@@ -12,7 +30,7 @@
   { q: "Coulomb’s law kis force ko describe karta hai?", options: ["Electrostatic", "Gravitational", "Frictional", "Buoyant"], ans: "Electrostatic" },
 
   { q: "SI unit of pressure?", options: ["Pascal", "Joule", "Newton", "Watt"], ans: "Pascal" },
-  { q: "Work done ka SI unit?", options: ["Joule", "Watt", "Newton", "Pascal"], ans: "Joule" },
+  { q: "Work done ka SI unit?", options: ["Joaule", "Watt", "Newton", "Pascal"], ans: "Joule" },
   { q: "Power ka SI unit?", options: ["Watt", "Joule", "Ampere", "Tesla"], ans: "Watt" },
   { q: "Resistivity ki SI unit?", options: ["Ω·m", "Ω/m", "m/Ω", "S·m"], ans: "Ω·m" },
   { q: "Newton ka third law kis baat ko state karta hai?", options: ["Action-Reaction equal & opposite", "F = ma", "Energy conserved", "Entropy increases"], ans: "Action-Reaction equal & opposite" },
@@ -591,3 +609,6 @@
   { q: "Analogy: Photosynthesis : Chlorophyll :: Respiration : ?", options: ["Mitochondria", "Chloroplast", "Ribosome", "Nucleus"], ans: "Mitochondria" },
   { q: "Syllogism: All mammals are animals. All dogs are mammals. Conclusion?", options: ["All dogs are animals", "All animals are dogs", "No dog is animal", "Some dogs are not animals"], ans: "All dogs are animals" },
 ];
+
+// Export shuffled questions for use in quiz
+export const getShuffledQuestions = () => shuffleQuizOptions(gkQuestions);
