@@ -31,11 +31,13 @@ const getPostLink = (idOrUrl) => {
   if (!idOrUrl) return "#";
   const val = idOrUrl.toString().trim();
   
-  // If it's a URL (full or path), extract path and encode
+  // If it's a URL (full or path), use url parameter
   if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
     const path = extractPath(val);
     return `/post?url=${encodeURIComponent(path)}`;
   }
+  
+  // For MongoDB ObjectId or other IDs, use id parameter
   return `/post?id=${val}`;
 };
 
@@ -169,7 +171,7 @@ const ExpiringSoonSection = ({ reminders, loading }) => {
         {allReminders.slice(0, 10).map((reminder, idx) => (
           <Link
             key={idx}
-            to={getPostLink(reminder._id || reminder.id || reminder.url)}
+            to={getPostLink(reminder.url || reminder.link || reminder._id || reminder.id)}
             className="snap-start shrink-0 w-[280px] bg-gradient-to-br from-white to-red-50 p-4 rounded-xl border border-red-100 shadow-sm flex flex-col justify-between h-[130px]"
           >
             <div>
@@ -520,7 +522,7 @@ const DeadlinesView = ({ reminders, loading }) => {
         allReminders.map((reminder, idx) => (
           <Link
             key={idx}
-            to={getPostLink(reminder._id || reminder.id || reminder.url)}
+            to={getPostLink(reminder.url || reminder.link || reminder._id || reminder.id)}
             className="block bg-gradient-to-br from-white to-orange-50 p-4 rounded-xl border border-orange-100 shadow-sm"
           >
             <div className="flex justify-between items-start mb-2">
