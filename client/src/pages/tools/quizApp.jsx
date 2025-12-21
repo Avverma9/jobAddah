@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, Clock, AlertCircle, IndianRupee, Wallet, Play, RotateCcw, CheckCircle } from 'lucide-react';
 import { gkQuestions } from '../../util/quiz';
+import useIsMobile from '../../hooks/useIsMobile';
+import { MobileLayout } from '../../components/MobileLayout';
 
 // --- GAME CONFIGURATION ---
 const WINNING_SCORE = 20;
@@ -40,6 +42,7 @@ const generateQuestions = () => {
 };
 
 export default function QuizApp() {
+  const isMobile = useIsMobile(640);
   const [gameState, setGameState] = useState('start'); // start, playing, won, upi_input, success, gameover
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -291,8 +294,8 @@ export default function QuizApp() {
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-slate-200 flex items-center justify-center font-sans p-4">
+  const QuizContent = () => (
+    <div className={`min-h-screen bg-slate-200 flex items-center justify-center font-sans p-4 ${isMobile ? 'pb-24' : ''}`}>
       {/* Mobile Frame Container */}
       <div className="w-full max-w-md bg-slate-50 shadow-2xl rounded-3xl overflow-hidden min-h-[650px] flex flex-col items-center justify-center relative border border-white">
         {/* Decorative Status Bar Area */}
@@ -307,4 +310,14 @@ export default function QuizApp() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileLayout title="Quiz App" showBack={true}>
+        <QuizContent />
+      </MobileLayout>
+    );
+  }
+
+  return <QuizContent />;
 }

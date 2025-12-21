@@ -5,6 +5,8 @@ import {
   X, Layout, Printer, RotateCcw, Wand2, MousePointer2, Undo2,
   ArrowRightLeft, ArrowUpDown, Grid3X3, Type, Calendar, Save
 } from 'lucide-react';
+import useIsMobile from '../../hooks/useIsMobile';
+import { MobileLayout } from '../../components/MobileLayout';
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
@@ -130,6 +132,7 @@ const getClipboardImage = (e, callback) => {
 };
 
 export default function ImageEditor() {
+  const isMobile = useIsMobile(640);
   const [activeTab, setActiveTab] = useState('photo-maker');
   const [sharedImage, setSharedImage] = useState(null); 
 
@@ -155,8 +158,8 @@ export default function ImageEditor() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-2 md:p-6 font-sans text-slate-900 dark:text-slate-100">
+  const ImageEditorContent = () => (
+    <div className={`min-h-screen bg-gray-50 dark:bg-slate-900 p-2 md:p-6 font-sans text-slate-900 dark:text-slate-100 ${isMobile ? 'pb-24' : ''}`}>
       <div className="max-w-6xl mx-auto">
         <header className="mb-6 text-center">
           <h1 className="text-2xl md:text-4xl font-extrabold text-slate-800 dark:text-white mb-2 tracking-tight">Image Master Suite</h1>
@@ -192,6 +195,16 @@ export default function ImageEditor() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileLayout title="Image Tools" showBack={true}>
+        <ImageEditorContent />
+      </MobileLayout>
+    );
+  }
+
+  return <ImageEditorContent />;
 }
 
 const PhotoMakerTool = ({ sharedImage, setSharedImage }) => {

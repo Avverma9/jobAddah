@@ -24,6 +24,9 @@ import { decryptResponse } from "../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
 import { useGlobalLoader } from "../components/GlobalLoader";
 import SEO, { generateJobPostingSchema } from "../util/SEO";
+import useIsMobile from "../hooks/useIsMobile";
+import { MobileLayout } from "../components/MobileLayout";
+import GovtPostMobile from "./mobile/GovtPostMobile";
 
 // ✅ Common handler: encrypted OR normal JSON
 const parseApiResponse = async (res) => {
@@ -41,6 +44,7 @@ const PostDetails = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const isMobile = useIsMobile(640);
 
   const query = useQuery();
   const navigate = useNavigate();
@@ -72,8 +76,8 @@ const PostDetails = () => {
 
       try {
         await withLoader(async () => {
-          // Build path relative to configured baseUrl
-          const urlParam = encodeURIComponent(paramUrl || paramId);
+          // Pass URL directly without extra encoding - already encoded in URL params
+          const urlParam = paramUrl || paramId;
           const result = await api.get(`/get-post/details?url=${urlParam}`);
           const validData = result?.data || result?.job || result;
 
@@ -94,13 +98,34 @@ const PostDetails = () => {
     fetchData();
   }, [paramUrl, paramId, withLoader]);
 
-  if (loading) return <LoadingSkeleton />;
-  if (error) return <ErrorScreen error={error} navigate={navigate} />;
-  if (!data)
-    return <ErrorScreen error="No data available" navigate={navigate} />;
+  // Loading and error states with mobile support
+  if (loading) {
+    return isMobile ? (
+      <MobileLayout title="Loading..." showBack={true}>
+        <LoadingSkeleton />
+      </MobileLayout>
+    ) : <LoadingSkeleton />;
+  }
+  
+  if (error) {
+    return isMobile ? (
+      <MobileLayout title="Error" showBack={true}>
+        <ErrorScreen error={error} navigate={navigate} />
+      </MobileLayout>
+    ) : <ErrorScreen error={error} navigate={navigate} />;
+  }
+  
+  if (!data) {
+    return isMobile ? (
+      <MobileLayout title="Not Found" showBack={true}>
+        <ErrorScreen error="No data available" navigate={navigate} />
+      </MobileLayout>
+    ) : <ErrorScreen error="No data available" navigate={navigate} />;
+  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
+  // Main content component
+  const PostContent = () => (
+    <>
       <SEO
         title={`${data.title} | Recruitment 2025 - JobsAddah`}
         description={`${data.title} Recruitment 2025 - Check eligibility, vacancy details, important dates, application process. Apply online for ${data.organization || 'government job'} vacancy at JobsAddah.`}
@@ -121,9 +146,8 @@ const PostDetails = () => {
           link: paramUrl || paramId
         })}
       />
-      <Header />
 
-      <main className="container mx-auto px-2 py-6 max-w-5xl">
+      <main className={`container mx-auto px-2 py-6 max-w-5xl ${isMobile ? 'pb-24' : ''}`}>
         {/* Top Banner Ad */}
         <AdContainer 
           placement="banner" 
@@ -466,6 +490,18 @@ const PostDetails = () => {
           display: none;
         }
       `}</style>
+    </>
+  );
+
+  // Return with GovtPostMobile for mobile devices
+  if (isMobile) {
+    return <GovtPostMobile post={data} />;
+  }
+
+  // Desktop view
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
+      <PostContent />
     </div>
   );
 };

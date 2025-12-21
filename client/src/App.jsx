@@ -19,18 +19,22 @@ import TypingTest from "./pages/tools/typingTest";
 import PdfTool from "./pages/tools/pdfTool";
 import ResumeMaker from "./pages/tools/resumeMaker";
 import QuizApp from "./pages/tools/quizApp";
+import useIsMobile from "./hooks/useIsMobile";
+
 function App() {
+  const isMobile = useIsMobile(640);
+
   return (
     <HelmetProvider>
       <LoaderProvider>
         <Router>
           <ScrollToTop />
 
-          {/* Header always on top */}
-          <Header />
+          {/* Header only for desktop */}
+          {!isMobile && <Header />}
 
-          {/* Main content — HEADER HEIGHT OFFSET */}
-          <main className="pt-16 min-h-screen bg-gray-50 dark:bg-gray-950">
+          {/* Main content — HEADER HEIGHT OFFSET only for desktop */}
+          <main className={`min-h-screen bg-gray-50 dark:bg-gray-950 ${!isMobile ? 'pt-16' : ''}`}>
             <ConsentBanner />
 
             <Routes>
@@ -43,7 +47,7 @@ function App() {
               <Route path="/post" element={<PostDetail />} />
               <Route path="/view-all" element={<ViewAll />} />
               <Route path="/private-jobs" element={<PrivateJobs />} />
-              <Route path="/not-available" element={<NotAvailable />} />
+              {/* <Route path="/not-available" element={<NotAvailable />} /> */}
 
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/contact-us" element={<ContactUs />} />
@@ -65,7 +69,8 @@ function App() {
             </Routes>
           </main>
 
-          <Footer />
+          {/* Footer only for desktop */}
+          {!isMobile && <Footer />}
         </Router>
       </LoaderProvider>
     </HelmetProvider>

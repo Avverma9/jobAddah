@@ -943,7 +943,7 @@ export const ErrorScreen = ({ error, navigate }) => (
     <div className="bg-red-50 p-4 rounded-full mb-4">
       <AlertCircle size={40} className="text-red-500" />
     </div>
-    <h2 className="text-xl font-bold text-slate-800 mb-2">Oops! Something went wrong</h2>
+    <h2 className="text-xl font-bold text-slate-800 mb-2">We are working on it</h2>
     <p className="text-slate-600 mb-6 max-w-md">{error || "We couldn't load the recruitment details. Please try again later."}</p>
     <button
       onClick={() => navigate(-1)}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Download, Layout, User, Briefcase, GraduationCap, Sparkles, Plus, Trash2, Printer, Palette, Linkedin, Mail, Phone, MapPin, FileText, Camera } from 'lucide-react';
 import SEO from '../../util/SEO';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileLayout from '../../components/MobileLayout';
 
 const HTML2PDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
 
@@ -278,6 +280,7 @@ const TemplateCreative = ({ data, themeColor }) => (
 );
 
 export default function ResumeMaker() {
+  const isMobile = useIsMobile(640);
   const [libLoaded, setLibLoaded] = useState(false);
   const [template, setTemplate] = useState('modern');
   const [themeColor, setThemeColor] = useState('#2563eb');
@@ -389,7 +392,7 @@ export default function ResumeMaker() {
     window.html2pdf().set(opt).from(element).save();
   };
 
-  return (
+  const ResumeMakerContent = () => (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col h-screen text-slate-800">
       <SEO
         title="Free Resume Maker Online | Create Professional CV - JobsAddah"
@@ -556,6 +559,16 @@ export default function ResumeMaker() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileLayout title="Resume Maker" showBack={true}>
+        <ResumeMakerContent />
+      </MobileLayout>
+    );
+  }
+
+  return <ResumeMakerContent />;
 }
 
 const XIcon = ({size}) => (
