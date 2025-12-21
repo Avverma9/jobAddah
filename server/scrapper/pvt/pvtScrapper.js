@@ -48,7 +48,7 @@ const formatWithAI = async (scrapedData) => {
       generationConfig: { responseMimeType: "application/json" },
     });
 
-   const prompt = `
+    const prompt = `
 You are an AI job-data extraction engine used inside a Node.js backend.
 
 Your task is to extract ONLY structured job information from raw scraped webpage content.
@@ -159,7 +159,6 @@ WHAT NOT TO EXTRACT
 Return ONLY the JSON object.
 If any rule is violated, the response is invalid.
 `;
-
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -402,7 +401,6 @@ const scrapper = async (req, res) => {
       { upsert: true, new: true }
     );
 
-
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -416,8 +414,8 @@ const scrapper = async (req, res) => {
 
 const getCategories = async (req, res) => {
   try {
-    const rawUrl = req.body.url;
-
+    // const rawUrl = req.body.url;
+    const rawUrl = "https://pvtjob.in"; // Default URL for categories
     const targetUrl = ensureProtocol(rawUrl);
     if (!targetUrl) return res.status(400).json({ error: "Invalid URL" });
 
@@ -464,8 +462,6 @@ const getCategories = async (req, res) => {
       }
     });
 
-
-    
     const uniqueCategories = [
       ...new Map(categories.map((i) => [i.link, i])).values(),
     ];
@@ -503,7 +499,7 @@ const scrapeCategory = async (req, res) => {
     // Look for links in main article/content areas
     const mainContent = $("main, article, .content, .posts, .container");
     const ignoreSelectors = "nav, footer, .menu, .sidebar, .header";
-    
+
     mainContent.find("a").each((_, el) => {
       // Skip if link is in ignored sections
       const parent = $(el).closest(ignoreSelectors);
@@ -511,7 +507,7 @@ const scrapeCategory = async (req, res) => {
 
       const title = cleanText($(el).text());
       const link = $(el).attr("href");
-      
+
       // Filter: title must exist, be > 10 chars, have href, and NOT be a category/footer link
       if (!title || title.length <= 10 || !link) return;
 
@@ -525,8 +521,10 @@ const scrapeCategory = async (req, res) => {
         "/about/",
         "/sitemap",
       ];
-      
-      const isBlocked = blockedPatterns.some(pattern => link.includes(pattern));
+
+      const isBlocked = blockedPatterns.some((pattern) =>
+        link.includes(pattern)
+      );
       if (isBlocked) return;
 
       try {
