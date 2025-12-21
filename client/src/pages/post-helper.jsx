@@ -591,6 +591,25 @@ export const extractEligibility = (elig) => {
   if (!elig) return [];
   if (typeof elig === "string") return [{ type: "text", text: elig }];
 
+  // If it's an array, process each item
+  if (Array.isArray(elig)) {
+    return elig.map(item => {
+      if (typeof item === "string") return { type: "listItem", text: item };
+      // Handle object with name/criteria format
+      if (typeof item === "object" && item !== null) {
+        if (item.name && item.criteria) {
+          return { type: "item", label: item.name, text: item.criteria };
+        }
+        if (item.name || item.text || item.value) {
+          return { type: "listItem", text: item.name || item.text || item.value };
+        }
+        // Fallback: stringify the object
+        return { type: "listItem", text: JSON.stringify(item) };
+      }
+      return { type: "listItem", text: String(item) };
+    });
+  }
+
   // Simple description keys
   const descKeys = ["description", "educationQualification", "educationalQualification", "Education Qualification", "qualification", "education", "Criteria"];
   for (const key of descKeys) {
@@ -598,7 +617,16 @@ export const extractEligibility = (elig) => {
           return [{ type: "text", text: elig[key] }];
       }
       if (elig[key] && Array.isArray(elig[key])) {
-          return elig[key].map(item => ({ type: "listItem", text: item }));
+          return elig[key].map(item => {
+            if (typeof item === "string") return { type: "listItem", text: item };
+            if (typeof item === "object" && item !== null) {
+              if (item.name && item.criteria) {
+                return { type: "item", label: item.name, text: item.criteria };
+              }
+              return { type: "listItem", text: item.name || item.text || JSON.stringify(item) };
+            }
+            return { type: "listItem", text: String(item) };
+          });
       }
   }
 
@@ -612,7 +640,10 @@ export const extractEligibility = (elig) => {
       if (value && typeof value === "string") {
         result.push({ type: "info", text: value });
       } else if (Array.isArray(value)) {
-         value.forEach(v => result.push({ type: "info", text: v }));
+         value.forEach(v => {
+           if (typeof v === "string") result.push({ type: "info", text: v });
+           else if (typeof v === "object" && v !== null) result.push({ type: "info", text: v.name || v.text || JSON.stringify(v) });
+         });
       }
       return;
     }
@@ -627,10 +658,28 @@ export const extractEligibility = (elig) => {
     if (Array.isArray(value)) {
       result.push({ type: "header", label: label });
       value.forEach((item) => {
-        result.push({ type: "listItem", text: item });
+        if (typeof item === "string") {
+          result.push({ type: "listItem", text: item });
+        } else if (typeof item === "object" && item !== null) {
+          // Handle {name, criteria} format
+          if (item.name && item.criteria) {
+            result.push({ type: "item", label: item.name, text: item.criteria });
+          } else {
+            result.push({ type: "listItem", text: item.name || item.text || item.value || JSON.stringify(item) });
+          }
+        } else {
+          result.push({ type: "listItem", text: String(item) });
+        }
       });
     } else if (typeof value === "string") {
       result.push({ type: "item", label: label, text: value });
+    } else if (typeof value === "object" && value !== null) {
+      // Handle nested object
+      if (value.name && value.criteria) {
+        result.push({ type: "item", label: value.name, text: value.criteria });
+      } else {
+        result.push({ type: "item", label: label, text: value.name || value.text || JSON.stringify(value) });
+      }
     }
   });
 

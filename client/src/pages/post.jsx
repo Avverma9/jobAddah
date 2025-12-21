@@ -12,7 +12,7 @@ import {
   Download,
 } from "lucide-react";
 import { baseUrl } from "../util/baseUrl";
-import api from '../util/apiClient';
+import api from "../util/apiClient";
 import Header from "../components/Header";
 import {
   ErrorScreen,
@@ -58,38 +58,93 @@ const PostDetails = () => {
       setLoading(true);
       setError(null);
 
-      let fetchUrl = "";
-
-      if (paramUrl) {
-        fetchUrl = `${baseUrl}/get-post/details?url=${paramUrl}`;
-      } else if (paramId) {
-        if (paramId.includes("http")) {
-          fetchUrl = `${baseUrl}/get-post/details?url=${paramId}`;
-        } else {
-          fetchUrl = `${baseUrl}/get-post/details?url=${paramId}`;
-        }
-      } else {
+      if (!paramUrl && !paramId) {
         setError("Invalid parameters");
         setLoading(false);
         return;
       }
 
-      try {
-        await withLoader(async () => {
-          // Pass URL directly without extra encoding - already encoded in URL params
-          const urlParam = paramUrl || paramId;
-          const result = await api.get(`/get-post/details?url=${urlParam}`);
-          const validData = result?.data || result?.job || result;
+      const urlParam = paramUrl || paramId;
 
-          if (validData) {
+      /**
+       * Fetch post details from primary API
+       * @returns {Promise<Object|null>} Post data or null
+       */
+      const fetchFromPrimaryAPI = async () => {
+        try {
+          const result = await api.get(`/get-post/details?url=${urlParam}`);
+          return result?.data || result?.job || result;
+        } catch (error) {
+          if (error?.response?.status === 404) {
+            return null; // Not found, will trigger scraper
+          }
+          throw error; // Other errors should be thrown
+        }
+      };
+
+      /**
+       * Trigger scraper to fetch and save post data
+       * @returns {Promise<{success: boolean, status: number}>}
+       */
+      const triggerScraper = async () => {
+        try {
+          console.log("🔄 Triggering scraper for URL:", urlParam);
+          const response = await api.post(`/scrapper/scrape-complete`, {
+            url: urlParam,
+          });
+          
+          const status = response?.status || response?.statusCode || 200;
+          return { success: status === 200 || status === 201, status };
+        } catch (error) {
+          console.error("❌ Scraper failed:", error);
+          return { success: false, status: error?.response?.status || 500 };
+        }
+      };
+
+      try {
+        await withLoader(
+          async () => {
+            // Step 1: Try to fetch from primary API
+            let validData = await fetchFromPrimaryAPI();
+
+            // Step 2: If not found (404), trigger scraper
+            if (!validData) {
+              console.log("📭 Post not found in database. Triggering scraper...");
+              
+              const scraperResult = await triggerScraper();
+              
+              // Step 3: If scraper succeeded (200/201), retry primary API
+              if (scraperResult.success) {
+                console.log("✅ Scraper completed successfully. Fetching fresh data...");
+                
+                // Wait a bit for DB to update (optional, adjust as needed)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Retry primary API
+                validData = await fetchFromPrimaryAPI();
+                
+                if (!validData) {
+                  throw new Error("Data scraped but not available yet. Please refresh.");
+                }
+              } else {
+                throw new Error(`Failed to scrape data (Status: ${scraperResult.status})`);
+              }
+            }
+
+            // Step 4: Validate and extract data
+            if (!validData || (typeof validData === "object" && Object.keys(validData).length === 0)) {
+              throw new Error("No valid data received");
+            }
+
             const extracted = extractRecruitmentData(validData);
             setData(extracted);
-          } else {
-            throw new Error("No data found");
-          }
-        }, "Loading job details...", 50);
+          },
+          "Loading job details...",
+          50
+        );
       } catch (err) {
-        setError(err.message);
+        console.error("Error fetching post:", err);
+        setError(err.message || "Failed to load post details");
       } finally {
         setLoading(false);
       }
@@ -104,23 +159,29 @@ const PostDetails = () => {
       <MobileLayout title="Loading..." showBack={true}>
         <LoadingSkeleton />
       </MobileLayout>
-    ) : <LoadingSkeleton />;
+    ) : (
+      <LoadingSkeleton />
+    );
   }
-  
+
   if (error) {
     return isMobile ? (
       <MobileLayout title="Error" showBack={true}>
         <ErrorScreen error={error} navigate={navigate} />
       </MobileLayout>
-    ) : <ErrorScreen error={error} navigate={navigate} />;
+    ) : (
+      <ErrorScreen error={error} navigate={navigate} />
+    );
   }
-  
+
   if (!data) {
     return isMobile ? (
       <MobileLayout title="Not Found" showBack={true}>
         <ErrorScreen error="No data available" navigate={navigate} />
       </MobileLayout>
-    ) : <ErrorScreen error="No data available" navigate={navigate} />;
+    ) : (
+      <ErrorScreen error="No data available" navigate={navigate} />
+    );
   }
 
   // Main content component
@@ -128,34 +189,49 @@ const PostDetails = () => {
     <>
       <SEO
         title={`${data.title} | Recruitment 2025 - JobsAddah`}
-        description={`${data.title} Recruitment 2025 - Check eligibility, vacancy details, important dates, application process. Apply online for ${data.organization || 'government job'} vacancy at JobsAddah.`}
-        keywords={`${data.title}, ${data.organization || 'government job'} recruitment 2025, vacancy, online form, admit card, result, eligibility, apply online, sarkari naukri`}
-        canonical={`/post?${paramUrl ? `url=${encodeURIComponent(paramUrl)}` : `id=${encodeURIComponent(paramId || "")}`}`}
+        description={`${
+          data.title
+        } Recruitment 2025 - Check eligibility, vacancy details, important dates, application process. Apply online for ${
+          data.organization || "government job"
+        } vacancy at JobsAddah.`}
+        keywords={`${data.title}, ${
+          data.organization || "government job"
+        } recruitment 2025, vacancy, online form, admit card, result, eligibility, apply online, sarkari naukri`}
+        canonical={`/post?${
+          paramUrl
+            ? `url=${encodeURIComponent(paramUrl)}`
+            : `id=${encodeURIComponent(paramId || "")}`
+        }`}
         section="Job Details"
         ogType="article"
         jsonLd={generateJobPostingSchema({
           title: data.title,
           organization: data.organization,
-          description: data.shortDescription || `Apply for ${data.title} recruitment`,
+          description:
+            data.shortDescription || `Apply for ${data.title} recruitment`,
           applicationStartDate: data.importantDates?.applicationStartDate,
           applicationLastDate: data.importantDates?.applicationLastDate,
           vacancies: data.totalVacancies,
           salary: data.salary,
           location: data.location || "India",
           qualification: data.qualification,
-          link: paramUrl || paramId
+          link: paramUrl || paramId,
         })}
       />
 
-      <main className={`container mx-auto px-2 py-6 max-w-5xl ${isMobile ? 'pb-24' : ''}`}>
+      <main
+        className={`container mx-auto px-2 py-6 max-w-5xl ${
+          isMobile ? "pb-24" : ""
+        }`}
+      >
         {/* Top Banner Ad */}
-        <AdContainer 
-          placement="banner" 
+        <AdContainer
+          placement="banner"
           pageType="jobDetail"
           format="horizontal"
           className="mb-6"
         />
-        
+
         <div className="bg-white dark:bg-gray-900 shadow-sm border border-slate-300 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header section */}
           <div className="border-b border-slate-300 dark:border-gray-700 p-6 text-center bg-white dark:bg-gray-900">
@@ -171,8 +247,8 @@ const PostDetails = () => {
           </div>
 
           {/* In-Article Ad after title */}
-          <AdContainer 
-            placement="inArticle" 
+          <AdContainer
+            placement="inArticle"
             pageType="jobDetail"
             format="fluid"
             className="my-6"
@@ -300,8 +376,8 @@ const PostDetails = () => {
           )}
 
           {/* Rectangle Ad after vacancy details */}
-          <AdContainer 
-            placement="rectangle" 
+          <AdContainer
+            placement="rectangle"
             pageType="jobDetail"
             format="rectangle"
             className="my-6"
@@ -317,30 +393,83 @@ const PostDetails = () => {
               <div className="p-4">
                 <ul className="space-y-2 text-sm">
                   {data.eligibility.map((item, idx) => {
-                    if (item.type === "header")
+                    // Handle different item types
+                    if (item.type === "header") {
                       return (
                         <li
                           key={idx}
                           className="font-bold text-purple-700 dark:text-purple-300 mt-3 border-b border-purple-100 dark:border-purple-900/40 pb-1"
                         >
-                          {item.label}
+                          {item.label || item.text || ""}
                         </li>
                       );
-                    if (item.type === "item")
+                    }
+                    
+                    if (item.type === "item") {
                       return (
                         <li
                           key={idx}
                           className="pl-4 border-l-2 border-purple-200 dark:border-purple-800 py-1"
                         >
-                          <span className="font-semibold text-slate-800 dark:text-gray-100 block">
-                            {item.label}
-                          </span>
+                          {item.label && (
+                            <span className="font-semibold text-slate-800 dark:text-gray-100 block">
+                              {item.label}
+                            </span>
+                          )}
                           <span className="text-slate-600 dark:text-gray-300">
-                            {item.text}
+                            {typeof item.text === "object" && item.text !== null
+                              ? JSON.stringify(item.text)
+                              : item.text || ""}
                           </span>
                         </li>
                       );
-                    const text = item.text || item;
+                    }
+                    
+                    if (item.type === "text") {
+                      return (
+                        <li key={idx} className="text-slate-700 dark:text-gray-200">
+                          {typeof item.text === "object" && item.text !== null
+                            ? JSON.stringify(item.text)
+                            : item.text || ""}
+                        </li>
+                      );
+                    }
+                    
+                    if (item.type === "listItem") {
+                      return (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-slate-700 dark:text-gray-200"
+                        >
+                          <CheckCircle
+                            size={14}
+                            className="text-purple-500 mt-1 shrink-0"
+                          />
+                          <span>
+                            {typeof item.text === "object" && item.text !== null
+                              ? JSON.stringify(item.text)
+                              : item.text || ""}
+                          </span>
+                        </li>
+                      );
+                    }
+                    
+                    if (item.type === "info") {
+                      return (
+                        <li key={idx} className="text-xs text-slate-500 dark:text-gray-400 italic">
+                          {typeof item.text === "object" && item.text !== null
+                            ? JSON.stringify(item.text)
+                            : item.text || ""}
+                        </li>
+                      );
+                    }
+                    
+                    // Fallback: handle any other format
+                    let text = item.text || item;
+                    if (typeof text === "object" && text !== null) {
+                      text = text.name || text.criteria || text.text || JSON.stringify(text);
+                    }
+                    
                     return (
                       <li
                         key={idx}
@@ -350,7 +479,7 @@ const PostDetails = () => {
                           size={14}
                           className="text-purple-500 mt-1 shrink-0"
                         />
-                        <span>{text}</span>
+                        <span>{String(text || "")}</span>
                       </li>
                     );
                   })}
@@ -461,8 +590,8 @@ const PostDetails = () => {
         </div>
 
         {/* Bottom Rectangle Ad */}
-        <AdContainer 
-          placement="rectangle" 
+        <AdContainer
+          placement="rectangle"
           pageType="jobDetail"
           format="rectangle"
           className="mt-6"
