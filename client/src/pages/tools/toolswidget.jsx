@@ -10,6 +10,7 @@ import {
   Sparkles,
   ReceiptSwissFranc,
 } from "lucide-react";
+import AdBanner728x90 from "../../components/ads/Adsetra728x90";
 
 const tools = [
   {
@@ -203,6 +204,11 @@ export default function Tools() {
               <ToolCard tool={tool} />
             </div>
           ))}
+        </div>
+
+        {/* 728x90 Banner Ad - Desktop only (non-intrusive placement) */}
+        <div className="hidden md:flex justify-center my-6">
+          <AdBanner728x90 />
         </div>
       </div>
     </div>
