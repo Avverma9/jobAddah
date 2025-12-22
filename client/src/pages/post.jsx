@@ -22,6 +22,7 @@ import {
 } from "./post-helper";
 import { decryptResponse } from "../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
+import AdBanner728x90 from "../components/ads/Adsetra728x90";
 import { useGlobalLoader } from "../components/GlobalLoader";
 import SEO, { generateJobPostingSchema } from "../util/SEO";
 import useIsMobile from "../hooks/useIsMobile";
@@ -382,6 +383,11 @@ const PostDetails = () => {
             format="rectangle"
             className="my-6"
           />
+
+          {/* 728x90 Banner Ad - Desktop only */}
+          <div className="hidden md:flex justify-center my-6">
+            <AdBanner728x90 />
+          </div>
 
           {/* Eligibility */}
           {data.eligibility.length > 0 && (
