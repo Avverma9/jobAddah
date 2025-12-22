@@ -20,6 +20,8 @@ import PdfTool from "./pages/tools/pdfTool";
 import ResumeMaker from "./pages/tools/resumeMaker";
 import QuizApp from "./pages/tools/quizApp";
 import useIsMobile from "./hooks/useIsMobile";
+import Ad160x600 from "./components/ads/Ad160x600";
+import AdBanner728x90 from "./components/ads/Adsetra728x90";
 
 function App() {
   const isMobile = useIsMobile(640);
@@ -36,6 +38,11 @@ function App() {
           {/* Main content — HEADER HEIGHT OFFSET only for desktop */}
           <main className={`min-h-screen bg-gray-50 dark:bg-gray-950 ${!isMobile ? 'pt-16' : ''}`}>
             <ConsentBanner />
+
+            {/* Global top banner for md+ screens (centered) */}
+            <div className="hidden md:flex justify-center my-4">
+              <AdBanner728x90 />
+            </div>
 
             <Routes>
               <Route path="/" element={<HomeScreen />} />
@@ -71,6 +78,12 @@ function App() {
 
           {/* Footer only for desktop */}
           {!isMobile && <Footer />}
+          {/* Large vertical banner across pages for very wide screens */}
+          {!isMobile && (
+            <div className="hidden 2xl:flex fixed right-8 top-28 z-40">
+              <Ad160x600 />
+            </div>
+          )}
         </Router>
       </LoaderProvider>
     </HelmetProvider>
