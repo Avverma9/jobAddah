@@ -14,6 +14,7 @@ import { UrgentReminderSection } from "./sections/remider";
 import { SectionColumn } from "./sections/sections_list";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
+import AdBanner728x90 from "../components/ads/Adsetra728x90";
 import Tools from "./tools/toolswidget";
 import MobileHomeScreen from "./mobile/MobileHomeScreen";
 import useIsMobile from "../hooks/useIsMobile";
@@ -382,6 +383,11 @@ function DesktopHomeScreen() {
           />
 
           <Tools />
+
+          {/* 728x90 Banner Ad - Desktop only */}
+          <div className="hidden md:flex justify-center my-6">
+            <AdBanner728x90 />
+          </div>
 
           <UrgentReminderSection
             expiresToday={expiresToday}

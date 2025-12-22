@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
+import AdBanner728x90 from "../components/ads/Adsetra728x90";
 import { useGlobalLoader } from "../components/GlobalLoader";
 import useIsMobile from "../hooks/useIsMobile";
 import { MobileLayout } from "../components/MobileLayout";
@@ -306,6 +307,11 @@ export default function ViewAll() {
             format="horizontal"
             className="mb-6"
           />
+
+          {/* 728x90 Banner Ad - Desktop only */}
+          <div className="hidden md:flex justify-center mb-6">
+            <AdBanner728x90 />
+          </div>
           
           <div className="mb-8 flex flex-col items-center text-center space-y-2">
             <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
