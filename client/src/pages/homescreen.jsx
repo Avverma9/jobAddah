@@ -15,7 +15,6 @@ import { SectionColumn } from "./sections/sections_list";
 import SEO from "../util/SEO";
 import AdContainer from "../components/ads/AdContainer";
 import AdBanner728x90 from "../components/ads/Adsetra728x90";
-import Ad160x600 from "../components/ads/Ad160x600";
 import Tools from "./tools/toolswidget";
 import MobileHomeScreen from "./mobile/MobileHomeScreen";
 import useIsMobile from "../hooks/useIsMobile";
@@ -438,10 +437,7 @@ function DesktopHomeScreen() {
         </div>
       </main>
 
-      {/* Large vertical banner for very wide desktop screens */}
-      <div className="hidden 2xl:flex fixed right-8 top-28 z-40">
-        <Ad160x600 />
-      </div>
+      {/* large vertical banner moved to App-level so it's rendered once for all pages */}
 
       <style>{`
         @keyframes marquee {
