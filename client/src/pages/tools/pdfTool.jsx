@@ -3,6 +3,7 @@ import { Upload, X, Scissors, RefreshCw, FileDown, Plus, Image as ImageIcon, Tra
 import SEO from '../../util/SEO';
 import useIsMobile from '../../hooks/useIsMobile';
 import { MobileLayout } from '../../components/MobileLayout';
+import AdBanner728x90 from '../../components/ads/Adsetra728x90';
 
 const PDF_LIB_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 
@@ -403,7 +404,7 @@ export default function PdfTool() {
           <p className="text-slate-500 text-lg">Batch Converter • Compressor • Editor</p>
         </div>
 
-        {/* Upload Area */}
+  {/* Upload Area */}
         <div className="bg-white border-2 border-dashed border-blue-200 rounded-2xl p-10 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all mb-10 cursor-pointer group shadow-sm">
           <input 
             type="file" 
@@ -418,8 +419,14 @@ export default function PdfTool() {
                 <Upload size={40} className="text-blue-600" />
             </div>
             <span className="text-xl font-semibold text-gray-700">Images Drop karein ya Click karein</span>
-            <span className="text-sm text-gray-400 mt-2 bg-white px-3 py-1 rounded-full border">Ctrl + V Supported</span>
           </label>
+        </div>
+
+        <span className="block text-sm text-gray-400 mt-2 bg-white px-3 py-1 rounded-full border text-center max-w-xs mx-auto">Ctrl + V Supported</span>
+
+        {/* 728x90 Banner Ad - Desktop only */}
+        <div className="hidden md:flex justify-center my-8">
+          <AdBanner728x90 />
         </div>
 
         {/* Main Interface */}
