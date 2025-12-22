@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import useIsMobile from '../../hooks/useIsMobile';
 import { MobileLayout } from '../../components/MobileLayout';
+import AdBanner728x90 from '../../components/ads/Adsetra728x90';
 
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
@@ -166,7 +167,7 @@ export default function ImageEditor() {
           <p className="text-sm text-slate-500 dark:text-slate-400">Professional tools for everyday tasks</p>
         </header>
 
-        <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 w-fit mx-auto">
+  <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 w-fit mx-auto">
           {[
             { id: 'photo-maker', icon: Layout, label: 'Passport Photo' },
             { id: 'bg-remover', icon: Eraser, label: 'BG Remover' },
@@ -191,6 +192,10 @@ export default function ImageEditor() {
 
         <div className="transition-all duration-300">
           {renderContent()}
+        </div>
+        {/* 728x90 Banner Ad - Desktop only */}
+        <div className="hidden md:flex justify-center my-8">
+          <AdBanner728x90 />
         </div>
       </div>
     </div>

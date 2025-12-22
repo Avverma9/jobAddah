@@ -4,6 +4,7 @@ import { dataStore, funnyJokes, getFeedback } from '../../utils/typingAssest';
 import SEO from '../../util/SEO';
 import useIsMobile from '../../hooks/useIsMobile';
 import { MobileLayout } from '../../components/MobileLayout';
+import AdBanner728x90 from '../../components/ads/Adsetra728x90';
 
 
 
@@ -105,6 +106,11 @@ export default function TypingTest() {
           </div>
         </div>
       </header>
+
+      {/* 728x90 Banner Ad - Desktop only */}
+      <div className="hidden md:flex justify-center mb-6">
+        <AdBanner728x90 />
+      </div>
 
       <main className="w-full max-w-4xl relative">
         <div className="mb-8 flex justify-center gap-4 flex-wrap">
