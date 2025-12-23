@@ -83,6 +83,7 @@ const sectionsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchSections.pending, (state) => {
+        // Keep existing state.sections so UI can render stale data.
         state.loading = true;
         state.error = null;
       })

@@ -37,12 +37,7 @@ function App() {
 
           {/* Main content — HEADER HEIGHT OFFSET only for desktop */}
           <main className={`min-h-screen bg-gray-50 dark:bg-gray-950 ${!isMobile ? 'pt-16' : ''}`}>
-            <ConsentBanner />
-
-            {/* Global top banner for md+ screens (centered) */}
-            <div className="hidden md:flex justify-center my-4">
-              <AdBanner728x90 />
-            </div>
+            <ConsentBanner />  
 
             <Routes>
               <Route path="/" element={<HomeScreen />} />

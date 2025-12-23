@@ -80,7 +80,7 @@ const mapSearchResultMeta = (result) => {
     result?.updatedAt
   );
 
-  const linkTarget = result?.url || result?._id || result?.id || "";
+  const linkTarget = result?.url || result?.link || result?._id || result?.id || "";
   const visitId = linkTarget || result?._id || result?.id;
 
   return {
@@ -237,6 +237,9 @@ function DesktopHomeScreen() {
     return data.slice(0, 5);
   }, [dynamicSections]);
 
+  // Stale-While-Revalidate: show skeleton only when loading AND we have no existing sections
+  const shouldShowSectionSkeleton = isDynamicLoading && (!dynamicSections || dynamicSections.length === 0);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
       <SEO
@@ -392,11 +395,11 @@ function DesktopHomeScreen() {
           <UrgentReminderSection
             expiresToday={expiresToday}
             expiringSoon={expiringSoon}
-            isLoading={remindersLoading}
+            isLoading={remindersLoading && (!expiresToday?.length && !expiringSoon?.length)}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {isDynamicLoading
+            {shouldShowSectionSkeleton
               ? Array.from({ length: 6 }).map((_, idx) => (
                   <SectionSkeleton key={`section-skeleton-${idx}`} />
                 ))
@@ -427,7 +430,9 @@ function DesktopHomeScreen() {
                   );
                 })}
           </div>
-
+  <div className="hidden md:flex justify-center my-4">
+              <AdBanner728x90 />
+            </div>
           <AdContainer
             placement="rectangle"
             pageType="homepage"
