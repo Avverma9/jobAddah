@@ -3,7 +3,6 @@ import { Trophy, Clock, AlertCircle, IndianRupee, Wallet, Play, RotateCcw, Check
 import { getShuffledQuestions } from '../../util/quiz';
 import useIsMobile from '../../hooks/useIsMobile';
 import { MobileLayout } from '../../components/MobileLayout';
-import AdBanner728x90 from '../../components/ads/Adsetra728x90';
 
 // --- GAME CONFIGURATION ---
 const WINNING_SCORE = 20;
@@ -299,9 +298,7 @@ export default function QuizApp() {
   const QuizContent = () => (
     <div className={`min-h-screen bg-slate-200 flex items-center justify-center font-sans p-4 ${isMobile ? 'pb-24' : ''}`}>
       {/* Mobile Frame Container */}
-        <div className="hidden md:flex justify-center my-4">
-              <AdBanner728x90 />
-            </div>
+      
       <div className="w-full max-w-md bg-slate-50 shadow-2xl rounded-3xl overflow-hidden min-h-[650px] flex flex-col items-center justify-center relative border border-white">
         {/* Decorative Status Bar Area */}
         <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-purple-500"></div>
