@@ -199,6 +199,7 @@ const PostDetails = () => {
         }`}
         section="Job Details"
         ogType="article"
+        ogImage={`https://og-image.vercel.app/${encodeURIComponent(data.title)}.png?theme=light&md=0&fontSize=64px&images=https://jobsaddah.com/logo.png`}
         jsonLd={generateJobPostingSchema({
           title: data.title,
           organization: data.organization,

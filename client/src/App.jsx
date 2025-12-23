@@ -1,27 +1,39 @@
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import HomeScreen from "./pages/homescreen";
-import PostDetail from "./pages/post";
-import ViewAll from "./pages/view-all";
-import PrivateJobs from "./pages/private-jobs";
 import Footer from "./components/footer";
 import ScrollToTop from "./components/ScrollToTop";
 import ConsentBanner from "./components/ConsentBanner";
-import NotAvailable from "./pages/NotAvailable";
-import AboutUs from "./pages/AboutUs";
-import ContactUs from "./pages/ContactUs";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import Terms from "./pages/TermsAndConditions";
 import Header from "./components/Header";
-import ImageResize from "./pages/tools/imageResize";
 import { HelmetProvider } from "react-helmet-async";
 import { LoaderProvider } from "./components/GlobalLoader";
-import TypingTest from "./pages/tools/typingTest";
-import PdfTool from "./pages/tools/pdfTool";
-import ResumeMaker from "./pages/tools/resumeMaker";
-import QuizApp from "./pages/tools/quizApp";
 import useIsMobile from "./hooks/useIsMobile";
 import Ad160x600 from "./components/ads/Ad160x600";
-import AdBanner728x90 from "./components/ads/Adsetra728x90";
+import Loader from "./components/Loader";
+
+// Lazy load pages for better performance (Code Splitting)
+const HomeScreen = lazy(() => import("./pages/homescreen"));
+const PostDetail = lazy(() => import("./pages/post"));
+const ViewAll = lazy(() => import("./pages/view-all"));
+const PrivateJobs = lazy(() => import("./pages/private-jobs"));
+const AboutUs = lazy(() => import("./pages/AboutUs"));
+const ContactUs = lazy(() => import("./pages/ContactUs"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Terms = lazy(() => import("./pages/TermsAndConditions"));
+const ImageResize = lazy(() => import("./pages/tools/imageResize"));
+const TypingTest = lazy(() => import("./pages/tools/typingTest"));
+const PdfTool = lazy(() => import("./pages/tools/pdfTool"));
+const ResumeMaker = lazy(() => import("./pages/tools/resumeMaker"));
+const QuizApp = lazy(() => import("./pages/tools/quizApp"));
+// const NotAvailable = lazy(() => import("./pages/NotAvailable"));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-gray-500 dark:text-gray-400 font-medium">Loading...</p>
+    </div>
+  </div>
+);
 
 function App() {
   const isMobile = useIsMobile(640);
@@ -39,36 +51,36 @@ function App() {
           <main className={`min-h-screen bg-gray-50 dark:bg-gray-950 ${!isMobile ? 'pt-16' : ''}`}>
             <ConsentBanner />  
 
-            <Routes>
-              <Route path="/" element={<HomeScreen />} />
-              <Route path="/home" element={<HomeScreen />} />
-              <Route path="/latest-jobs" element={<HomeScreen />} />
-              <Route path="/result" element={<HomeScreen />} />
-              <Route path="/admit-card" element={<HomeScreen />} />
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<HomeScreen />} />
+                <Route path="/home" element={<HomeScreen />} />
+                <Route path="/latest-jobs" element={<HomeScreen />} />
+                <Route path="/result" element={<HomeScreen />} />
+                <Route path="/admit-card" element={<HomeScreen />} />
 
-              <Route path="/post" element={<PostDetail />} />
-              <Route path="/view-all" element={<ViewAll />} />
-              <Route path="/private-jobs" element={<PrivateJobs />} />
-              {/* <Route path="/not-available" element={<NotAvailable />} /> */}
+                <Route path="/post" element={<PostDetail />} />
+                <Route path="/view-all" element={<ViewAll />} />
+                <Route path="/private-jobs" element={<PrivateJobs />} />
+                {/* <Route path="/not-available" element={<NotAvailable />} /> */}
 
-              <Route path="/about-us" element={<AboutUs />} />
-              <Route path="/contact-us" element={<ContactUs />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<Terms />} />
+                <Route path="/about-us" element={<AboutUs />} />
+                <Route path="/contact-us" element={<ContactUs />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
 
-              {/* Tools */}
-              <Route path="/jobsaddah-image-tools" element={<ImageResize />} />
-              <Route path="/jobsaddah-typing-tools" element={<TypingTest />} />
-              <Route path="/jobsaddah-pdf-tools" element={<PdfTool />} />
-              <Route path="/jobsaddah-resume-tools" element={< ResumeMaker/>} />
+                {/* Tools */}
+                <Route path="/jobsaddah-image-tools" element={<ImageResize />} />
+                <Route path="/jobsaddah-typing-tools" element={<TypingTest />} />
+                <Route path="/jobsaddah-pdf-tools" element={<PdfTool />} />
+                <Route path="/jobsaddah-resume-tools" element={<ResumeMaker/>} />
 
-              <Route path="/jobsaddah-quiz-tools" element={<QuizApp />} />
+                <Route path="/jobsaddah-quiz-tools" element={<QuizApp />} />
 
-
-
-              {/* fallback */}
-              <Route path="*" element={<HomeScreen />} />
-            </Routes>
+                {/* fallback */}
+                <Route path="*" element={<HomeScreen />} />
+              </Routes>
+            </Suspense>
           </main>
 
           {/* Footer only for desktop */}

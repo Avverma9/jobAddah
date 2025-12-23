@@ -1,9 +1,10 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   ArrowLeft, Calendar, CreditCard, User, GraduationCap, 
   ExternalLink, LogIn, FileText, Share2 
 } from "lucide-react";
+import SEO, { generateJobPostingSchema } from "../../util/SEO";
 
 // Helper function to format date
 const formatDate = (dateString) => {
@@ -335,6 +336,7 @@ const AllFeesSection = ({ fees }) => {
 // Main GovtPostMobile Component
 export default function GovtPostMobile({ post }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleBack = () => {
     navigate(-1);
@@ -369,10 +371,47 @@ export default function GovtPostMobile({ post }) {
     selection = [],
     links = {},
     districtData = [],
+    // For SEO
+    shortDescription,
+    importantDates,
+    totalVacancies,
+    salary,
+    qualification
   } = post || {};
+
+  // Construct URL param similar to PostDetails
+  const query = new URLSearchParams(location.search);
+  const paramUrl = query.get("url");
+  const paramId = query.get("id") || query.get("_id");
 
   return (
     <div className="min-h-screen bg-gray-50 pb-4">
+      <SEO
+        title={`${title} | Recruitment 2025 - JobsAddah`}
+        description={`${title} Recruitment 2025 - Check eligibility, vacancy details, important dates, application process. Apply online for ${organization || "government job"} vacancy at JobsAddah.`}
+        keywords={`${title}, ${organization || "government job"} recruitment 2025, vacancy, online form, admit card, result, eligibility, apply online, sarkari naukri`}
+        canonical={`/post?${
+          paramUrl
+            ? `url=${encodeURIComponent(paramUrl)}`
+            : `id=${encodeURIComponent(paramId || "")}`
+        }`}
+        section="Job Details"
+        ogType="article"
+        ogImage={`https://og-image.vercel.app/${encodeURIComponent(title)}.png?theme=light&md=0&fontSize=64px&images=https://jobsaddah.com/logo.png`}
+        jsonLd={generateJobPostingSchema({
+          title: title,
+          organization: organization,
+          description: shortDescription || `Apply for ${title} recruitment`,
+          applicationStartDate: importantDates?.applicationStartDate,
+          applicationLastDate: importantDates?.applicationLastDate,
+          vacancies: totalVacancies,
+          salary: salary,
+          location: post?.location || "India",
+          qualification: qualification,
+          link: paramUrl || paramId,
+        })}
+      />
+
       <MobilePostHeader 
         title={title}
         onBack={handleBack}
