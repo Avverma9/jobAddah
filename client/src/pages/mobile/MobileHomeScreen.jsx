@@ -187,7 +187,7 @@ export default function MobileHomeScreen() {
         return (
           <DeadlinesView
             reminders={{ expiresToday, expiringSoon }}
-            loading={remindersLoading}
+            loading={remindersLoading && (!expiresToday?.length && !expiringSoon?.length)}
           />
         );
       case "govt":
@@ -197,7 +197,7 @@ export default function MobileHomeScreen() {
             <GovtHeroSection />
             <ExpiringSoonSection
               reminders={{ expiresToday, expiringSoon }}
-              loading={remindersLoading}
+              loading={remindersLoading && (!expiresToday?.length && !expiringSoon?.length)}
             />
             {dynamicSections?.length > 0 && (
               <SectionTabs

@@ -20,7 +20,6 @@ import {
   LoadingSkeleton,
   VacancyTable,
 } from "./post-helper";
-import { decryptResponse } from "../util/encode-decode"; // ✅ ADDED
 import AdContainer from "../components/ads/AdContainer";
 import AdBanner728x90 from "../components/ads/Adsetra728x90";
 import { useGlobalLoader } from "../components/GlobalLoader";
@@ -29,12 +28,7 @@ import useIsMobile from "../hooks/useIsMobile";
 import { MobileLayout } from "../components/MobileLayout";
 import GovtPostMobile from "./mobile/GovtPostMobile";
 
-// ✅ Common handler: encrypted OR normal JSON
-const parseApiResponse = async (res) => {
-  const json = await res.json();
-  if (json && json.iv && json.data) return decryptResponse(json);
-  return json;
-};
+
 
 const useQuery = () => {
   const { search } = useLocation();
@@ -385,7 +379,7 @@ const PostDetails = () => {
           />
 
           {/* 728x90 Banner Ad - Desktop only */}
-          <div className="hidden md:flex justify-center my-6">
+             <div className="hidden md:flex justify-center my-6">
             <AdBanner728x90 />
           </div>
 

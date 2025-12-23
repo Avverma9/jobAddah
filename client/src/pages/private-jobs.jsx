@@ -6,6 +6,7 @@ import api from "../util/apiClient";
 import { Building2, ExternalLink, Briefcase, AlertCircle, Loader2, Search, Bell, Menu } from "lucide-react";
 import useIsMobile from "../hooks/useIsMobile";
 import { MobileLayout } from "../components/MobileLayout";
+import AdBanner728x90 from "../components/ads/Adsetra728x90";
 
 export default function PrivateJobsBoard() {
   const isMobile = useIsMobile(640);
@@ -122,15 +123,16 @@ export default function PrivateJobsBoard() {
   // Main content component
   const PrivateJobsContent = () => (
     <>
-      <SEO
+     
+      <Header />
+       <SEO
         title="Private Jobs 2025 Board | ITI, Diploma, Campus Placement - JobsAddah"
         description="Live updated private job board with categories like campus placement, ITI jobs, diploma jobs and more – auto-fetched and listed directly."
         keywords="private jobs board, iti jobs, diploma jobs, campus placement, pvtjob, private sector jobs"
         canonical="/private-jobs"
         section="Private Jobs"
       />
-      <Header />
-
+<AdBanner728x90/>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
