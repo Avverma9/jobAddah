@@ -219,13 +219,10 @@ const PostDetails = () => {
           isMobile ? "pb-24" : ""
         }`}
       >
-        {/* Top Banner Ad */}
-        <AdContainer
-          placement="banner"
-          pageType="jobDetail"
-          format="horizontal"
-          className="mb-6"
-        />
+        {/* Top Banner Ad - show on every screen */}
+        <div className="flex justify-center my-6">
+          <AdBanner728x90 />
+        </div>
 
         <div className="bg-white dark:bg-gray-900 shadow-sm border border-slate-300 dark:border-gray-700 rounded-lg overflow-hidden">
           {/* Header section */}
@@ -378,10 +375,7 @@ const PostDetails = () => {
             className="my-6"
           />
 
-          {/* 728x90 Banner Ad - Desktop only */}
-             <div className="hidden md:flex justify-center my-6">
-            <AdBanner728x90 />
-          </div>
+          {/* (Removed duplicate desktop-only 728x90 block) */}
 
           {/* Eligibility */}
           {data.eligibility.length > 0 && (
