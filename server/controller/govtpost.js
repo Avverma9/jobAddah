@@ -1,6 +1,7 @@
 // controllers/postController.js (ya jo bhi file ka naam hai)
 
 const Post = require("@/models/gov/govtpost");
+const postList = require("@/models/gov/postList");
 const govPostList = require("@/models/gov/postList");
 const Section = require("@/models/gov/section");
 
@@ -458,55 +459,58 @@ const findByTitle = async (req, res) => {
     const { title } = req.query;
 
     if (!title) {
-      return res.status(400).json({
-        success: false,
-        error: "Title is required",
-      });
+      return res.status(400).json({ success: false, error: "Title is required" });
     }
 
     // Prepare safe regex
-    const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const safeTitle = title.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+    const titleRe = new RegExp(safeTitle, "i");
 
-    // Cursor Query (streaming)
-    const cursor = Post.find(
-      {
-        "recruitment.title": { $regex: new RegExp(safeTitle, "i") },
-      },
-      {
-        _id: 1,
-        url: 1, // ✅ FIX → url added
-        recruitment: 1,
-        updatedAt: 1,
-        fav: 1,
-      }
-    )
-      .lean()
-      .cursor();
-
-    // Streaming Response
+    // We'll try two sources: `postList` (jobs array) and fallback to `Post` (recruitment.title)
+    // Stream results to avoid memory spikes.
     res.setHeader("Content-Type", "application/json");
     res.write(`{"success": true, "data": [`);
 
-    let first = true;
+    let firstWritten = false;
 
-    for (
-      let doc = await cursor.next();
-      doc != null;
-      doc = await cursor.next()
-    ) {
-      if (!first) res.write(",");
-      res.write(JSON.stringify(doc));
-      first = false;
+    // 1) Search in postList (jobs array)
+    const cursor1 = postList.find({ "jobs.title": titleRe }, { _id: 1, url: 1, jobs: 1, updatedAt: 1 }).lean().cursor();
+    for (let doc = await cursor1.next(); doc != null; doc = await cursor1.next()) {
+      // keep only matching jobs inside this postList document
+      const matched = (doc.jobs || []).filter((j) => titleRe.test(j.title));
+      if (matched.length === 0) continue;
+
+      const out = {
+        _id: doc._id,
+        url: doc.url,
+        jobs: matched,
+        updatedAt: doc.updatedAt,
+      };
+      if (firstWritten) res.write(",");
+      res.write(JSON.stringify(out));
+      firstWritten = true;
+    }
+
+    // 2) Fallback: also search in Post collection's recruitment.title (if you still want these results)
+    const cursor2 = Post.find({ "recruitment.title": titleRe }, { _id: 1, url: 1, recruitment: 1, updatedAt: 1, fav: 1 }).lean().cursor();
+    for (let doc = await cursor2.next(); doc != null; doc = await cursor2.next()) {
+      const out = {
+        _id: doc._id,
+        url: doc.url,
+        recruitment: doc.recruitment,
+        updatedAt: doc.updatedAt,
+        fav: doc.fav,
+      };
+      if (firstWritten) res.write(",");
+      res.write(JSON.stringify(out));
+      firstWritten = true;
     }
 
     res.write("]}");
     res.end();
   } catch (err) {
     console.error("Stream error:", err);
-    return res.status(500).json({
-      success: false,
-      error: "Server error",
-    });
+    return res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
