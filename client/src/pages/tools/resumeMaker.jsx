@@ -5,6 +5,7 @@ import {
   Camera, X, Globe, Github 
 } from 'lucide-react';
 import SEO from '../../util/SEO';
+import AdBanner728x90 from '../../components/ads/Adsetra728x90';
 
 
 const useIsMobile = () => {
@@ -590,6 +591,9 @@ export default function ResumeMaker() {
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col h-screen text-slate-800">
       <SEO />
       <LoadScript src={HTML2PDF_URL} onLoad={() => setLibLoaded(true)} />
+          <div className="hidden md:flex justify-center my-4">
+              <AdBanner728x90 />
+            </div>
       
       <header className="bg-white p-4 shadow-sm border-b border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-4">
         <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-start">
