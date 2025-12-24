@@ -8,6 +8,7 @@ const Section = require("@/models/gov/section");
 const GeminiModel = require("@/models/ai/gemini-model");
 const ApiKey = require("@/models/ai/ai-apiKey");
 const Site = require("@/models/gov/scrapperSite");
+const { prompt } = require("./prompt");
 
 // ============================================================================
 // 1. HELPER FUNCTIONS
@@ -56,35 +57,6 @@ const formatWithAI = async (scrapedData) => {
       model: modelNameData.modelName,
       generationConfig: { responseMimeType: "application/json" },
     });
-
-    // Minimized Prompt to save tokens and latency while keeping rules
-    const prompt = `
-      You are a data formatting assistant. Convert scraped data to JSON.
-      RULES:
-      1. Valid JSON only. Top-level key: "recruitment".
-      2. REPHRASE "title" 100% uniquely. NO PLAGIARISM.
-      3. Map fields intelligently based on keywords (e.g., "last date" -> applicationLastDate).
-      4. Remove WhatsApp links.
-      5. Output Structure:
-      {
-        "recruitment": {
-          "title": "String",
-          "organization": { "name": "", "shortName": "", "website": "", "officialWebsite": "" },
-          "importantDates": { "notificationDate": "", "applicationStartDate": "", "applicationLastDate": "", "examDate": "", "admitCardDate": "", "resultDate": "" },
-          "vacancyDetails": { "totalPosts": 0, "positions": [] },
-          "applicationFee": {},
-          "ageLimit": {},
-          "eligibility": {},
-          "selectionProcess": [],
-          "importantLinks": {},
-          "districtWiseData": []
-        }
-      }
-      Scraped Data:
-      ${JSON.stringify(scrapedData).substring(0, 15000)} 
-    `; 
-    // Truncated input to prevent token limits (15k chars is usually enough for context)
-
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
