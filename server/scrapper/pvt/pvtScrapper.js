@@ -2,14 +2,15 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const url = require("url");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Post = require("@/models/gov/govtpost");
-const govPostList = require("@/models/gov/postList");
-const Section = require("@/models/gov/section");
-const GeminiModel = require("@/models/ai/gemini-model");
 const ApiKey = require("@/models/ai/ai-apiKey");
+const GeminiModel = require("@/models/ai/gemini-model");
 const PvtSection = require("@/models/pvt/pvtSection");
 const pvtPostlist = require("@/models/pvt/pvtPostlist");
 const PvtPost = require("@/models/pvt/pvtPost");
+
+// ============================================================================
+// 1. HELPER FUNCTIONS
+// ============================================================================
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -25,6 +26,10 @@ const ensureProtocol = (inputUrl) => {
   return clean;
 };
 
+// Normalize string for fuzzy matching (removes special chars, lowercase)
+const normalizeTitle = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// ============================================================================
 const formatWithAI = async (scrapedData) => {
   try {
     const modelNameData = await GeminiModel.findOne().sort({ createdAt: -1 });
@@ -411,60 +416,39 @@ const scrapper = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+// ============================================================================
+// 4. CATEGORY & SECTION SCRAPERS
+// ============================================================================
 
 const getCategories = async (req, res) => {
   try {
-    // const rawUrl = req.body.url;
-    const rawUrl = "https://pvtjob.in"; // Default URL for categories
-    const targetUrl = ensureProtocol(rawUrl);
-    if (!targetUrl) return res.status(400).json({ error: "Invalid URL" });
-
+    const targetUrl = "https://pvtjob.in"; // Hardcoded or fetch from config
     const response = await axios.get(targetUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
       timeout: 15000,
     });
 
     const $ = cheerio.load(response.data);
-    let categories = [];
-    const menuSelectors =
-      "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a, .header-menu a, .menubar a";
+    const categories = new Map();
+
+    const ignore = new Set(["Home", "Contact Us", "Privacy Policy", "Disclaimer", "More", "About Us", "Sitemap", "Web Stories", "Terms and Conditions"]);
+    const menuSelectors = "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a";
 
     $(menuSelectors).each((_, el) => {
       const name = cleanText($(el).text());
       const href = $(el).attr("href");
-      if (!name || !href || href === "#" || href === "/") return;
-
-      const fullLink = new url.URL(href, targetUrl).href;
-      const ignore = [
-        "Home",
-        "Contact Us",
-        "Privacy Policy",
-        "Disclaimer",
-        "More",
-        "About Us",
-        "Sitemap",
-        // Explicitly ignore these two menu items
-        "Web Stories",
-        "Terms and Conditions",
-      ];
-      // Also block by link for robustness
-      const blockedLinkBases = [
-        "https://pvtjob.in/web-stories",
-        "https://pvtjob.in/terms-and-conditions",
-      ];
-      const normalizedFullLink = fullLink.replace(/\/+$/, "");
-      const isBlockedLink = blockedLinkBases.some((base) =>
-        normalizedFullLink.startsWith(base)
-      );
-
-      if (!ignore.includes(name) && !isBlockedLink) {
-        categories.push({ name, link: fullLink });
+      
+      if (name && href && !ignore.has(name) && !href.includes("web-stories")) {
+        try {
+          const fullLink = new url.URL(href, targetUrl).href;
+          if (!categories.has(fullLink)) {
+            categories.set(fullLink, { name, link: fullLink });
+          }
+        } catch(e) {}
       }
     });
 
-    const uniqueCategories = [
-      ...new Map(categories.map((i) => [i.link, i])).values(),
-    ];
+    const uniqueCategories = Array.from(categories.values());
 
     await PvtSection.findOneAndUpdate(
       { url: targetUrl },
@@ -472,11 +456,7 @@ const getCategories = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({
-      success: true,
-      count: uniqueCategories.length,
-      categories: uniqueCategories,
-    });
+    res.json({ success: true, count: uniqueCategories.length, categories: uniqueCategories });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -485,57 +465,32 @@ const getCategories = async (req, res) => {
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
-    if (!categoryUrl)
-      return res.status(400).json({ error: "Category URL is required" });
+    if (!categoryUrl) return res.status(400).json({ error: "Category URL required" });
 
-    const response = await axios.get(categoryUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-    });
-
+    const response = await axios.get(categoryUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
     const $ = cheerio.load(response.data);
-    let jobs = [];
-
-    // Target ONLY main content area links, exclude nav/footer
-    // Look for links in main article/content areas
+    
+    const jobsMap = new Map();
     const mainContent = $("main, article, .content, .posts, .container");
     const ignoreSelectors = "nav, footer, .menu, .sidebar, .header";
 
     mainContent.find("a").each((_, el) => {
-      // Skip if link is in ignored sections
-      const parent = $(el).closest(ignoreSelectors);
-      if (parent.length > 0) return;
+      if ($(el).closest(ignoreSelectors).length > 0) return;
 
       const title = cleanText($(el).text());
       const link = $(el).attr("href");
 
-      // Filter: title must exist, be > 10 chars, have href, and NOT be a category/footer link
-      if (!title || title.length <= 10 || !link) return;
-
-      // Block navigation/category/footer links
-      const blockedPatterns = [
-        "/category/",
-        "/web-stories/",
-        "/privacy-policy/",
-        "/terms-and-conditions/",
-        "/contact/",
-        "/about/",
-        "/sitemap",
-      ];
-
-      const isBlocked = blockedPatterns.some((pattern) =>
-        link.includes(pattern)
-      );
-      if (isBlocked) return;
-
-      try {
-        const fullLink = new url.URL(link, categoryUrl).href;
-        jobs.push({ title, link: fullLink });
-      } catch (err) {
-        // Skip invalid URLs
+      if (title && title.length > 10 && link && !link.match(/category|policy|contact|about/)) {
+        try {
+          const fullLink = new url.URL(link, categoryUrl).href;
+          if (!jobsMap.has(fullLink)) {
+            jobsMap.set(fullLink, { title, link: fullLink });
+          }
+        } catch(e) {}
       }
     });
 
-    const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
+    const uniqueJobs = Array.from(jobsMap.values());
 
     await pvtPostlist.findOneAndUpdate(
       { url: categoryUrl },
@@ -549,165 +504,83 @@ const scrapeCategory = async (req, res) => {
   }
 };
 
+// ============================================================================
+// 5. DUPLICATE MANAGEMENT (OPTIMIZED O(N) Complexity)
+// ============================================================================
+
+const findDuplicatesOptimized = async () => {
+  // 1. Fetch minimal fields sorted by date (Oldest first)
+  const allPosts = await PvtPost.find({}, { _id: 1, title: 1, url: 1, createdAt: 1 })
+    .sort({ createdAt: 1 })
+    .lean();
+
+  const toDelete = [];
+  const seenTitles = new Map(); 
+
+  for (const post of allPosts) {
+    // Key used for duplicate detection (Title or URL)
+    const key = normalizeTitle(post.title || post.url);
+    
+    if (key.length < 5) continue;
+
+    if (seenTitles.has(key)) {
+      // Duplicate found! 
+      // Current 'post' is NEWER because of sort order.
+      // 'seenTitles' has the OLDER post.
+      
+      const olderPost = seenTitles.get(key);
+
+      // Strategy: Delete OLDER, keep NEWER
+      toDelete.push({
+        deleteId: olderPost._id,
+        keepId: post._id,
+        title: post.title
+      });
+
+      // Update map with newer post so next duplicates compare against the latest one
+      seenTitles.set(key, post);
+    } else {
+      seenTitles.set(key, post);
+    }
+  }
+  return toDelete;
+};
+
 const deleteDuplicates = async (req, res) => {
   try {
-    const allPosts = await PvtPost.find({}).sort({ createdAt: 1 }).lean();
+    const duplicates = await findDuplicatesOptimized();
 
-    const duplicatesToDelete = [];
-    const processedPairs = new Set();
-
-    // Compare each post with every other post
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const post1 = allPosts[i]; // Older post (earlier createdAt)
-        const post2 = allPosts[j]; // Newer post (later createdAt)
-
-        // Avoid comparing same pair twice
-        const pairKey = `${post1._id}-${post2._id}`;
-        if (processedPairs.has(pairKey)) continue;
-        processedPairs.add(pairKey);
-
-        try {
-          const similarity = calculateRecruitmentSimilarity(post1, post2);
-
-          // If similarity >= 60%, DELETE older post (post1), KEEP newer post (post2)
-          if (similarity >= 60) {
-            duplicatesToDelete.push({
-              deleteId: post1._id, // ← DELETE OLDER
-              keepId: post2._id, // ← KEEP NEWER
-              similarity: similarity,
-              deleteTitle: post1.recruitment?.title || post1.url,
-              keepTitle: post2.recruitment?.title || post2.url,
-              deleteCreatedAt: post1.createdAt,
-              keepCreatedAt: post2.createdAt,
-            });
-          }
-        } catch (error) {
-          console.error(`Error comparing posts:`, error.message);
-        }
-      }
+    if (duplicates.length === 0) {
+      return res.json({ success: true, message: "No duplicates found" });
     }
 
-    if (duplicatesToDelete.length === 0) {
-      return res.json({
-        success: true,
-        duplicatesFound: 0,
-        duplicatesDeleted: 0,
-        message: "No duplicates found in database",
-      });
-    }
+    const idsToDelete = duplicates.map(d => d.deleteId);
+    
+    // Batch Delete (1 Query instead of N queries)
+    const result = await PvtPost.deleteMany({ _id: { $in: idsToDelete } });
 
-    // Delete duplicate posts
-    const deletionResults = [];
-
-    for (const duplicate of duplicatesToDelete) {
-      try {
-        const deleted = await PvtPost.findByIdAndDelete(duplicate.deleteId);
-
-        if (deleted) {
-          deletionResults.push({
-            deleted: true,
-            deletedId: duplicate.deleteId,
-            keptId: duplicate.keepId,
-            similarity: duplicate.similarity,
-            deletedTitle: duplicate.deleteTitle,
-            keptTitle: duplicate.keepTitle,
-            deletedCreatedAt: duplicate.deleteCreatedAt,
-            keptCreatedAt: duplicate.keepCreatedAt,
-          });
-        } else {
-          deletionResults.push({
-            deleted: false,
-            deletedId: duplicate.deleteId,
-            error: "Deletion failed",
-          });
-        }
-      } catch (error) {
-        console.error(`Error deleting ${duplicate.deleteId}:`, error.message);
-        deletionResults.push({
-          deleted: false,
-          deletedId: duplicate.deleteId,
-          error: error.message,
-        });
-      }
-    }
-
-    const successCount = deletionResults.filter((r) => r.deleted).length;
     res.json({
       success: true,
-      duplicatesFound: duplicatesToDelete.length,
-      duplicatesDeleted: successCount,
-      results: deletionResults,
+      duplicatesFound: duplicates.length,
+      duplicatesDeleted: result.deletedCount,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Delete Duplicates Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-/**
- * Optional: Get duplicate analysis WITHOUT deleting
- * (Dry-run mode to see what would be deleted)
- */
 const analyzeDuplicates = async (req, res) => {
   try {
-    const allPosts = await PvtPost.find({}).sort({ createdAt: 1 }).lean();
-    const duplicateAnalysis = [];
-    const processedPairs = new Set();
-
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const post1 = allPosts[i];
-        const post2 = allPosts[j];
-
-        const pairKey = `${post1._id}-${post2._id}`;
-        if (processedPairs.has(pairKey)) continue;
-        processedPairs.add(pairKey);
-
-        try {
-          const similarity = calculateRecruitmentSimilarity(post1, post2);
-
-          if (similarity >= 60) {
-            duplicateAnalysis.push({
-              similarity: similarity.toFixed(2),
-              keep: {
-                id: post1._id,
-                title: post1.recruitment?.title || post1.url,
-                url: post1.url,
-                createdAt: post1.createdAt,
-              },
-              delete: {
-                id: post2._id,
-                title: post2.recruitment?.title || post2.url,
-                url: post2.url,
-                createdAt: post2.createdAt,
-              },
-            });
-          }
-        } catch (error) {
-          console.error(`Error analyzing:`, error.message);
-        }
-      }
-    }
-
-    if (duplicateAnalysis.length === 0) {
-      return res.json({
-        success: true,
-        message: "No duplicates found",
-        analysis: [],
-      });
-    }
-
+    const duplicates = await findDuplicatesOptimized();
+    
     res.json({
       success: true,
-      duplicatesFound: duplicateAnalysis.length,
-      analysis: duplicateAnalysis,
-      info: "This is a dry-run analysis. No data was deleted. Use /api/delete-duplicates endpoint to actually delete.",
-      timestamp: new Date().toISOString(),
+      count: duplicates.length,
+      analysis: duplicates.slice(0, 50), // Limit payload
+      info: "Dry-run only. Use /api/delete-duplicates to execute.",
     });
   } catch (error) {
-    console.error("Analyze Duplicates Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
