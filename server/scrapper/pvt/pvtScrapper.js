@@ -27,7 +27,8 @@ const ensureProtocol = (inputUrl) => {
 };
 
 // Normalize string for fuzzy matching (removes special chars, lowercase)
-const normalizeTitle = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const normalizeTitle = (str) =>
+  (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 // ============================================================================
 const formatWithAI = async (scrapedData) => {
@@ -431,20 +432,31 @@ const getCategories = async (req, res) => {
     const $ = cheerio.load(response.data);
     const categories = new Map();
 
-    const ignore = new Set(["Home", "Contact Us", "Privacy Policy", "Disclaimer", "More", "About Us", "Sitemap", "Web Stories", "Terms and Conditions"]);
-    const menuSelectors = "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a";
+    const ignore = new Set([
+      "Home",
+      "Contact Us",
+      "Privacy Policy",
+      "Disclaimer",
+      "More",
+      "About Us",
+      "Sitemap",
+      "Web Stories",
+      "Terms and Conditions",
+    ]);
+    const menuSelectors =
+      "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a";
 
     $(menuSelectors).each((_, el) => {
       const name = cleanText($(el).text());
       const href = $(el).attr("href");
-      
+
       if (name && href && !ignore.has(name) && !href.includes("web-stories")) {
         try {
           const fullLink = new url.URL(href, targetUrl).href;
           if (!categories.has(fullLink)) {
             categories.set(fullLink, { name, link: fullLink });
           }
-        } catch(e) {}
+        } catch (e) {}
       }
     });
 
@@ -456,7 +468,11 @@ const getCategories = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({ success: true, count: uniqueCategories.length, categories: uniqueCategories });
+    res.json({
+      success: true,
+      count: uniqueCategories.length,
+      categories: uniqueCategories,
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -465,11 +481,14 @@ const getCategories = async (req, res) => {
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
-    if (!categoryUrl) return res.status(400).json({ error: "Category URL required" });
+    if (!categoryUrl)
+      return res.status(400).json({ error: "Category URL required" });
 
-    const response = await axios.get(categoryUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const response = await axios.get(categoryUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
     const $ = cheerio.load(response.data);
-    
+
     const jobsMap = new Map();
     const mainContent = $("main, article, .content, .posts, .container");
     const ignoreSelectors = "nav, footer, .menu, .sidebar, .header";
@@ -480,13 +499,18 @@ const scrapeCategory = async (req, res) => {
       const title = cleanText($(el).text());
       const link = $(el).attr("href");
 
-      if (title && title.length > 10 && link && !link.match(/category|policy|contact|about/)) {
+      if (
+        title &&
+        title.length > 10 &&
+        link &&
+        !link.match(/category|policy|contact|about/)
+      ) {
         try {
           const fullLink = new url.URL(link, categoryUrl).href;
           if (!jobsMap.has(fullLink)) {
             jobsMap.set(fullLink, { title, link: fullLink });
           }
-        } catch(e) {}
+        } catch (e) {}
       }
     });
 
@@ -510,31 +534,34 @@ const scrapeCategory = async (req, res) => {
 
 const findDuplicatesOptimized = async () => {
   // 1. Fetch minimal fields sorted by date (Oldest first)
-  const allPosts = await PvtPost.find({}, { _id: 1, title: 1, url: 1, createdAt: 1 })
+  const allPosts = await PvtPost.find(
+    {},
+    { _id: 1, title: 1, url: 1, createdAt: 1 }
+  )
     .sort({ createdAt: 1 })
     .lean();
 
   const toDelete = [];
-  const seenTitles = new Map(); 
+  const seenTitles = new Map();
 
   for (const post of allPosts) {
     // Key used for duplicate detection (Title or URL)
     const key = normalizeTitle(post.title || post.url);
-    
+
     if (key.length < 5) continue;
 
     if (seenTitles.has(key)) {
-      // Duplicate found! 
+      // Duplicate found!
       // Current 'post' is NEWER because of sort order.
       // 'seenTitles' has the OLDER post.
-      
+
       const olderPost = seenTitles.get(key);
 
       // Strategy: Delete OLDER, keep NEWER
       toDelete.push({
         deleteId: olderPost._id,
         keepId: post._id,
-        title: post.title
+        title: post.title,
       });
 
       // Update map with newer post so next duplicates compare against the latest one
@@ -554,8 +581,8 @@ const deleteDuplicates = async (req, res) => {
       return res.json({ success: true, message: "No duplicates found" });
     }
 
-    const idsToDelete = duplicates.map(d => d.deleteId);
-    
+    const idsToDelete = duplicates.map((d) => d.deleteId);
+
     // Batch Delete (1 Query instead of N queries)
     const result = await PvtPost.deleteMany({ _id: { $in: idsToDelete } });
 
@@ -573,7 +600,7 @@ const deleteDuplicates = async (req, res) => {
 const analyzeDuplicates = async (req, res) => {
   try {
     const duplicates = await findDuplicatesOptimized();
-    
+
     res.json({
       success: true,
       count: duplicates.length,
