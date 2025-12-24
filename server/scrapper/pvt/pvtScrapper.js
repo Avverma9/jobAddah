@@ -225,51 +225,57 @@ const getCategories = async (req, res) => {
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
-    if (!categoryUrl) return res.status(400).json({ error: "Category URL required" });
+    if (!categoryUrl)
+      return res.status(400).json({ error: "Category URL is required" });
 
-    const response = await axios.get(categoryUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+    const response = await axios.get(categoryUrl, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+
     const $ = cheerio.load(response.data);
-    
-    const jobsMap = new Map();
-    // Broad selectors to catch standard links
-    const mainContent = $("main, article, .content, .posts, .container, #primary");
-    const ignoreSelectors = "nav, footer, .menu, .sidebar, .header, .widget";
+    let jobs = [];
+
+    // Target ONLY main content area links, exclude nav/footer
+    // Look for links in main article/content areas
+    const mainContent = $("main, article, .content, .posts, .container");
+    const ignoreSelectors = "nav, footer, .menu, .sidebar, .header";
 
     mainContent.find("a").each((_, el) => {
-      // 1. Skip if inside ignored areas
-      if ($(el).closest(ignoreSelectors).length > 0) return;
+      // Skip if link is in ignored sections
+      const parent = $(el).closest(ignoreSelectors);
+      if (parent.length > 0) return;
 
-      // 2. Extract Text Strategy
-      let title = cleanText($(el).text());
+      const title = cleanText($(el).text());
       const link = $(el).attr("href");
 
-      // 3. Fallback: If text is empty (e.g. image link), check inner image alt/title
-      if (!title) {
-        const innerImg = $(el).find("img");
-        if (innerImg.length > 0) {
-          title = cleanText(innerImg.attr("title")) || cleanText(innerImg.attr("alt"));
-        }
-      }
+      // Filter: title must exist, be > 10 chars, have href, and NOT be a category/footer link
+      if (!title || title.length <= 10 || !link) return;
 
-      // 4. Fallback: Check title attribute of the anchor tag itself
-      if (!title) {
-        title = cleanText($(el).attr("title"));
-      }
+      // Block navigation/category/footer links
+      const blockedPatterns = [
+        "/category/",
+        "/web-stories/",
+        "/privacy-policy/",
+        "/terms-and-conditions/",
+        "/contact/",
+        "/about/",
+        "/sitemap",
+      ];
 
-      // 5. Validation Logic
-      if (title && title.length > 10 && link && !link.match(/category|policy|contact|about|#|javascript/)) {
-        try {
-          const fullLink = new url.URL(link, categoryUrl).href;
-          
-          // Final check: Ensure we haven't already added this link
-          if (!jobsMap.has(fullLink)) {
-            jobsMap.set(fullLink, { title, link: fullLink });
-          }
-        } catch(e) {}
+      const isBlocked = blockedPatterns.some((pattern) =>
+        link.includes(pattern)
+      );
+      if (isBlocked) return;
+
+      try {
+        const fullLink = new url.URL(link, categoryUrl).href;
+        jobs.push({ title, link: fullLink });
+      } catch (err) {
+        // Skip invalid URLs
       }
     });
 
-    const uniqueJobs = Array.from(jobsMap.values());
+    const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
 
     await pvtPostlist.findOneAndUpdate(
       { url: categoryUrl },
