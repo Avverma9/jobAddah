@@ -4,15 +4,17 @@ const Section = require("@/models/gov/section");
 const Site = require("@/models/gov/scrapperSite");
 
 // ======================
-// 1️⃣  getGovPostListBySection
+// 1️⃣  getGovPostListBySection (Optimized: .lean())
 // ======================
 const getGovPostListBySection = async (req, res) => {
   try {
     const url = req.params.url;
 
-    const getData = await govPostList.find({ section: url }).sort({
-      createdAt: -1,
-    });
+    // lean() returns plain JS objects, much faster for read-only APIs
+    const getData = await govPostList
+      .find({ section: url })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -28,11 +30,11 @@ const getGovPostListBySection = async (req, res) => {
 };
 
 // ======================
-// 2️⃣  getGovJobSections
+// 2️⃣  getGovJobSections (Optimized: .lean())
 // ======================
 const getGovJobSections = async (req, res) => {
   try {
-    const getData = await Section.find().sort({ createdAt: -1 });
+    const getData = await Section.find().sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -48,43 +50,36 @@ const getGovJobSections = async (req, res) => {
 };
 
 // ======================
-// 3️⃣  getGovPostDetails (with domain stripping)
+// 3️⃣  getGovPostDetails (Optimized: .lean() + Error Handling)
 // ======================
 const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
     if (!url) {
-      return res.status(400).json({
-        success: false,
-        error: "URL is required",
-      });
+      return res.status(400).json({ success: false, error: "URL is required" });
     }
 
-    // Strip domain: convert full URL → only pathname
+    // Strip domain logic
     try {
       if (url.startsWith("http://") || url.startsWith("https://")) {
         const parsed = new URL(url);
-        url = parsed.pathname; // "/new-result/"
+        url = parsed.pathname;
       }
     } catch (e) {
-      // ignore formatting error
+      // Keep original if parsing fails
     }
-
     url = url.trim();
 
-    const getData = await Post.findOne({ url }).sort({ createdAt: -1 });
+    // lean() is crucial here if the post object is large
+    const getData = await Post.findOne({ url })
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!getData) {
-      return res.status(404).json({
-        success: false,
-        error: "Post not found",
-      });
+      return res.status(404).json({ success: false, error: "Post not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: getData,
-    });
+    return res.status(200).json({ success: true, data: getData });
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -93,55 +88,48 @@ const getGovPostDetails = async (req, res) => {
   }
 };
 
-// Create or Update Site URL
+// ======================
+// 4️⃣  setGovSite (Optimized: atomic update)
+// ======================
 const setGovSite = async (req, res) => {
   try {
     const { url } = req.body;
 
     if (!url || typeof url !== "string") {
-      return res.status(400).json({
-        success: false,
-        error: "Valid URL is required",
-      });
+      return res.status(400).json({ success: false, error: "Valid URL is required" });
     }
 
-    // Always maintain only one site document
+    // findOneAndUpdate with upsert is already atomic and efficient
+    // Added .lean() to the result if you just need the data back
     const updated = await Site.findOneAndUpdate(
-      {}, // always update the first doc
-      { url }, // update fields
+      {}, 
+      { url }, 
       { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    ).lean();
 
-    return res.status(200).json({
-      success: true,
-      data: updated,
-    });
+    return res.status(200).json({ success: true, data: updated });
   } catch (err) {
     console.error("setGovSite error:", err);
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// Get Site URL
+// ======================
+// 5️⃣  getGovSlice (Optimized: .lean())
+// ======================
 const getGovSlice = async (req, res) => {
   try {
-    const site = await Site.findOne();
+    // lean() makes this instantaneous
+    const site = await Site.findOne().lean();
 
-    return res.status(200).json(site);
+    // If null, return empty object or null, standard practice
+    return res.status(200).json(site || {});
   } catch (err) {
     console.error("getGovSlice error:", err);
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 
-
-// EXPORT MULTIPLE CONTROLLERS
 module.exports = {
   getGovPostListBySection,
   getGovJobSections,
