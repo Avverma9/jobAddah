@@ -1,12 +1,11 @@
-// controllers/postController.js
-
 const Post = require("@/models/gov/govtpost");
 const postList = require("@/models/gov/postList");
 const govPostList = require("@/models/gov/postList");
 const Section = require("@/models/gov/section");
+const { scrapper } = require("@/scrapper/gov/scrapper");
 
 // ------------------------------------------------------------------
-// 1. Get Gov Post Details (Optimized: Lean query + Projection)
+// 1. Get Gov Post Details (Optimized: Auto-Scrape on 404)
 // ------------------------------------------------------------------
 const getGovPostDetails = async (req, res) => {
   try {
@@ -14,6 +13,8 @@ const getGovPostDetails = async (req, res) => {
     if (!url) {
       return res.status(400).json({ success: false, error: "URL is required" });
     }
+
+    const originalUrl = url;
 
     try {
       if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -23,8 +24,34 @@ const getGovPostDetails = async (req, res) => {
     } catch (e) {}
     url = url.trim();
 
-    // lean() makes it faster by returning POJO instead of Mongoose Document
-    const getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
+    let getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
+
+    if (!getData) {
+      const callUrl = originalUrl || url;
+
+      // Internal call to scraper logic
+      const scrapeResult = await new Promise((resolve) => {
+        const fakeReq = { body: { url: callUrl } };
+        const fakeRes = {
+          _status: 200,
+          status(code) { this._status = code; return this; },
+          json(payload) { resolve({ status: this._status, payload }); },
+          send(payload) { resolve({ status: this._status, payload }); },
+        };
+        try {
+          scrapper(fakeReq, fakeRes);
+        } catch (e) {
+          resolve({ status: 500, payload: null });
+        }
+      });
+
+      if (scrapeResult?.payload?.success) {
+        getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
+        if (getData) {
+          return res.status(200).json({ success: true, data: getData, createdByScrape: true });
+        }
+      }
+    }
 
     if (!getData) {
       return res.status(404).json({ success: false, error: "Post not found" });
@@ -37,7 +64,7 @@ const getGovPostDetails = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 2. Get Sections (Optimized: Lean + Count optimization)
+// 2. Get Sections
 // ------------------------------------------------------------------
 const getGovJobSections = async (req, res) => {
   try {
@@ -49,7 +76,7 @@ const getGovJobSections = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 3. Get Post List by Section (Optimized: Indexed Query + Lean)
+// 3. Get Post List by Section
 // ------------------------------------------------------------------
 const getGovPostListBySection = async (req, res) => {
   try {
@@ -66,7 +93,7 @@ const getGovPostListBySection = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 4. Mark Fav (Optimized: Atomic Update + Count Check)
+// 4. Mark Fav
 // ------------------------------------------------------------------
 const markFav = async (req, res) => {
   try {
@@ -97,15 +124,13 @@ const markFav = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 5. Get Fav Posts (Optimized: 1 DB Call with Date Logic inside Query)
+// 5. Get Fav Posts
 // ------------------------------------------------------------------
 const getFavPosts = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Step 1: Unmark expired posts directly in DB (Atomic Bulk Update)
-    // Uses $expr and $dateFromString to check expiry without fetching data to Node
     await Post.updateMany(
       { 
         fav: true,
@@ -123,7 +148,7 @@ const getFavPosts = async (req, res) => {
                     } 
                   } 
                 },
-                onError: new Date("2099-12-31"), // Treat bad dates as valid (future) to avoid accidental unmark
+                onError: new Date("2099-12-31"),
                 onNull: new Date("2099-12-31")
               }
             },
@@ -134,7 +159,6 @@ const getFavPosts = async (req, res) => {
       { $set: { fav: false } }
     );
 
-    // Step 2: Fetch only valid favs
     const validFavs = await Post.find({ fav: true }).sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({ success: true, count: validFavs.length, data: validFavs });
@@ -144,7 +168,7 @@ const getFavPosts = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 6. Get Reminders (Optimized: Aggregation Pipeline - No Loop)
+// 6. Get Reminders
 // ------------------------------------------------------------------
 const getReminders = async (req, res) => {
   try {
@@ -234,7 +258,7 @@ const getReminders = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 7. Fix URLs (Optimized: Bulk Write - 1 Query instead of N)
+// 7. Fix URLs
 // ------------------------------------------------------------------
 function stripDomain(url) {
   if (!url) return url;
@@ -282,7 +306,7 @@ const fixAllUrls = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// 8. Find By Title (Optimized: Parallel Exec + DB Filtering + No Stream)
+// 8. Find By Title
 // ------------------------------------------------------------------
 const findByTitle = async (req, res) => {
   try {
@@ -295,9 +319,7 @@ const findByTitle = async (req, res) => {
     const safeTitle = title.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
     const titleRe = new RegExp(safeTitle, "i");
 
-    // Run both queries in parallel for maximum speed
     const [results1, results2] = await Promise.all([
-      // Query 1: Filter inside jobs array directly in DB
       postList.aggregate([
         { $match: { "jobs.title": titleRe } },
         { $limit: 20 },
@@ -316,21 +338,12 @@ const findByTitle = async (req, res) => {
           }
         }
       ]),
-      // Query 2: Search in Recruitment Title
       Post.find(
         { "recruitment.title": titleRe },
         { _id: 1, url: 1, recruitment: 1, updatedAt: 1, fav: 1 }
       ).limit(20).lean()
     ]);
 
-    // Format second result to match expected output structure
-    // (Assuming structure is simple object array, merging both)
-    // Structure: [{...results1 items}, {...results2 items}]
-    
-    // Note: To match exact previous streaming output structure:
-    // The previous stream outputted a single flat array of mixed objects.
-    // We do the same here.
-    
     const combinedData = [...results1, ...results2];
 
     return res.status(200).json({ success: true, data: combinedData });
