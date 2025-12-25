@@ -1,0 +1,13 @@
+const mongoose = require('mongoose');
+
+const sectionSchema = new mongoose.Schema(
+  {},
+  {
+    strict: false, // <-- yeh magic line, ab schema kuch bhi allow karega
+    timestamps: true,
+  }
+);
+
+const Section = mongoose.models.Section || mongoose.model('Section', sectionSchema);
+
+module.exports = Section;
