@@ -1,0 +1,179 @@
+{
+  "public": {},
+  "src": {
+    "app": {
+      "globals.css": {},
+      "layout.js": {},
+      "page.js": {},
+      "sitemap.js": {},
+      "(auth)": {
+        "login": {
+          "page.js": {}
+        },
+        "register": {
+          "page.js": {}
+        }
+      },
+      "about": {
+        "page.jsx": {}
+      },
+      "api": {
+        "auth": {
+          "route.js": {},
+          "send-otp": {},
+          "verify-otp": {}
+        },
+        "gov": {
+          "favs": {},
+          "fix-urls": {},
+          "post": {},
+          "reminders": {},
+          "search": {},
+          "section": {},
+          "sections": {},
+          "sections-with-posts": {}
+        },
+        "users": {
+          "route.js": {}
+        }
+      },
+      "contact": {
+        "page.jsx": {}
+      },
+      "fav-jobs": {
+        "page.jsx": {}
+      },
+      "image-tool": {
+        "page.jsx": {}
+      },
+      "mobile": {
+        "layout.js": {},
+        "page.js": {}
+      },
+      "pdf-tool": {
+        "page.jsx": {}
+      },
+      "policy": {
+        "page.jsx": {}
+      },
+      "post": {
+        "page.jsx": {}
+      },
+      "private-jobs": {
+        "page.jsx": {}
+      },
+      "quiz-and-earn": {
+        "page.jsx": {}
+      },
+      "remider": {
+        "page.jsx": {}
+      },
+      "resume-maker": {
+        "page.jsx": {}
+      },
+      "sections": {
+        "[sectionId]": {
+          "[category]": {}
+        }
+      },
+      "terms": {
+        "page.jsx": {}
+      },
+      "typing-test": {
+        "page.jsx": {}
+      },
+      "view-all": {
+        "page.jsx": {}
+      }
+    },
+    "components": {
+      "Adsterra728x90.jsx": {},
+      "AuthModal.jsx": {},
+      "ClientTitle.jsx": {},
+      "ReminderComponent.jsx": {},
+      "ResponsiveShell.jsx": {},
+      "SectionsWithPosts.jsx": {},
+      "common": {
+        "ErrorBoundary.jsx": {},
+        "Loading.jsx": {},
+        "LoadingSkeleton.jsx": {},
+        "SearchOverlay.jsx": {}
+      },
+      "features": {
+        "auth": {
+          "LoginForm.jsx": {},
+          "RegisterForm.jsx": {}
+        },
+        "jobs": {
+          "ApplyButton.jsx": {},
+          "JobCard.jsx": {},
+          "JobFilter.jsx": {},
+          "JobsList.jsx": {}
+        }
+      },
+      "layout": {
+        "Footer.jsx": {},
+        "Header.jsx": {},
+        "MobileLayout.jsx": {},
+        "MobileNav.jsx": {},
+        "Sidebar.jsx": {},
+        "Tools.jsx": {}
+      },
+      "mobile": {
+        "BottomNav.jsx": {},
+        "DeadlinesView.jsx": {},
+        "ExpiringSoonSection.jsx": {},
+        "GovtPostMobile.jsx": {},
+        "HeroSection.jsx": {},
+        "index.js": {},
+        "JobList.jsx": {},
+        "MobileHeader.jsx": {},
+        "MobileJobListWrapper.jsx": {},
+        "PrivateJobsView.jsx": {},
+        "PrivateSectionTabs.jsx": {},
+        "ToolsView.jsx": {}
+      },
+      "ui": {
+        "Button.jsx": {},
+        "Card.jsx": {},
+        "Input.jsx": {},
+        "Modal.jsx": {}
+      }
+    },
+    "hooks": {
+      "useAuth.js": {},
+      "useIsMobile.js": {},
+      "useJobs.js": {}
+    },
+    "lib": {
+      "api.js": {},
+      "constants.js": {},
+      "db.js": {},
+      "helpers.js": {},
+      "mongodb.js": {},
+      "post-helper.jsx": {},
+      "quiz.js": {},
+      "SEO.jsx": {},
+      "text.js": {},
+      "typingAsset.js": {},
+      "utils.js": {},
+      "ads": {
+        "AdContainer.jsx": {},
+        "Ads160x600.jsx": {},
+        "Adsetra728x90.jsx": {}
+      },
+      "api": {
+        "gov.js": {}
+      },
+      "models": {
+        "otp.js": {},
+        "README.md": {},
+        "user.js": {},
+        "gov": {}
+      }
+    },
+    "styles": {
+      "theme.css": {}
+    }
+  }
+}
