@@ -3,7 +3,8 @@
  */
 import React, { useState } from "react";
 import PrivateSectionTabs from "./PrivateSectionTabs";
-import { PrivateJobsList } from ".";
+import { PrivateHeroSection } from "./HeroSection";
+import { PrivateJobsList } from "./JobList";
 
 const PrivateJobsView = ({ categories, loading, sectionsByLink }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -18,7 +19,10 @@ const PrivateJobsView = ({ categories, loading, sectionsByLink }) => {
   return (
     <>
       {/* Hero Banner */}
-    
+      <PrivateHeroSection 
+        categoryCount={categories?.length || 0} 
+        loading={loading} 
+      />
 
       {/* Section Tabs */}
       <PrivateSectionTabs 
