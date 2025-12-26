@@ -1,43 +1,23 @@
-/**
- * Hero Section Component for Mobile
- */
+"use client";
 import React from "react";
+import Link from "next/link";
 
-// Govt Jobs Hero
-export const GovtHeroSection = () => (
-  <div className="px-4 py-4">
-    <div className="relative rounded-2xl overflow-hidden shadow-md h-40">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-900 to-blue-600" />
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-transparent flex flex-col justify-center px-6">
-        <span className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
-          Career Goals
-        </span>
-        <h2 className="text-white text-xl font-bold leading-tight">
-          Track Your <br />Sarkari Success
-        </h2>
+export const PrivateHeroSection = ({ categoryCount = 0 }) => {
+  return (
+    <section className="mt-4 px-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Private Jobs</h2>
+            <p className="text-sm text-slate-500">{categoryCount} categories</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/private-jobs" className="text-sm font-semibold text-indigo-600">View All</Link>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-);
+    </section>
+  );
+};
 
-// Private Jobs Hero
-export const PrivateHeroSection = ({ categoryCount = 0, loading = false }) => (
-  <div className="px-4 py-4">
-    <div className="relative rounded-2xl overflow-hidden shadow-md h-32">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-900 to-purple-600" />
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-900/90 to-transparent flex flex-col justify-center px-6">
-        <span className="text-yellow-400 text-xs font-bold uppercase tracking-wider mb-1">
-          Private Sector
-        </span>
-        <h2 className="text-white text-xl font-bold leading-tight">
-          Latest Private Jobs
-        </h2>
-        {!loading && categoryCount > 0 && (
-          <p className="text-purple-200 text-xs mt-1">{categoryCount} Active Categories</p>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
-export default GovtHeroSection;
+export default PrivateHeroSection;
