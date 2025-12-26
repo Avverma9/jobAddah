@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
+import Ad320x50 from "@/lib/ads/Ad320x50";
 import useIsMobile from "../../hooks/useIsMobile";
 import MobileLayout from "@/components/layout/MobileLayout";
 
@@ -152,7 +153,12 @@ export default function PrivateJobsPage() {
 
       {/* Top Banner Ad */}
       <div className="flex justify-center mb-4">
-        <AdBanner728x90 />
+        <div className="md:hidden">
+          <Ad320x50 />
+        </div>
+        <div className="hidden md:flex">
+          <AdBanner728x90 />
+        </div>
       </div>
 
       {/* Main Container - Reduced Top Margin (pt-2) */}

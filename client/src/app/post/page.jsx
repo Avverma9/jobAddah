@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AdContainer from "../../lib/ads/AdContainer";
 import AdBanner728x90 from "../../lib/ads/Adsetra728x90";
+import Ad320x50 from "../../lib/ads/Ad320x50";
 import {
   ErrorScreen,
   LoadingSkeleton,
@@ -192,8 +193,13 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
           hydrated && isMobile ? "pb-24" : ""
         }`}
       >
-        <div className="flex justify-center">
-          <AdBanner728x90 />
+        <div className="flex justify-center my-4">
+          <div className="md:hidden">
+            <Ad320x50 />
+          </div>
+          <div className="hidden md:flex">
+            <AdBanner728x90 />
+          </div>
         </div>
 
         <div className="bg-white shadow-sm border border-slate-300 rounded-lg overflow-hidden">

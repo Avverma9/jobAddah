@@ -1,6 +1,7 @@
 "use client";
 import useIsMobile from "@/hooks/useIsMobile";
 import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
+import Ad320x50 from "@/lib/ads/Ad320x50";
 import SEO from "@/lib/SEO";
 import { dataStore, funnyJokes, getFeedback } from "@/lib/typingAsset";
 import {
@@ -98,8 +99,13 @@ export default function TypingTest() {
         canonical="/tools/typing-test"
         section="Tools"
       />
-      <div className="hidden md:flex justify-center w-full my-4">
-        <AdBanner728x90 />
+      <div className="flex justify-center w-full my-4">
+        <div className="md:hidden">
+          <Ad320x50 />
+        </div>
+        <div className="hidden md:flex">
+          <AdBanner728x90 />
+        </div>
       </div>
       <header className="w-full max-w-5xl flex justify-between items-center mb-12 mt-4">
         <div className="flex items-center gap-2">
