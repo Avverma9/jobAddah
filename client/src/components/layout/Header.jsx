@@ -69,6 +69,38 @@ export default function Header() {
   const hideHeader = pathname && pathname.startsWith("/post") && isSmallScreen;
   const headerRef = useRef(null);
 
+  // Intercept header link clicks and route via Next router for same-origin internal links
+  // This prevents full page reloads when someone clicks a plain <a href="/..."> inside the header
+  const handleHeaderNav = (e) => {
+    try {
+      if (e.defaultPrevented) return; // already handled
+      // Allow modified clicks / non-left clicks to behave normally (open in new tab etc)
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (e.button && e.button !== 0) return;
+
+      const anchor = e.target.closest && e.target.closest('a');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+
+      // Ignore anchors that are mailto/tel or hash-only
+      if (href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#')) return;
+
+      // Resolve relative hrefs using current location
+      const destUrl = new URL(href, typeof window !== 'undefined' ? window.location.href : '');
+
+      // Only intercept same-origin internal navigation
+      if (destUrl.origin !== window.location.origin) return;
+
+      // Let Next handle client navigation
+      e.preventDefault();
+      setIsMobileMenuOpen(false);
+      router.push(`${destUrl.pathname}${destUrl.search}${destUrl.hash}`);
+    } catch (err) {
+      // swallow - fall back to native navigation
+    }
+  };
+
   // --- UI States ---
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -326,6 +358,7 @@ export default function Header() {
         // on JS-calculated padding which can be brittle across pages.
         <header
           ref={headerRef}
+          onClick={handleHeaderNav}
           className="site-desktop-header sticky top-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md shadow-sm"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

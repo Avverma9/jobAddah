@@ -467,7 +467,8 @@ export default function ResumeMaker() {
   const html2pdfRef = useRef(null);
   const [fitToScreen, setFitToScreen] = useState(true);
   const [scale, setScale] = useState(1);
-  const [previewHeight, setPreviewHeight] = useState('auto');
+  // Give a sensible initial min-height to reduce layout shifts while measurements run
+  const [previewHeight, setPreviewHeight] = useState('70vh');
   
   const [resumeData, setResumeData] = useState({
     personal: {
@@ -805,7 +806,7 @@ export default function ResumeMaker() {
             <div className="h-20 md:hidden"></div>
         </div>
 
-        <div ref={previewWrapperRef} className={`flex-1 bg-slate-100 overflow-auto p-4 md:p-8 flex justify-center ${activeTab === 'editor' ? 'hidden md:flex' : 'flex'}`} style={{ height: previewHeight }}>
+  <div ref={previewWrapperRef} className={`flex-1 bg-slate-100 overflow-auto p-4 md:p-8 flex justify-center ${activeTab === 'editor' ? 'hidden md:flex' : 'flex'}`} style={{ minHeight: previewHeight }}>
           <div className="w-full max-w-full shadow-2xl bg-white origin-top relative">
             <div
               ref={resumeInnerRef}
