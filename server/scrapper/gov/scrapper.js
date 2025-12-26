@@ -8,7 +8,7 @@ const Section = require("@/models/gov/section");
 const GeminiModel = require("@/models/ai/gemini-model");
 const ApiKey = require("@/models/ai/ai-apiKey");
 const Site = require("@/models/gov/scrapperSite");
-const { prompt } = require("./prompt");
+const { buildPrompt } = require("./prompt");
 
 // ============================================================================
 // 1. HELPER FUNCTIONS
@@ -57,7 +57,8 @@ const formatWithAI = async (scrapedData) => {
       model: modelNameData.modelName,
       generationConfig: { responseMimeType: "application/json" },
     });
-    const result = await model.generateContent(prompt);
+  const promptText = buildPrompt(scrapedData);
+  const result = await model.generateContent(promptText);
     const text = result.response.text();
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
