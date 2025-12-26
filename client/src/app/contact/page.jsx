@@ -3,6 +3,7 @@ import React from "react";
 import { Mail, Phone, MapPin } from "lucide-react";
 import SEO from "@/lib/SEO";
 import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
+import Ad320x50 from "@/lib/ads/Ad320x50";
 
 export default function ContactUs() {
   return (
@@ -14,9 +15,16 @@ export default function ContactUs() {
         canonical="/contact-us"
         section="Contact"
       />
-      <div className="hidden md:flex justify-center w-full my-4">
-  <AdBanner728x90 />
-</div>
+      <div className="flex justify-center w-full my-4">
+        <div className="md:hidden">
+          {/* Mobile 320x50 */}
+          <Ad320x50 />
+        </div>
+        <div className="hidden md:flex">
+          {/* Desktop 728x90 */}
+          <AdBanner728x90 />
+        </div>
+      </div>
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 px-6">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Contact Us</h1>

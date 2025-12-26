@@ -15,6 +15,7 @@ import {
 import SEO from "@/lib/SEO";
 import ReminderComponent from "@/components/ReminderComponent";
 import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
+import Ad320x50 from "@/lib/ads/Ad320x50";
 
 // Helper to format date
 const formatDate = (dateString) => {
@@ -202,8 +203,13 @@ function ViewAllContent() {
   return (
     <div className="min-h-screen bg-slate-50 py-6 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="hidden md:flex justify-center w-full my-4">
-          <AdBanner728x90 />
+        <div className="flex justify-center w-full my-4">
+          <div className="md:hidden">
+            <Ad320x50 />
+          </div>
+          <div className="hidden md:flex">
+            <AdBanner728x90 />
+          </div>
         </div>
         {/* --- Header Section --- */}
         <div className="mb-6">

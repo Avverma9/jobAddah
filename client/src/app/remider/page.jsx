@@ -1,5 +1,7 @@
 "use client";
 import { ArrowRight, BellRing, Clock } from "lucide-react";
+import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
+import Ad320x50 from "@/lib/ads/Ad320x50";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -193,7 +195,12 @@ export default function ReminderComponent() {
         })}
       </div>
       <div className="hidden md:flex justify-center w-full my-4">
-        <AdBanner728x90 />
+        <div className="md:hidden">
+          <Ad320x50 />
+        </div>
+        <div className="hidden md:flex">
+          <AdBanner728x90 />
+        </div>
       </div>
     </div>
   );

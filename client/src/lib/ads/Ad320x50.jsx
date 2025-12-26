@@ -2,15 +2,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 const DEFAULT_OPTIONS = {
-  key: '01bf085eb7b230d788625afbcd2667fa',
+  key: '52a59a395c89727fab5f4acc0d27ac12',
   format: 'iframe',
-  height: 90,
-  width: 728,
+  height: 50,
+  width: 320,
   params: {}
 };
 
-const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
-  const [status, setStatus] = useState('idle'); // idle | loading | loaded | failed | no-creative
+const Ad320x50 = ({ options = DEFAULT_OPTIONS }) => {
+  const [status, setStatus] = useState('idle');
   const containerRef = useRef(null);
 
   const injectScript = () => {
@@ -18,19 +18,17 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
       try {
         const rect = container.getBoundingClientRect ? container.getBoundingClientRect() : null;
         const style = window.getComputedStyle ? window.getComputedStyle(container) : null;
-        console.warn('Ad 728x90 no-creative report:', { reason, isConnected: container.isConnected, childCount: container.childNodes.length, rect, display: style && style.display, visibility: style && style.visibility, overflow: style && style.overflow });
-        // also list immediate children nodes for inspection
+        console.warn('Ad 320x50 no-creative report:', { reason, isConnected: container.isConnected, childCount: container.childNodes.length, rect, display: style && style.display, visibility: style && style.visibility, overflow: style && style.overflow });
         Array.from(container.childNodes).forEach((n, i) => console.log('ad-child', i, n.nodeName, n.nodeType, n));
       } catch (e) {}
     };
     try {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        // not desktop viewport
-        return;
-      }
+      // Only inject mobile 320x50 on small viewports (< md)
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) return;
+
       setStatus('loading');
 
-      // Set config for the provider
+      // Set global atOptions for provider to read
       window.atOptions = {
         key: options.key,
         format: options.format,
@@ -42,9 +40,8 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
       const scriptSrc = `https://www.highperformanceformat.com/${options.key}/invoke.js`;
       const existingScript = document.querySelector(`script[src="${scriptSrc}"]`);
 
-      const container = containerRef.current || document.getElementById('ad-container-728x90');
+      const container = containerRef.current || document.getElementById('ad-container-320x50');
       if (!container) {
-        console.warn('Ad container not found for 728x90');
         setStatus('failed');
         return;
       }
@@ -57,31 +54,29 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
         script.dataset.hpfInjected = 'true';
         script.onload = () => {
           setStatus('loaded');
-          container.dataset.hpfLoaded = '1';
-          console.log('Ad 728x90 provider script loaded');
+          try { if (container) container.dataset.hpfLoaded = '1'; } catch (e) {}
+          console.log('Ad 320x50 provider script loaded');
         };
         script.onerror = () => {
           setStatus('failed');
-          container.dataset.hpfFailed = '1';
-          console.warn('Ad 728x90 provider script failed to load');
+          try { if (container) container.dataset.hpfFailed = '1'; } catch (e) {}
+          console.warn('Ad 320x50 provider script failed to load');
         };
-
         container.appendChild(script);
-
-        // After short delay, check if provider rendered creative
+        container.dataset.hpfHasScript = '1';
         setTimeout(() => {
           try {
-            // provider will usually append creative nodes other than the script
-            const hasCreative = Array.from(container.childNodes).some((n) => n.nodeName !== 'SCRIPT');
-            if (!hasCreative && status !== 'loaded') {
-              setStatus('no-creative');
-              console.warn('Ad 728x90 container present but provider did not render creative. It may be blocked by extension or network.');
-              reportContainer(container, 'initial-check-no-creative');
-            }
+            if (container && container.childNodes.length === 1 && !container.dataset.hpfLoaded) {
+                setStatus('no-creative');
+                console.warn('Ad 320x50 container present but provider did not render creative. It may be blocked by extension or network.');
+                reportContainer(container, 'initial-check-no-creative');
+              }
           } catch (e) {}
         }, 3000);
       } else {
-        // script already present on page; assume provider will render into container; wait and check
+        const marker = document.createElement('div');
+        marker.dataset.hpfMarker = 'true';
+        container.appendChild(marker);
         setTimeout(() => {
           const hasCreative = Array.from(container.childNodes).some((n) => n.nodeName !== 'SCRIPT');
           if (hasCreative) setStatus('loaded');
@@ -91,10 +86,8 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
           }
         }, 1500);
       }
-
-      // cleanup not performed here; let provider manage itself. We only remove injected nodes on unmount.
     } catch (err) {
-      console.error('AdBanner728x90 load error', err);
+      console.error('Ad320x50 load error', err);
       setStatus('failed');
     }
   };
@@ -103,22 +96,23 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
     injectScript();
     return () => {
       try {
-        const container = containerRef.current || document.getElementById('ad-container-728x90');
-        if (container) {
-          // remove only scripts we injected
-          Array.from(container.querySelectorAll('script')).forEach((s) => {
-            if (s.dataset.hpfInjected === 'true') s.remove();
+        const containerEl = containerRef.current || document.getElementById('ad-container-320x50');
+        if (containerEl) {
+          const markers = Array.from(containerEl.querySelectorAll('[data-hpf-marker]'));
+          markers.forEach((m) => m.parentNode && m.parentNode.removeChild(m));
+          const scripts = Array.from(containerEl.querySelectorAll('script'));
+          scripts.forEach((s) => {
+            if (s.src && s.src.includes(options.key) && s.dataset.hpfInjected === 'true') s.remove();
           });
         }
-        try { delete window.atOptions; } catch (e) { window.atOptions = undefined; }
       } catch (e) {}
+      try { delete window.atOptions; } catch (e) { window.atOptions = undefined; }
     };
   }, [options]);
 
   const handleReload = () => {
-    // remove any injected script markers then retry
     try {
-      const container = containerRef.current || document.getElementById('ad-container-728x90');
+      const container = containerRef.current || document.getElementById('ad-container-320x50');
       if (container) {
         Array.from(container.querySelectorAll('[data-hpf-marker]')).forEach((n) => n.remove());
         Array.from(container.querySelectorAll('script')).forEach((s) => {
@@ -129,10 +123,11 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
     setStatus('idle');
     setTimeout(injectScript, 200);
   };
+  
 
   return (
     <div
-      id="ad-container-728x90"
+      id="ad-container-320x50"
       role="region"
       aria-label="Advertisement"
       style={{ width: '100%', maxWidth: `${options.width}px`, height: `${options.height}px`, margin: '0 auto' }}
@@ -153,4 +148,4 @@ const AdBanner728x90 = ({ options = DEFAULT_OPTIONS }) => {
   );
 };
 
-export default AdBanner728x90;
+export default Ad320x50;
