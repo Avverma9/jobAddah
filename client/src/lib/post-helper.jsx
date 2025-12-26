@@ -1271,7 +1271,7 @@ export const ImportantLinks = ({ links }) => {
 // --- CUSTOM SKELETON COMPONENT (Matches New Design) ---
 export const LoadingSkeleton = () => (
   <div className="animate-pulse">
-    {/* Ad Placeholder */}
+  {/* Ad removed */}
     <div className="h-[90px] w-full bg-slate-200 rounded-lg mb-4 mx-auto max-w-[728px]" />
 
     {/* Main Card Skeleton */}

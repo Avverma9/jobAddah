@@ -13,8 +13,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
-import Ad320x50 from "@/lib/ads/Ad320x50";
 
 // --- GAME CONFIGURATION ---
 const WINNING_SCORE = 20;
@@ -315,7 +313,7 @@ export default function QuizAndEarnPage() {
       <SEO title="Quiz & Earn — JobsAddah" />
       <div className="hidden md:flex justify-center w-full my-4">
         <div className="md:hidden">
-          <Ad320x50 />
+          {/* Ad removed */}
         </div>
         <div className="hidden md:flex">
           <AdBanner728x90 />

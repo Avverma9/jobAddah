@@ -1,7 +1,5 @@
 "use client";
 import useIsMobile from "@/hooks/useIsMobile";
-import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
-import Ad320x50 from "@/lib/ads/Ad320x50";
 import SEO from "@/lib/SEO";
 import { dataStore, funnyJokes, getFeedback } from "@/lib/typingAsset";
 import {
@@ -101,7 +99,7 @@ export default function TypingTest() {
       />
       <div className="flex justify-center w-full my-4">
         <div className="md:hidden">
-          <Ad320x50 />
+          {/* Ad removed */}
         </div>
         <div className="hidden md:flex">
           <AdBanner728x90 />

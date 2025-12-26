@@ -5,13 +5,7 @@ import { Facebook, Twitter, Instagram, Linkedin, Send, PlayCircle, Apple, MapPin
 const Footer = () => {
   return (
     <footer className="relative bg-white dark:bg-blue-900 text-slate-700 dark:text-slate-300">
-      {/* Footer Banner Ad */}
-      {/* <AdContainer 
-        placement="banner" 
-        pageType="footer"
-        format="horizontal"
-        className="py-4 bg-gray-50 dark:bg-blue-950"
-      /> */}
+        {/* Ad removed */}
 
       <div className="pt-8 pb-8 container mx-auto px-6 relative z-10">
         

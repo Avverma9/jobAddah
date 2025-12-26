@@ -13,9 +13,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import AdContainer from "../../lib/ads/AdContainer";
-import AdBanner728x90 from "../../lib/ads/Adsetra728x90";
-import Ad320x50 from "../../lib/ads/Ad320x50";
 import {
   ErrorScreen,
   LoadingSkeleton,
@@ -195,10 +192,10 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
       >
         <div className="flex justify-center my-4">
           <div className="md:hidden">
-            <Ad320x50 />
+            {/* Ad removed */}
           </div>
           <div className="hidden md:flex">
-            <AdBanner728x90 />
+            {/* Ad removed */}
           </div>
         </div>
 
@@ -505,12 +502,6 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
           </div>
         </div>
 
-        <AdContainer
-          placement="rectangle"
-          pageType="jobDetail"
-          format="rectangle"
-          className="mt-6"
-        />
       </main>
     </>
   );
