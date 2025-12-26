@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
-import Ads160x600 from '@/lib/ads/Ads160x600'
 import Footer from "@/components/layout/Footer";
 import MobileHeader from "@/components/mobile/MobileHeader";
 import BottomNav from "@/components/mobile/BottomNav";
@@ -571,24 +570,7 @@ export default function ResponsiveShell({ children }) {
         <Footer />
       </div>
 
-      {/* Side ads - left and right (visible on wide screens). Render after main/footer to keep SSR ordering stable. */}
-      <div className="hidden xl:block">
-        <div
-          className="fixed top-[calc(var(--site-header-height)+24px)] z-40 left-3"
-          style={{ left: '12px' }}
-          aria-hidden
-        >
-          <Ads160x600 slot="left" />
-        </div>
-
-        <div
-          className="fixed top-[calc(var(--site-header-height)+24px)] z-40 right-3"
-          style={{ right: '12px' }}
-          aria-hidden
-        >
-          <Ads160x600 slot="right" />
-        </div>
-      </div>
+      {/* Side ads removed as per configuration - no 160x600 side banners */}
     </div>
   );
 }
