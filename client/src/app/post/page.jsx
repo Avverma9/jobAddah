@@ -186,7 +186,7 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
       />
 
       <main
-        className={`container mx-auto px-2 py-6 max-w-5xl pt-16 md:pt-20 scroll-pt-16 md:scroll-pt-20 ${
+        className={`container mx-auto px-2 py-6 max-w-5xl md:scroll-pt-20 ${
           hydrated && isMobile ? "pb-24" : ""
         }`}
       >
@@ -515,7 +515,7 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
       <Head>
         <title>{pageTitle}</title>
       </Head>
-      <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      <div className=" bg-gray-50 font-sans text-gray-900">
         <PostContent />
       </div>
     </>
