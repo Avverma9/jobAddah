@@ -1,5 +1,6 @@
 // React import removed - not needed
 import SEO from '@/lib/SEO';
+import Link from 'next/link';
 import { AlertTriangle, Ban, CheckCircle, Eye, FileText, Gavel, Scale, Shield } from "lucide-react";
 
 export default function Terms() {
@@ -246,7 +247,7 @@ export default function Terms() {
                 <div className="mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
                     <p>&copy; {new Date().getFullYear()} Jobsaddah. All Rights Reserved.</p>
                     <div className="flex gap-6">
-                        <span className="cursor-pointer hover:text-white transition-colors">Privacy Policy</span>
+                        <Link href="/policy" className="cursor-pointer hover:text-white transition-colors">Privacy Policy</Link>
                         <span className="cursor-pointer hover:text-white transition-colors">Sitemap</span>
                     </div>
                 </div>

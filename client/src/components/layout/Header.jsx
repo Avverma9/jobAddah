@@ -488,27 +488,10 @@ export default function Header() {
                                   j._id || j.id
                                 );
                                 return (
-                                  <a
+                                  <Link
                                     key={idx2}
                                     href={dest || "#"}
-                                    onClick={(ev) => {
-                                      ev.preventDefault();
-                                      setShowResults(false);
-                                      if (!dest || dest === "#") return;
-                                      try {
-                                        const base = window.location.origin;
-                                        if (
-                                          dest.startsWith("http") &&
-                                          !dest.startsWith(base)
-                                        ) {
-                                          window.location.href = dest;
-                                          return;
-                                        }
-                                      } catch (e) {
-                                        // ignore
-                                      }
-                                      router.push(dest);
-                                    }}
+                                    onClick={() => setShowResults(false)}
                                     className="block p-2 rounded-md hover:bg-indigo-50 transition-colors"
                                   >
                                     <div className="text-sm font-medium text-gray-900 truncate">
@@ -528,7 +511,7 @@ export default function Header() {
                                           : ""}
                                       </span>
                                     </div>
-                                  </a>
+                                  </Link>
                                 );
                               })}
                             </div>
