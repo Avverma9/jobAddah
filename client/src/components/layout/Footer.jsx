@@ -1,8 +1,24 @@
 import React from 'react';
+import Link from 'next/link';
 import { Facebook, Twitter, Instagram, Linkedin, Send, PlayCircle, Apple, MapPin, Phone, Mail } from 'lucide-react';
 // import AdContainer from './ads/AdContainer';
 
 const Footer = () => {
+  const quickLinks = [
+    { name: "Home", path: "/" },
+    { name: "Browse Jobs", path: "/view-all" },
+    { name: "Admit Cards", path: "/view-all" },
+    { name: "Results", path: "/view-all" },
+    { name: "Sitemap", path: "/sitemap.xml" },
+  ];
+
+  const bottomLinks = [
+    { name: "Privacy Policy", path: "/policy" },
+    { name: "Terms of Service", path: "/terms" },
+    { name: "Cookies Settings", path: "/policy" },
+    { name: "Disclaimer", path: "/terms" },
+  ];
+
   return (
     <footer className="relative bg-white dark:bg-blue-900 text-slate-700 dark:text-slate-300">
         {/* Ad removed */}
@@ -43,12 +59,12 @@ const Footer = () => {
               Quick Links
             </h4>
             <ul className="space-y-3">
-              {["Home", "Browse Jobs", "Admit Cards", "Results", "Sitemap"].map((link) => (
-                <li key={link}>
-                  <a href="#" className="flex items-center gap-2 group hover:text-orange-400 transition-colors text-slate-700 dark:text-slate-300">
+              {quickLinks.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.path} className="flex items-center gap-2 group hover:text-orange-400 transition-colors text-slate-700 dark:text-slate-300">
                     <span className="w-1.5 h-1.5 bg-orange-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                    {link}
-                  </a>
+                    {link.name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -123,10 +139,10 @@ const Footer = () => {
           </div>
           
           <div className="flex flex-wrap justify-center gap-6">
-            {["Privacy Policy", "Terms of Service", "Cookies Settings", "Disclaimer"].map((item) => (
-              <a key={item} href="#" className="hover:text-orange-400 transition-colors">
-                {item}
-              </a>
+            {bottomLinks.map((item) => (
+              <Link key={item.name} href={item.path} className="hover:text-orange-400 transition-colors">
+                {item.name}
+              </Link>
             ))}
           </div>
         </div>

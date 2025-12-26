@@ -32,22 +32,6 @@ const BottomNav = ({ activeView, onViewChange }) => {
         const isActive = activeView === item.id;
         const IconComponent = ICON_MAP[item.icon];
 
-        // Use anchor navigation so the page/router performs a full route change
-        // and the app can re-render/refresh as needed.
-        const handleClick = (e) => {
-          // If user clicks the link for the path they're already on, force a
-          // full reload so components refresh (default Next Link won't reload same-path).
-          try {
-            if (item.path === pathname || (item.path === "/" && pathname === "/")) {
-              e.preventDefault();
-              // Use location.assign to trigger full navigation + reload
-              window.location.assign(item.path);
-            }
-          } catch (err) {
-            // fallback: no-op
-          }
-        };
-
         // Preserve the original inline behavior for private jobs: when the
         // user taps the 'Pvt Job' tab we want the shell to render the inline
         // PrivateJobsView (so don't perform a full route navigation here).
@@ -66,13 +50,10 @@ const BottomNav = ({ activeView, onViewChange }) => {
           );
         }
 
-        // For other items use Link so navigation is via href (and will reload
-        // when clicking the same path thanks to the onClick handler above).
         return (
           <Link
             key={item.id}
             href={item.path}
-            onClick={handleClick}
             className={`flex flex-col items-center gap-1 w-full transition ${
               isActive ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
             }`}

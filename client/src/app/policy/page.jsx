@@ -1,5 +1,6 @@
 // React import removed - not needed
 import SEO from "@/lib/SEO";
+import Link from 'next/link';
 import { CheckCircle, Eye, FileText, Globe, Lock, Shield, Trash2, Zap } from "lucide-react";
 
 export default function PrivacyPolicy() {
@@ -241,7 +242,7 @@ export default function PrivacyPolicy() {
                 <div className="mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
                     <p>&copy; {new Date().getFullYear()} Jobsaddah. Built for transparency.</p>
                     <div className="flex gap-6">
-                        <a href="/terms" className="cursor-pointer hover:text-white transition-colors">Terms</a>
+                        <Link href="/terms" className="cursor-pointer hover:text-white transition-colors">Terms</Link>
                         <span className="cursor-pointer hover:text-white transition-colors">Sitemap</span>
                     </div>
                 </div>
