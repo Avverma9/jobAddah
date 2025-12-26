@@ -2,9 +2,9 @@
  * Expiring Soon Section Component
  */
 import React from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { Timer } from "lucide-react";
-import { getReminderLink } from "@/lib/helpers";
+import { getReminderLink } from "../../utils/helpers";
 import { CardSkeleton } from "../common/LoadingSkeleton";
 
 const ExpiringSoonSection = ({ reminders, loading }) => {
@@ -38,7 +38,7 @@ const ExpiringSoonSection = ({ reminders, loading }) => {
         {allReminders.slice(0, 10).map((reminder, idx) => (
           <Link
             key={idx}
-            href={getReminderLink(reminder)}
+            to={getReminderLink(reminder)}
             className="snap-start shrink-0 w-[280px] bg-gradient-to-br from-white to-red-50 p-4 rounded-xl border border-red-100 shadow-sm flex flex-col justify-between h-[130px]"
           >
             <div>
