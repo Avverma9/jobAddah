@@ -19,8 +19,7 @@ export default function ContactUs() {
           {/* Ad removed */}
         </div>
         <div className="hidden md:flex">
-          {/* Desktop 728x90 */}
-          <AdBanner728x90 />
+          {/* Desktop 728x90 - Ad removed */}
         </div>
       </div>
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 px-6">
