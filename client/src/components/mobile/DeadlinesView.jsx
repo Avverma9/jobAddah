@@ -2,9 +2,9 @@
  * Deadlines View Component for Mobile
  */
 import React from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { Clock } from "lucide-react";
-import { getReminderLink } from "../../utils/helpers";
+import { getReminderLink } from "@/lib/helpers";
 import { DeadlineCardSkeleton } from "../common/LoadingSkeleton";
 
 const DeadlinesView = ({ reminders, loading }) => {
@@ -30,7 +30,7 @@ const DeadlinesView = ({ reminders, loading }) => {
         allReminders.map((reminder, idx) => (
           <Link
             key={idx}
-            to={getReminderLink(reminder)}
+            href={getReminderLink(reminder)}
             className="block bg-gradient-to-br from-white to-orange-50 p-4 rounded-xl border border-orange-100 shadow-sm"
           >
             <div className="flex justify-between items-start mb-2">

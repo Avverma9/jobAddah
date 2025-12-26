@@ -2,9 +2,9 @@
  * Search Overlay Component for Mobile
  */
 import React from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { getPostLink } from "../../utils/helpers";
+import { getPostLink } from "@/lib/helpers";
 
 const SearchOverlay = ({ 
   isOpen, 
@@ -49,7 +49,7 @@ const SearchOverlay = ({
             {results.map((item, idx) => (
               <Link
                 key={idx}
-                to={getPostLink(item.linkTarget)}
+                href={getPostLink(item.linkTarget)}
                 onClick={onClose}
                 className="block px-4 py-3 hover:bg-gray-50"
               >
