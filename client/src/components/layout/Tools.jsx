@@ -1,7 +1,5 @@
 "use client";
 
-import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
-import Ad320x50 from "@/lib/ads/Ad320x50";
 import {
   BrainCircuit,
   FileText,
@@ -125,15 +123,7 @@ export default function Tools() {
         ))}
       </div>
 
-      {/* Ad Section: mobile 320x50, desktop 728x90 */}
-      <div className="flex justify-center mt-8">
-        <div className="md:hidden">
-          <Ad320x50 />
-        </div>
-        <div className="hidden md:flex">
-          <AdBanner728x90 />
-        </div>
-      </div>
+      {/* Ad removed */}
     </div>
   );
 }

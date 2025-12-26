@@ -235,23 +235,7 @@ export default function ResponsiveShell({ children }) {
     setActiveView("govt");
   }, [pathname, searchParams]);
 
-  // Side ads positioning for wide screens
-  const [sideAdStyle, setSideAdStyle] = useState({ left: null, right: null });
-  useEffect(() => {
-    const adWidth = 160;
-    const contentMaxWidth = 1152; // keep in sync with Ads component
-    const update = () => {
-      const iw = window.innerWidth;
-      const gap = Math.max(0, (iw - contentMaxWidth) / 2 - adWidth - 12);
-      // compute CSS calc values to place ad outside content area
-      const left = `calc(50% - ${contentMaxWidth / 2}px - ${adWidth + 12}px)`;
-      const right = `calc(50% + ${contentMaxWidth / 2}px + 12px)`;
-      setSideAdStyle({ left, right, gap });
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+  // Removed ad layout effect and contentMaxWidth usage
 
   // Fetch reminders when user opens deadlines in mobile
   useEffect(() => {
@@ -523,7 +507,6 @@ export default function ResponsiveShell({ children }) {
         <Header />
       </div>
 
-      {/* Side ads (rendered later to avoid SSR hydration ordering issues) */}
 
       <main className="pb-20 md:pb-0">
         {/* Mobile view switch: show tools or default children */}
@@ -570,7 +553,6 @@ export default function ResponsiveShell({ children }) {
         <Footer />
       </div>
 
-      {/* Side ads removed as per configuration - no 160x600 side banners */}
     </div>
   );
 }

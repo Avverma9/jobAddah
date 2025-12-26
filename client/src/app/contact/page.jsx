@@ -2,8 +2,6 @@
 import React from "react";
 import { Mail, Phone, MapPin } from "lucide-react";
 import SEO from "@/lib/SEO";
-import AdBanner728x90 from "@/lib/ads/Adsetra728x90";
-import Ad320x50 from "@/lib/ads/Ad320x50";
 
 export default function ContactUs() {
   return (
@@ -18,7 +16,7 @@ export default function ContactUs() {
       <div className="flex justify-center w-full my-4">
         <div className="md:hidden">
           {/* Mobile 320x50 */}
-          <Ad320x50 />
+          {/* Ad removed */}
         </div>
         <div className="hidden md:flex">
           {/* Desktop 728x90 */}
