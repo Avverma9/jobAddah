@@ -608,6 +608,8 @@ export const extractVacancy = (vacancy) => {
     vacancy.posts ||
     vacancy.totalPost ||
     vacancy.totalSeat ||
+    vacancy.totalSeats ||
+    vacancy.intake ||
     "See Notification";
 
   let positions =
@@ -722,6 +724,9 @@ export const extractVacancy = (vacancy) => {
       pos.positionName ||
       pos.postTitle ||
       pos.title ||
+      pos.courseName ||
+      pos.programName ||
+      pos.program ||
       pos.trade_name ||
       "Various Post";
 
@@ -734,6 +739,9 @@ export const extractVacancy = (vacancy) => {
       pos.count ||
       pos.totalPosts ||
       pos.number_of_posts ||
+      pos.seats ||
+      pos.totalSeats ||
+      pos.intake ||
       pos.details ||
       null;
 
@@ -761,7 +769,14 @@ export const extractVacancy = (vacancy) => {
 
     if (count == null) count = "-";
 
-    const group = pos.group || pos.category || pos.type || pos.level || "-";
+    const group =
+      pos.group ||
+      pos.category ||
+      pos.type ||
+      pos.level ||
+      pos.courseType ||
+      pos.stream ||
+      "-";
 
     const eligibility =
       pos.eligibility ||
@@ -769,6 +784,7 @@ export const extractVacancy = (vacancy) => {
       pos.qualification ||
       pos.education ||
       pos.educationalQualification ||
+      pos.eligibilityDetails ||
       pos.criteria ||
       pos.details ||
       "-";

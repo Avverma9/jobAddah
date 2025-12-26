@@ -11,7 +11,7 @@ import {
   Download,
   ExternalLink,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ErrorScreen,
@@ -28,11 +28,13 @@ import Head from "next/head";
 
 const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const isMobile = useIsMobile(640);
   const [hydrated, setHydrated] = useState(false);
-  
+  const fallbackAttemptedRef = useRef(false);
+const api = process.env.NEXT_PUBLIC_API_URL 
   useEffect(() => setHydrated(true), []);
 
   // mounted guard to avoid running client-only logic during SSR
@@ -49,16 +51,32 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
 
   const paramUrl = forwardedUrl || params?.url || searchUrl || "";
   const paramId = params?._id || params?.id || "";
-  
+
   // Clean URL logic
   const cleanedParamUrl =
     typeof paramUrl === "string"
       ? paramUrl.split("&")[0].split("?")[0]
       : paramUrl;
 
+  const triggerScraper = async (urlParam) => {
+    try {
+      console.log("🔄 Triggering scraper for URL:", urlParam);
+      const response = await axios.post(`${api}/scrapper/scrape-complete`, {
+        url: urlParam,
+      });
+
+      const status = response?.status || response?.statusCode || 200;
+      return { success: status === 200 || status === 201, status };
+    } catch (error) {
+      console.error("❌ Scraper failed:", error);
+      return { success: false, status: error?.response?.status || 500 };
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadingMessage("Loading...");
       setError(null);
 
       if (!paramUrl && !paramId) {
@@ -74,13 +92,18 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
       const fetchFromPrimaryAPI = async () => {
         try {
           // Primary API call only
-          const result = await axios.get(
+          const response = await axios.get(
             `/api/gov/post?url=${encodeURIComponent(urlParam)}`
           );
-          return result?.data || result?.job || result;
+          const payload =
+            response?.data || response?.job || response;
+          return {
+            payload,
+            status: response?.status || response?.statusCode || 200,
+          };
         } catch (error) {
           if (error?.response?.status === 404) {
-            return null;
+            return { payload: null, status: 404 };
           }
           throw error;
         }
@@ -88,18 +111,47 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
 
       try {
         // Fetch data strictly from Primary API
-        const validData = await fetchFromPrimaryAPI();
+        fallbackAttemptedRef.current = false;
+        let { payload: validData, status } = await fetchFromPrimaryAPI();
+
+        const isEmptyObject =
+          validData &&
+          typeof validData === "object" &&
+          Object.keys(validData).length === 0;
+
+        if ((!validData || isEmptyObject) && status === 404) {
+          if (!fallbackAttemptedRef.current) {
+            fallbackAttemptedRef.current = true;
+            setLoadingMessage("We are fetching the latest data...");
+            const { success, status: scraperStatus } = await triggerScraper(
+              urlParam
+            );
+
+            if (!success) {
+              throw new Error(
+                `Failed to refresh data (status ${scraperStatus || "unknown"})`
+              );
+            }
+
+            ({ payload: validData, status } = await fetchFromPrimaryAPI());
+          }
+        }
 
         if (
           !validData ||
           (typeof validData === "object" && Object.keys(validData).length === 0)
         ) {
-          throw new Error("No valid data received from server");
+          throw new Error(
+            status === 404
+              ? "No data found for the provided post"
+              : "No valid data received from server"
+          );
         }
 
         const extracted = extractRecruitmentData(
           validData?.data || validData || {}
         );
+
         setData(extracted);
       } catch (err) {
         console.error("Error loading post:", err);
@@ -121,7 +173,9 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
         <header className="sticky top-0 z-50 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-blue-600 text-white p-1.5 rounded-lg" />
-            <h1 className="text-xl font-bold tracking-tight text-blue-900">Loading...</h1>
+            <h1 className="text-xl font-bold tracking-tight text-blue-900">
+              {loadingMessage}
+            </h1>
           </div>
           <div className="flex gap-3" />
         </header>
