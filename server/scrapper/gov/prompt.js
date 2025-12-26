@@ -1,5 +1,7 @@
- const prompt =
-      "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
+const buildPrompt = (scrapedData) => {
+     const sd = scrapedData ? JSON.stringify(scrapedData, null, 2) : "null";
+     return (
+          "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
       "GLOBAL HARD RULES:\n" +
       "1) Output MUST be valid JSON.\n" +
       '2) Output MUST contain ONLY one top-level key: "recruitment".\n' +
@@ -94,9 +96,11 @@
       "STRICT IGNORE RULE:\n" +
       "- Ignore any scraped fields that cannot be mapped to the defined structure.\n" +
       "- Do NOT create any new keys beyond what is defined.\n\n" +
-      "Scraped Data (source):\n" +
-      JSON.stringify(scrapedData, null, 2) +
-      "\n\nFINAL OUTPUT RULE:\n" +
-      "Return ONLY one JSON object exactly matching the allowed structure. NO markdown, NO comments, NO explanation.\n";
+          "Scraped Data (source):\n" +
+          sd +
+          "\n\nFINAL OUTPUT RULE:\n" +
+          "Return ONLY one JSON object exactly matching the allowed structure. NO markdown, NO comments, NO explanation.\n"
+     );
+};
 
-      module.exports = { prompt };
+module.exports = { buildPrompt };
