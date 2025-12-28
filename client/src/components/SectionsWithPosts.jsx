@@ -19,29 +19,34 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Bookmark,
   Briefcase,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   GripHorizontal,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 
-function JobRow({ job }) {
+// Memoized JobRow - prevents re-renders when parent updates
+const JobRow = memo(function JobRow({ job }) {
   const [isSaved, setIsSaved] = useState(false);
 
-  const getTrimmedPath = (url) => {
+  const getTrimmedPath = useCallback((url) => {
     if (!url) return '/';
     try {
       const withProto = url.startsWith('http') ? url : `https://${url}`;
       const u = new URL(withProto);
       return `${u.pathname}${u.search || ''}${u.hash || ''}` || '/';
     } catch (err) {
-      return url.replace(/^https?:\/\/[^{\/]+/, '') || url;
+      return url.replace(/^https?:\/\/[^\/]+/, '') || url;
     }
-  };
+  }, []);
 
-  const trimmed = getTrimmedPath(job.link);
+  const trimmed = useMemo(() => getTrimmedPath(job.link), [job.link, getTrimmedPath]);
+
+  const handleSaveClick = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsSaved(prev => !prev);
+  }, []);
 
   return (
     <li className="group/item flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100">
@@ -61,7 +66,7 @@ function JobRow({ job }) {
       </Link>
       <div className="flex items-center gap-2 pl-2">
         <button
-          onClick={() => setIsSaved(!isSaved)}
+          onClick={handleSaveClick}
           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
           title={isSaved ? "Unsave" : "Save Job"}
         >
@@ -77,33 +82,51 @@ function JobRow({ job }) {
       </div>
     </li>
   );
-}
+});
 
-function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
-  // Use a fixed limit for the card view
+// Memoized CategoryCard - only re-renders when cat data changes
+const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
   const INITIAL_LIMIT = 15;
 
   const uniqueJobs = useMemo(() => {
     const jobs = [];
+    const seen = new Set();
+    
     (cat.data || []).forEach((post) => {
       if (Array.isArray(post.jobs)) {
         post.jobs.forEach((j) => {
-          if (j?.title) jobs.push({ title: j.title, link: j.link || post.url });
+          if (j?.title && !seen.has(j.title)) {
+            seen.add(j.title);
+            jobs.push({ 
+              title: j.title, 
+              link: j.link || post.url,
+              id: `${j.title}-${j.link || post.url}` // Unique ID for key
+            });
+          }
         });
-      } else if (post.title) {
-        jobs.push({ title: post.title, link: post.url });
+      } else if (post.title && !seen.has(post.title)) {
+        seen.add(post.title);
+        jobs.push({ 
+          title: post.title, 
+          link: post.url,
+          id: `${post.title}-${post.url}`
+        });
       }
     });
-    return jobs.filter(
-      (j, i, self) => i === self.findIndex((t) => t.title === j.title)
-    );
+    return jobs;
   }, [cat.data]);
 
   const hasMore = uniqueJobs.length > INITIAL_LIMIT;
-  const visibleJobs = uniqueJobs.slice(0, INITIAL_LIMIT);
+  const visibleJobs = useMemo(
+    () => uniqueJobs.slice(0, INITIAL_LIMIT),
+    [uniqueJobs]
+  );
 
-  // Extract the Category Link for the "View All" page
   const categoryUrl = cat.link || cat.url || "";
+
+  const handlePointerDown = useCallback((e) => {
+    e.stopPropagation();
+  }, []);
 
   return (
     <div
@@ -140,8 +163,8 @@ function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
 
       <div className="p-2 flex-grow bg-white min-h-[200px]">
         <ul className="space-y-1">
-          {visibleJobs.map((job, idx) => (
-            <JobRow key={idx} job={job} />
+          {visibleJobs.map((job) => (
+            <JobRow key={job.id} job={job} />
           ))}
           {uniqueJobs.length === 0 && (
             <li className="text-sm text-gray-400 py-8 text-center">
@@ -154,7 +177,7 @@ function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
       {hasMore && (
         <div className="p-2 bg-gray-50 border-t border-gray-100">
           <Link
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={handlePointerDown}
             href={`/view-all?url=${encodeURIComponent(categoryUrl)}`}
             className="w-full py-2 flex items-center justify-center gap-2 text-xs font-bold uppercase text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all"
           >
@@ -164,9 +187,10 @@ function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
       )}
     </div>
   );
-}
+});
 
-function SortableCategoryItem({ cat, id }) {
+// Memoized SortableItem - prevents unnecessary re-renders during drag
+const SortableCategoryItem = memo(function SortableCategoryItem({ cat, id }) {
   const {
     attributes,
     listeners,
@@ -176,50 +200,81 @@ function SortableCategoryItem({ cat, id }) {
     isDragging,
   } = useSortable({ id });
 
-  const style = {
+  const style = useMemo(() => ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 99 : "auto",
-  };
+  }), [transform, transition, isDragging]);
+
+  const dragHandleProps = useMemo(() => ({
+    ...attributes,
+    ...listeners,
+  }), [attributes, listeners]);
 
   return (
     <div ref={setNodeRef} style={style} className="h-full">
-      <CategoryCard
-        cat={cat}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
+      <CategoryCard cat={cat} dragHandleProps={dragHandleProps} />
     </div>
   );
+});
+
+// Debounced localStorage save
+function useDebouncedLocalStorage(key, value, delay = 500) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (value) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [key, value, delay]);
 }
 
 function SectionWithSortableGrid({ section }) {
   const [categories, setCategories] = useState(section.categories || []);
   const [activeId, setActiveId] = useState(null);
 
+  // Load saved order once on mount
   useEffect(() => {
     const savedOrder = localStorage.getItem(
       `jobsaddah-cat-order-${section._id}`
     );
     if (savedOrder && section.categories) {
-      const orderIds = JSON.parse(savedOrder);
-      const sorted = [...section.categories].sort((a, b) => {
-        const indexA = orderIds.indexOf(a.name || a._id);
-        const indexB = orderIds.indexOf(b.name || b._id);
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-      });
-      setCategories(sorted);
+      try {
+        const orderIds = JSON.parse(savedOrder);
+        const sorted = [...section.categories].sort((a, b) => {
+          const indexA = orderIds.indexOf(a.name || a._id);
+          const indexB = orderIds.indexOf(b.name || b._id);
+          if (indexA === -1) return 1;
+          if (indexB === -1) return -1;
+          return indexA - indexB;
+        });
+        setCategories(sorted);
+      } catch (err) {
+        console.error('Failed to parse saved order:', err);
+      }
     }
   }, [section._id, section.categories]);
+
+  // Debounced save to localStorage
+  const categoryOrder = useMemo(
+    () => categories.map((i) => i.name || i._id),
+    [categories]
+  );
+  useDebouncedLocalStorage(
+    `jobsaddah-cat-order-${section._id}`,
+    categoryOrder,
+    300
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     if (active.id !== over.id) {
       setCategories((items) => {
@@ -229,19 +284,26 @@ function SectionWithSortableGrid({ section }) {
         const newIndex = items.findIndex(
           (item) => (item.name || item._id) === over.id
         );
-        const newOrder = arrayMove(items, oldIndex, newIndex);
-
-        localStorage.setItem(
-          `jobsaddah-cat-order-${section._id}`,
-          JSON.stringify(newOrder.map((i) => i.name || i._id))
-        );
-        return newOrder;
+        return arrayMove(items, oldIndex, newIndex);
       });
     }
     setActiveId(null);
-  };
+  }, []);
 
-  const handleDragStart = (event) => setActiveId(event.active.id);
+  const handleDragStart = useCallback((event) => {
+    setActiveId(event.active.id);
+  }, []);
+
+  // Memoize active category to avoid .find() on every render
+  const activeCategory = useMemo(
+    () => categories.find((c) => (c.name || c._id) === activeId),
+    [categories, activeId]
+  );
+
+  const itemIds = useMemo(
+    () => categories.map((c) => c.name || c._id),
+    [categories]
+  );
 
   return (
     <div className="mb-12">
@@ -251,14 +313,11 @@ function SectionWithSortableGrid({ section }) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext
-          items={categories.map((c) => c.name || c._id)}
-          strategy={rectSortingStrategy}
-        >
+        <SortableContext items={itemIds} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
-            {categories.map((cat, index) => (
+            {categories.map((cat) => (
               <SortableCategoryItem
-                key={cat.name || index}
+                key={cat.name || cat._id}
                 id={cat.name || cat._id}
                 cat={cat}
               />
@@ -267,14 +326,11 @@ function SectionWithSortableGrid({ section }) {
         </SortableContext>
 
         <DragOverlay>
-          {activeId ? (
+          {activeCategory && (
             <div className="h-full">
-              <CategoryCard
-                cat={categories.find((c) => (c.name || c._id) === activeId)}
-                isOverlay
-              />
+              <CategoryCard cat={activeCategory} isOverlay />
             </div>
-          ) : null}
+          )}
         </DragOverlay>
       </DndContext>
     </div>
@@ -343,16 +399,11 @@ export default function SectionsWithPosts({ sections }) {
 
         const data = Array.isArray(json.data) ? json.data : [];
         if (data.length === 0) {
-          if (emptyTimer) clearTimeout(emptyTimer);
           emptyTimer = setTimeout(() => {
             setLocalSections(data);
             setShowEmpty(true);
           }, 300);
         } else {
-          if (emptyTimer) {
-            clearTimeout(emptyTimer);
-            emptyTimer = null;
-          }
           setLocalSections(data);
           setShowEmpty(false);
         }
@@ -370,7 +421,7 @@ export default function SectionsWithPosts({ sections }) {
       controller.abort();
       if (emptyTimer) clearTimeout(emptyTimer);
     };
-  }, [sections?.length]);
+  }, [sectionsProvided]);
 
   if (loading || (!Array.isArray(localSections) && !error) || (localSections?.length === 0 && !showEmpty && !error)) {
     return <SectionsSkeleton />;
