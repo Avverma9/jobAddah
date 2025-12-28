@@ -12,6 +12,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./config/db");
 const router = require("./routes/index");
+const { initCategoryCron } = require('./scrapper/gov/runAutomatic');
 
 const app = express();
 
@@ -21,7 +22,7 @@ connectDB();
 app.use(cors({ origin: "*", credentials: false }));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
-
+initCategoryCron()
 
 app.use("/api/v1",router );
 

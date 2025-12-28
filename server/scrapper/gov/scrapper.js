@@ -470,6 +470,8 @@ const getCategories = async (req, res) => {
   }
 };
 
+
+
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
