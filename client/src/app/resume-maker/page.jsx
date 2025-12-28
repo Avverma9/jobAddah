@@ -1,854 +1,549 @@
-"use client";
-import SEO from '@/lib/SEO';
-import {
-  Briefcase,
-  Camera,
-  Download,
-  FileText,
-  GraduationCap,
-  Layout,
-  Linkedin, Mail,
-  MapPin,
-  Phone,
-  Plus,
-  Printer,
-  Sparkles,
-  Trash2,
-  User,
-  X
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { SidebarAd, MobileBannerAd, LeaderboardAd } from '@/components/ads/AdUnits';
+"use client"
 
+import React, { useRef, useState, useEffect } from "react"
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  return isMobile;
-};
-const MobileLayout = ({ children, title }) => (
-  <div className="min-h-screen bg-gray-50 pb-20">
-    <div className="bg-white p-4 shadow-sm font-bold text-lg sticky top-0 z-10">{title}</div>
-    {children}
-  </div>
-);
+const Icons = {
+  Download: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>,
+  User: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>,
+  Briefcase: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>,
+  Graduation: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>,
+  Plus: () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>,
+  Trash: () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  Camera: () => <svg width="24" height="24" fill="none" stroke="#64748b" strokeWidth="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>,
+  Settings: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>,
+  Mail: () => <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>,
+  Phone: () => <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>,
+  Map: () => <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>,
+  Link: () => <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>,
+  Eye: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+  Edit: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+}
 
-/* Templates omitted here in patch for brevity - they're defined below exactly as provided */
-
-const TemplateSimple = ({ data, themeColor }) => (
-  <div className="p-8 bg-white h-full min-h-[1100px] text-gray-800 font-serif" id="resume-content">
-    <div className="border-b-2 pb-4 mb-6 flex justify-between items-start gap-4" style={{ borderColor: themeColor }}>
-      <div className="flex-1">
-        <h1 className="text-4xl font-bold uppercase tracking-wider mb-2" style={{ color: themeColor }}>{data.personal.name || 'Your Name'}</h1>
-        <p className="text-xl text-gray-600 mb-4">{data.personal.title || 'Professional Title'}</p>
-        <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-          {data.personal.email && <span className="flex items-center gap-1"><Mail size={14}/> {data.personal.email}</span>}
-          {data.personal.phone && <span className="flex items-center gap-1"><Phone size={14}/> {data.personal.phone}</span>}
-          {data.personal.location && <span className="flex items-center gap-1"><MapPin size={14}/> {data.personal.location}</span>}
-        </div>
-      </div>
-      {data.personal.profilePic && (
-        <img src={data.personal.profilePic} alt="Profile" className="w-24 h-24 object-cover border rounded shadow-sm" />
-      )}
-    </div>
-
-    {data.summary && (
-      <div className="mb-6">
-        <h3 className="text-lg font-bold uppercase border-b mb-3 pb-1" style={{ color: themeColor }}>Summary</h3>
-        <p className="text-gray-700 leading-relaxed">{data.summary}</p>
-      </div>
-    )}
-
-    {data.experience.length > 0 && (
-      <div className="mb-6">
-        <h3 className="text-lg font-bold uppercase border-b mb-4 pb-1" style={{ color: themeColor }}>Experience</h3>
-        <div className="space-y-4">
-          {data.experience.map((exp) => (
-            <div key={exp.id}>
-              <div className="flex justify-between items-baseline mb-1">
-                <h4 className="font-bold text-lg">{exp.role}</h4>
-                <span className="text-sm text-gray-500 italic">{exp.date}</span>
-              </div>
-              <p className="font-semibold text-gray-700 mb-1">{exp.company}</p>
-              <p className="text-gray-600 text-sm whitespace-pre-line">{exp.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {data.education.length > 0 && (
-      <div className="mb-6">
-        <h3 className="text-lg font-bold uppercase border-b mb-4 pb-1" style={{ color: themeColor }}>Education</h3>
-        <div className="space-y-3">
-          {data.education.map((edu) => (
-            <div key={edu.id}>
-              <div className="flex justify-between items-baseline">
-                <h4 className="font-bold">{edu.school}</h4>
-                <span className="text-sm text-gray-500 italic">{edu.date}</span>
-              </div>
-              <p className="text-gray-700">{edu.degree}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {data.skills.length > 0 && (
-      <div>
-        <h3 className="text-lg font-bold uppercase border-b mb-3 pb-1" style={{ color: themeColor }}>Skills</h3>
-        <div className="flex flex-wrap gap-2">
-          {data.skills.map((skill, index) => (
-            <span key={index} className="px-3 py-1 bg-gray-100 rounded text-sm text-gray-700 font-medium">
-              {skill}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-);
-
-const TemplateModern = ({ data, themeColor }) => (
-  <div className="flex h-full min-h-[1100px] bg-white font-sans text-gray-800" id="resume-content">
-    <div className="w-1/3 text-white p-8 space-y-8" style={{ backgroundColor: themeColor }}>
-      <div className="space-y-2">
-        <div className="flex justify-center mb-6">
-          {data.personal.profilePic ? (
-            <img src={data.personal.profilePic} alt="Profile" className="w-32 h-32 rounded-full object-cover border-4 border-white/20" />
-          ) : (
-            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center text-4xl font-bold">
-              {data.personal.name ? data.personal.name[0] : 'U'}
-            </div>
-          )}
-        </div>
-        
-        <h2 className="text-xl font-bold border-b border-white/30 pb-2 mb-4">Contact</h2>
-        <div className="space-y-3 text-sm opacity-90">
-          {data.personal.phone && <div className="flex items-center gap-2"><Phone size={14}/> {data.personal.phone}</div>}
-          {data.personal.email && <div className="flex items-center gap-2 break-all"><Mail size={14}/> {data.personal.email}</div>}
-          {data.personal.location && <div className="flex items-center gap-2"><MapPin size={14}/> {data.personal.location}</div>}
-          {data.personal.linkedin && <div className="flex items-center gap-2"><Linkedin size={14}/> {data.personal.linkedin}</div>}
-        </div>
-      </div>
-
-      {data.skills.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold border-b border-white/30 pb-2 mb-4">Skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {data.skills.map((skill, index) => (
-              <span key={index} className="bg-white/20 px-2 py-1 rounded text-xs">
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.education.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold border-b border-white/30 pb-2 mb-4">Education</h2>
-          <div className="space-y-4">
-            {data.education.map((edu) => (
-              <div key={edu.id}>
-                <p className="font-bold text-sm">{edu.degree}</p>
-                <p className="text-xs opacity-80">{edu.school}</p>
-                <p className="text-xs opacity-60">{edu.date}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-
-    <div className="w-2/3 p-8">
-      <div className="mb-8">
-        <h1 className="text-5xl font-extrabold mb-2" style={{ color: themeColor }}>{data.personal.name || 'Your Name'}</h1>
-        <p className="text-xl text-gray-500 tracking-widest uppercase">{data.personal.title || 'Job Title'}</p>
-      </div>
-
-      {data.summary && (
-        <div className="mb-8">
-          <h3 className="text-lg font-bold uppercase tracking-wider mb-3 text-gray-400">Profile</h3>
-          <p className="text-gray-700 leading-relaxed">{data.summary}</p>
-        </div>
-      )}
-
-      {data.experience.length > 0 && (
-        <div>
-          <h3 className="text-lg font-bold uppercase tracking-wider mb-6 text-gray-400">Work Experience</h3>
-          <div className="space-y-6">
-            {data.experience.map((exp) => (
-              <div key={exp.id} className="relative border-l-2 pl-6 border-gray-200">
-                <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 bg-white" style={{ borderColor: themeColor }}></div>
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-bold text-lg text-gray-800">{exp.role}</h4>
-                  <span className="text-xs font-bold text-white px-2 py-1 rounded" style={{ backgroundColor: themeColor }}>{exp.date}</span>
-                </div>
-                <p className="font-semibold text-gray-500 mb-2">{exp.company}</p>
-                <p className="text-gray-600 text-sm leading-relaxed">{exp.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-const TemplateCreative = ({ data, themeColor }) => (
-  <div className="p-8 bg-slate-50 h-full min-h-[1100px] font-sans relative overflow-hidden" id="resume-content">
-    <div className="absolute top-0 left-0 w-full h-40" style={{ backgroundColor: themeColor }}></div>
-    
-    <div className="relative bg-white shadow-xl rounded-lg overflow-hidden mt-10">
-      <div className="text-center pt-10 pb-6 px-8">
-        {data.personal.profilePic && (
-          <img src={data.personal.profilePic} alt="Profile" className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-white shadow-md" />
-        )}
-        <h1 className="text-4xl font-black mb-2 tracking-tight">{data.personal.name || 'Your Name'}</h1>
-        <p className="text-lg font-medium text-gray-500 uppercase tracking-widest">{data.personal.title || 'Creative Designer'}</p>
-        
-        <div className="flex justify-center gap-6 mt-6 text-sm text-gray-600">
-          {data.personal.email && <span>{data.personal.email}</span>}
-          {data.personal.phone && <span>{data.personal.phone}</span>}
-          {data.personal.location && <span>{data.personal.location}</span>}
-        </div>
-      </div>
-
-      <div className="bg-gray-50 p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="col-span-2 space-y-8">
-          {data.summary && (
-            <div>
-              <h3 className="font-bold text-lg mb-3 flex items-center gap-2" style={{ color: themeColor }}>
-                <User size={20}/> About Me
-              </h3>
-              <p className="text-gray-600 text-sm leading-6">{data.summary}</p>
-            </div>
-          )}
-
-          {data.experience.length > 0 && (
-            <div>
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: themeColor }}>
-                <Briefcase size={20}/> Experience
-              </h3>
-              <div className="space-y-6">
-                {data.experience.map((exp) => (
-                  <div key={exp.id}>
-                    <h4 className="font-bold text-gray-800">{exp.role}</h4>
-                    <div className="flex justify-between text-xs text-gray-500 mb-2">
-                      <span>{exp.company}</span>
-                      <span>{exp.date}</span>
-                    </div>
-                    <p className="text-sm text-gray-600">{exp.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-8">
-          {data.education.length > 0 && (
-            <div>
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: themeColor }}>
-                <GraduationCap size={20}/> Education
-              </h3>
-              <div className="space-y-4">
-                {data.education.map((edu) => (
-                  <div key={edu.id} className="bg-white p-3 rounded shadow-sm border border-gray-100">
-                    <div className="font-bold text-sm">{edu.degree}</div>
-                    <div className="text-xs text-gray-500">{edu.school}</div>
-                    <div className="text-xs text-gray-400 mt-1">{edu.date}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.skills.length > 0 && (
-            <div>
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: themeColor }}>
-                <Sparkles size={20}/> Expertise
-              </h3>
-              <div className="space-y-2">
-                {data.skills.map((skill, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-gray-700">{skill}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div className="bg-gray-800 h-1.5 rounded-full" style={{ width: `${Math.random() * 40 + 60}%`, backgroundColor: themeColor }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const TemplateProfessional = ({ data, themeColor }) => (
-  <div className="bg-white h-full min-h-[1100px] text-slate-800 p-10 font-sans" id="resume-content">
-    <div className="border-b-4 pb-6 mb-8" style={{ borderColor: themeColor }}>
-      <div className="flex justify-between items-center">
-        <div>
-            <h1 className="text-4xl font-bold uppercase tracking-wide mb-2" style={{ color: themeColor }}>
-                {data.personal.name || 'Your Name'}
-            </h1>
-            <p className="text-lg font-medium text-slate-600 uppercase tracking-wider">
-                {data.personal.title || 'Professional Title'}
-            </p>
-        </div>
-        {data.personal.profilePic && (
-             <img src={data.personal.profilePic} alt="Profile" className="w-20 h-20 rounded-lg object-cover shadow-sm" />
-        )}
-      </div>
-      <div className="flex flex-wrap gap-4 mt-4 text-sm text-slate-500 font-medium">
-        {data.personal.phone && <div className="flex items-center gap-1"><Phone size={14}/> {data.personal.phone}</div>}
-        {data.personal.email && <div className="flex items-center gap-1"><Mail size={14}/> {data.personal.email}</div>}
-        {data.personal.location && <div className="flex items-center gap-1"><MapPin size={14}/> {data.personal.location}</div>}
-        {data.personal.linkedin && <div className="flex items-center gap-1"><Linkedin size={14}/> {data.personal.linkedin}</div>}
-      </div>
-    </div>
-
-    <div className="space-y-6">
-        {data.summary && (
-            <section>
-                <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-3 text-slate-400">Professional Profile</h3>
-                <p className="text-sm leading-6 text-slate-700 text-justify">{data.summary}</p>
-            </section>
-        )}
-
-        {data.experience.length > 0 && (
-            <section>
-                <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Experience</h3>
-                <div className="space-y-5">
-                    {data.experience.map((exp) => (
-                        <div key={exp.id}>
-                            <div className="flex justify-between items-baseline mb-1">
-                                <h4 className="font-bold text-base text-slate-800">{exp.role}</h4>
-                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-600">{exp.date}</span>
-                            </div>
-                            <div className="text-sm font-semibold text-slate-500 mb-2" style={{color: themeColor}}>{exp.company}</div>
-                            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{exp.description}</p>
-                        </div>
-                    ))}
-                </div>
-            </section>
-        )}
-
-        <div className="grid grid-cols-2 gap-8">
-             {data.education.length > 0 && (
-                <section>
-                    <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Education</h3>
-                    <div className="space-y-4">
-                        {data.education.map((edu) => (
-                            <div key={edu.id}>
-                                <div className="font-bold text-slate-800 text-sm">{edu.degree}</div>
-                                <div className="text-xs text-slate-500">{edu.school}</div>
-                                <div className="text-xs text-slate-400 italic mt-1">{edu.date}</div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-             )}
-
-            {data.skills.length > 0 && (
-                <section>
-                    <h3 className="text-sm font-bold uppercase tracking-widest border-b pb-2 mb-4 text-slate-400">Technical Skills</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {data.skills.map((skill, index) => (
-                            <span key={index} className="px-2 py-1 border border-slate-200 rounded text-xs font-semibold text-slate-600">{skill}</span>
-                        ))}
-                    </div>
-                </section>
-            )}
-        </div>
-    </div>
-  </div>
-);
-
-const TemplateExecutive = ({ data, themeColor }) => (
-  <div className="flex h-full min-h-[1100px] bg-slate-100 font-sans" id="resume-content">
-      <div className="w-[30%] bg-slate-900 text-white p-6 flex flex-col gap-8">
-          <div className="text-center">
-               {data.personal.profilePic ? (
-                  <img src={data.personal.profilePic} alt="Profile" className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-slate-700" />
-               ) : (
-                  <div className="w-32 h-32 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl text-slate-600 font-bold">{data.personal.name?.[0]}</div>
-               )}
-               <h2 className="text-lg font-bold tracking-wide">Contact</h2>
-          </div>
-
-          <div className="space-y-4 text-sm text-slate-300">
-                {data.personal.email && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Email</span><span>{data.personal.email}</span></div>}
-                {data.personal.phone && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Phone</span><span>{data.personal.phone}</span></div>}
-                {data.personal.location && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">Location</span><span>{data.personal.location}</span></div>}
-                {data.personal.linkedin && <div className="flex flex-col"><span className="text-xs uppercase text-slate-500 font-bold">LinkedIn</span><span className="break-words">{data.personal.linkedin}</span></div>}
-          </div>
-
-          {data.skills.length > 0 && (
-              <div>
-                  <h2 className="text-lg font-bold tracking-wide border-b border-slate-700 pb-2 mb-4">Core Competencies</h2>
-                  <div className="flex flex-wrap gap-2">
-                      {data.skills.map((skill, idx) => (
-                          <span key={idx} className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">{skill}</span>
-                      ))}
-                  </div>
-              </div>
-          )}
-          
-          {data.education.length > 0 && (
-              <div>
-                  <h2 className="text-lg font-bold tracking-wide border-b border-slate-700 pb-2 mb-4">Education</h2>
-                  <div className="space-y-4">
-                    {data.education.map((edu) => (
-                        <div key={edu.id}>
-                            <div className="font-bold text-white text-sm">{edu.degree}</div>
-                            <div className="text-xs text-slate-400">{edu.school}</div>
-                            <div className="text-xs text-slate-500 mt-1">{edu.date}</div>
-                        </div>
-                    ))}
-                  </div>
-              </div>
-          )}
-      </div>
-
-      <div className="w-[70%] bg-white p-8">
-            <div className="mb-8 border-l-8 pl-6 py-2" style={{ borderColor: themeColor }}>
-                <h1 className="text-4xl font-bold text-slate-900 uppercase">{data.personal.name || 'Your Name'}</h1>
-                <p className="text-xl text-slate-500 uppercase tracking-widest mt-1">{data.personal.title || 'Executive Title'}</p>
-            </div>
-
-            {data.summary && (
-                <div className="mb-8">
-                    <h3 className="text-lg font-bold uppercase text-slate-800 mb-3 flex items-center gap-2"><span className="w-8 h-1 bg-slate-900"></span> Profile</h3>
-                    <p className="text-slate-600 leading-relaxed text-sm">{data.summary}</p>
-                </div>
-            )}
-
-            {data.experience.length > 0 && (
-                <div>
-                    <h3 className="text-lg font-bold uppercase text-slate-800 mb-6 flex items-center gap-2"><span className="w-8 h-1 bg-slate-900"></span> Professional Experience</h3>
-                    <div className="space-y-8">
-                        {data.experience.map((exp) => (
-                            <div key={exp.id} className="relative">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="font-bold text-xl text-slate-800">{exp.role}</h4>
-                                    <span className="font-bold text-sm bg-slate-100 px-3 py-1 rounded-full text-slate-600">{exp.date}</span>
-                                </div>
-                                <div className="text-md font-semibold mb-3 flex items-center gap-2" style={{ color: themeColor }}>{exp.company}</div>
-                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{exp.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-      </div>
-  </div>
-);
-
-export default function ResumeMaker() {
-  const isMobile = useIsMobile();
-  const [libLoaded, setLibLoaded] = useState(false);
-  const [template, setTemplate] = useState('modern');
-  const [themeColor, setThemeColor] = useState('#2563eb');
-  const [activeTab, setActiveTab] = useState('editor');
-  const skillInputRef = useRef(null);
-  const previewWrapperRef = useRef(null);
-  const resumeInnerRef = useRef(null);
-  const html2pdfRef = useRef(null);
-  const [fitToScreen, setFitToScreen] = useState(true);
-  const [scale, setScale] = useState(1);
-  // Give a sensible initial min-height to reduce layout shifts while measurements run
-  const [previewHeight, setPreviewHeight] = useState('70vh');
+export default function Page() {
+  const previewRef = useRef()
+  const containerRef = useRef()
+  const [scale, setScale] = useState(1)
   
-  const [resumeData, setResumeData] = useState({
-    personal: {
-      name: '',
-      title: '',
-      email: '',
-      phone: '',
-      location: '',
-      linkedin: '',
-      github: '',
-      profilePic: ''
-    },
-    summary: '',
-    experience: [],
-    education: [],
-    skills: []
-  });
+  // Mobile Tab State: 'editor' | 'preview'
+  const [activeMobileTab, setActiveMobileTab] = useState('editor')
 
-  const updatePersonal = (field, value) => {
-    setResumeData(prev => ({
-      ...prev,
-      personal: { ...prev.personal, [field]: value }
-    }));
-  };
+  const [template, setTemplate] = useState("naukri") 
+  const [themeColor, setThemeColor] = useState("#2a41e8") 
+  const [profileImage, setProfileImage] = useState(null)
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        updatePersonal('profilePic', e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const [name, setName] = useState("Alex Morgan")
+  const [title, setTitle] = useState("Senior Product Designer")
+  const [email, setEmail] = useState("alex.morgan@example.com")
+  const [phone, setPhone] = useState("+1 (555) 123-4567")
+  const [website, setWebsite] = useState("linkedin.com/in/alexmorgan")
+  const [city, setCity] = useState("San Francisco")
+  const [country, setCountry] = useState("CA")
+  const [summary, setSummary] = useState("Creative and detail-oriented Product Designer with over 6 years of experience in building user-centric digital products. Proficient in UI/UX design, prototyping, and design systems.")
+  const [skills, setSkills] = useState("Figma, Adobe XD, React, CSS3, Design Systems, Prototyping, User Research")
+  const [languages, setLanguages] = useState("English (Native), Spanish (Intermediate), French (Basic)")
 
-  const addExperience = () => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: [...prev.experience, { id: Date.now(), role: '', company: '', date: '', description: '' }]
-    }));
-  };
-
-  const updateExperience = (id, field, value) => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: prev.experience.map(exp => exp.id === id ? { ...exp, [field]: value } : exp)
-    }));
-  };
-
-  const removeExperience = (id) => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: prev.experience.filter(exp => exp.id !== id)
-    }));
-  };
-
-  const addEducation = () => {
-    setResumeData(prev => ({
-      ...prev,
-      education: [...prev.education, { id: Date.now(), school: '', degree: '', date: '' }]
-    }));
-  };
-
-  const updateEducation = (id, field, value) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.map(edu => edu.id === id ? { ...edu, [field]: value } : edu)
-    }));
-  };
-
-  const removeEducation = (id) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.filter(edu => edu.id !== id)
-    }));
-  };
-
-  const addSkill = (skill) => {
-    if (skill && !resumeData.skills.includes(skill)) {
-      setResumeData(prev => ({
-        ...prev,
-        skills: [...prev.skills, skill]
-      }));
-    }
-  };
-
-  const removeSkill = (skill) => {
-    setResumeData(prev => ({
-      ...prev,
-      skills: prev.skills.filter(s => s !== skill)
-    }));
-    setTimeout(() => {
-      if (skillInputRef.current) {
-        skillInputRef.current.focus();
-      }
-    }, 0);
-  };
+  const [experiences, setExperiences] = useState([
+    { role: "Senior Product Designer", company: "TechFlow Inc.", duration: "2021 - Present", desc: "Led the redesign of the core product dashboard, resulting in a 20% increase in user engagement. Mentored junior designers and established a comprehensive design system." },
+    { role: "UI/UX Designer", company: "Creative Solutions", duration: "2018 - 2021", desc: "Collaborated with cross-functional teams to deliver high-quality web and mobile applications. Conducted user research and usability testing to iterate on design concepts." }
+  ])
+  const [educations, setEducations] = useState([
+    { degree: "Bachelor of Fine Arts in Interaction Design", institute: "California College of the Arts", year: "2014 - 2018" }
+  ])
 
   useEffect(() => {
-    let isActive = true;
-    import('html2pdf.js')
-      .then((mod) => {
-        if (!isActive) return;
-        const lib = mod.default || mod;
-        html2pdfRef.current = lib;
-        setLibLoaded(true);
-      })
-      .catch((err) => {
-        console.error('Failed to load html2pdf', err);
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  const handleDownloadPDF = () => {
-    const html2pdf = html2pdfRef.current;
-    if (!html2pdf) return;
-    const element = document.getElementById('resume-content');
-    const opt = {
-      margin: 0,
-      filename: `${resumeData.personal.name || 'resume'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        ignoreElements: (element) => {
-          return element.tagName === 'SCRIPT' || element.tagName === 'STYLE';
-        },
-        onclone: (clonedDoc) => {
-          // Replace any lab() color functions with fallbacks
-          const elements = clonedDoc.querySelectorAll('*');
-          elements.forEach(el => {
-            const styles = getComputedStyle(el);
-            Object.keys(styles).forEach(key => {
-              const value = styles[key];
-              if (typeof value === 'string' && value.includes('lab(')) {
-                el.style[key] = '#2563eb'; // fallback to theme color
-              }
-            });
-          });
+    function handleResize() {
+      if (containerRef.current) {
+        // Force a resize calculation when switching to preview tab
+        const containerWidth = containerRef.current.offsetWidth
+        const paperWidth = 794
+        const padding = 20
+        
+        // If container width is 0 (hidden), don't update scale to avoid issues
+        if (containerWidth > 0) {
+          let newScale = 1
+          if (containerWidth < paperWidth + padding) {
+            newScale = (containerWidth - padding) / paperWidth
+          }
+          setScale(Math.min(newScale, 1))
         }
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
-  };
-
-  // compute scale so resume fits inside preview wrapper width
-  useEffect(() => {
-    function compute() {
-      const wrapper = previewWrapperRef.current;
-      const inner = resumeInnerRef.current;
-      if (!wrapper || !inner) return;
-      if (!fitToScreen) {
-        setScale(1);
-        setPreviewHeight('auto');
-        return;
       }
-      // available width (subtract some padding)
-      const available = wrapper.clientWidth - 32;
-      const innerWidth = inner.offsetWidth || inner.getBoundingClientRect().width;
-      const newScale = innerWidth > 0 ? Math.min(1, available / innerWidth) : 1;
-      setScale(newScale);
-      // set container height to scaled inner height to allow scrolling
-      const innerHeight = inner.offsetHeight || inner.getBoundingClientRect().height;
-      setPreviewHeight(`${Math.ceil(innerHeight * newScale)}px`);
     }
+    
+    // Initial call
+    handleResize()
+    
+    // Add event listener
+    window.addEventListener("resize", handleResize)
+    
+    // Also trigger on tab change with a small delay to allow DOM update
+    const timeoutId = setTimeout(handleResize, 50)
+    
+    return () => {
+      window.removeEventListener("resize", handleResize)
+      clearTimeout(timeoutId)
+    }
+  }, [activeMobileTab]) 
 
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
-  }, [fitToScreen, template]);
-
-  const content = (
-    <div className="min-h-screen bg-gray-50 font-sans flex flex-col h-screen text-slate-800">
-      <SEO title="Resume Maker — JobsAddah" />
-      
-      <MobileBannerAd className="mx-auto mt-4" />
-      
-  <header className="bg-white p-4 shadow-sm border-b border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-4">
-        <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-start">
-          <div className="bg-blue-600 p-2 rounded-lg text-white"><FileText size={20}/></div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">JobsAddah Resume Maker</h1>
-        </div>
-        
-        <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 justify-center md:justify-end no-scrollbar">
-           <div className="flex bg-gray-100 p-1 rounded-lg shrink-0 overflow-x-auto max-w-[200px] md:max-w-none">
-             {['simple', 'modern', 'creative', 'professional', 'executive'].map((t) => (
-                <button 
-                  key={t}
-                  onClick={() => setTemplate(t)} 
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize ${template === t ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  {t}
-                </button>
-             ))}
-           </div>
-           
-           <div className="flex items-center gap-2 px-2 shrink-0">
-             <div className="relative overflow-hidden w-8 h-8 rounded-full border-2 border-gray-200 cursor-pointer hover:border-blue-400 transition shadow-sm">
-               <input type="color" value={themeColor || '#000000'} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0" title="Change Theme Color"/>
-             </div>
-           </div>
-
-           <button 
-             onClick={() => setFitToScreen(prev => !prev)}
-             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md flex items-center gap-2 font-medium transition shrink-0 text-sm"
-             title="Toggle fit-to-screen"
-           >
-             {fitToScreen ? 'Fit to Screen' : '100%'}
-           </button>
-
-           <button 
-             onClick={handleDownloadPDF} 
-             disabled={!libLoaded}
-             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition shadow-md shadow-blue-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 text-sm"
-           >
-             <Download size={16}/> <span>Download</span>
-           </button>
-        </div>
-      </header>
-
-      <div className="flex-1 flex overflow-hidden">
-        <SidebarAd className="ml-4" />
-        
-        <div className={`w-full md:w-[450px] bg-white border-r border-gray-200 overflow-y-auto p-6 ${activeTab === 'preview' ? 'hidden md:block' : 'block'}`}>
-            <h2 className="text-xl font-bold mb-6 text-slate-800 flex items-center gap-2">
-              <Layout size={20} className="text-blue-600"/> Resume Details
-            </h2>
-
-            <div className="mb-8">
-              <h3 className="text-sm font-bold uppercase text-gray-400 mb-4 flex items-center gap-2"><User size={16}/> Personal Info</h3>
-              
-              <div className="flex items-center gap-4 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                {resumeData.personal.profilePic ? (
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 group shadow-sm shrink-0">
-                    <img src={resumeData.personal.profilePic} alt="Profile" className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => updatePersonal('profilePic', '')}
-                      className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="w-16 h-16 rounded-full bg-white flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50 transition shadow-sm shrink-0">
-                    <Camera size={20} className="text-gray-400" />
-                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                  </label>
-                )}
-                <div className="text-sm text-gray-500">
-                  <p className="font-medium text-slate-700">Profile Photo</p>
-                  <p className="text-xs text-gray-400">Tap to upload</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <input type="text" placeholder="Full Name" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.name || ''} onChange={(e) => updatePersonal('name', e.target.value)} />
-                <input type="text" placeholder="Job Title (e.g. Software Engineer)" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-gray-50 focus:bg-white transition" value={resumeData.personal.title || ''} onChange={(e) => updatePersonal('title', e.target.value)} />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input type="text" placeholder="Email" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.email || ''} onChange={(e) => updatePersonal('email', e.target.value)} />
-                  <input type="text" placeholder="Phone" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.phone || ''} onChange={(e) => updatePersonal('phone', e.target.value)} />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input type="text" placeholder="Location" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.location || ''} onChange={(e) => updatePersonal('location', e.target.value)} />
-                    <input type="text" placeholder="LinkedIn URL" className="w-full p-3 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" value={resumeData.personal.linkedin || ''} onChange={(e) => updatePersonal('linkedin', e.target.value)} />
-                </div>
-                <textarea placeholder="Professional Summary" rows="4" className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none bg-gray-50 focus:bg-white transition" value={resumeData.summary || ''} onChange={(e) => setResumeData({...resumeData, summary: e.target.value})}></textarea>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-bold uppercase text-gray-400 flex items-center gap-2"><Briefcase size={16}/> Experience</h3>
-                <button onClick={addExperience} className="text-blue-600 hover:bg-blue-50 p-2 rounded-full transition"><Plus size={20}/></button>
-              </div>
-              <div className="space-y-4">
-                {resumeData.experience.map((exp) => (
-                  <div key={exp.id} className="p-4 border border-gray-200 rounded-xl bg-gray-50 group hover:shadow-sm transition">
-                    <div className="flex justify-between mb-2">
-                        <input type="text" placeholder="Job Role" className="bg-transparent font-bold w-full outline-none text-slate-700 placeholder-slate-400" value={exp.role || ''} onChange={(e) => updateExperience(exp.id, 'role', e.target.value)} />
-                        <button onClick={() => removeExperience(exp.id)} className="text-gray-400 hover:text-red-500 transition"><Trash2 size={16}/></button>
-                    </div>
-                    <input type="text" placeholder="Company Name" className="w-full bg-transparent text-sm mb-2 outline-none text-slate-600" value={exp.company || ''} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} />
-                    <input type="text" placeholder="Date (e.g. 2020 - Present)" className="w-full bg-transparent text-xs text-gray-500 mb-2 outline-none" value={exp.date || ''} onChange={(e) => updateExperience(exp.id, 'date', e.target.value)} />
-                    <textarea placeholder="Job Description..." rows="2" className="w-full p-2 border border-gray-200 bg-white rounded-lg text-sm outline-none resize-none focus:ring-1 focus:ring-blue-400 transition" value={exp.description || ''} onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}></textarea>
-                  </div>
-                ))}
-                {resumeData.experience.length === 0 && <p className="text-sm text-gray-400 italic text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">No experience added yet.</p>}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-bold uppercase text-gray-400 flex items-center gap-2"><GraduationCap size={16}/> Education</h3>
-                <button onClick={addEducation} className="text-blue-600 hover:bg-blue-50 p-2 rounded-full transition"><Plus size={20}/></button>
-              </div>
-              <div className="space-y-3">
-                {resumeData.education.map((edu) => (
-                  <div key={edu.id} className="p-3 border border-gray-200 rounded-xl bg-gray-50 relative hover:shadow-sm transition">
-                    <button onClick={() => removeEducation(edu.id)} className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition"><Trash2 size={16}/></button>
-                    <input type="text" placeholder="Degree / Course" className="w-full bg-transparent font-medium text-sm outline-none mb-1 text-slate-700" value={edu.degree || ''} onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)} />
-                    <input type="text" placeholder="School / University" className="w-full bg-transparent text-sm text-gray-600 outline-none mb-1" value={edu.school || ''} onChange={(e) => updateEducation(edu.id, 'school', e.target.value)} />
-                    <input type="text" placeholder="Year (e.g. 2022)" className="w-full bg-transparent text-xs text-gray-400 outline-none" value={edu.date || ''} onChange={(e) => updateEducation(edu.id, 'date', e.target.value)} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h3 className="text-sm font-bold uppercase text-gray-400 mb-4 flex items-center gap-2"><Sparkles size={16}/> Skills</h3>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {resumeData.skills.map((skill, idx) => (
-                  <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm flex items-center gap-2 border border-blue-100">{skill} <button onMouseDown={(e) => e.preventDefault()} onClick={() => removeSkill(skill)} className="hover:text-blue-900"><X size={12}/></button></span>
-                ))}
-              </div>
-              <input 
-                ref={skillInputRef}
-                type="text" 
-                placeholder="Type skill & press Enter" 
-                className="w-full p-3 border border-gray-200 rounded-lg outline-none bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" 
-                onKeyDown={(e) => {
-                  if(e.key === 'Enter') {
-                    addSkill(e.target.value);
-                    e.target.value = '';
-                  }
-                }}
-              />
-            </div>
-            
-            <div className="h-20 md:hidden"></div>
-        </div>
-
-  <div ref={previewWrapperRef} className={`flex-1 bg-slate-100 overflow-auto p-4 md:p-8 flex justify-center ${activeTab === 'editor' ? 'hidden md:flex' : 'flex'}`} style={{ minHeight: previewHeight }}>
-          <div className="w-full max-w-full shadow-2xl bg-white origin-top relative">
-            <div
-              ref={resumeInnerRef}
-              className="mx-auto"
-              style={{
-                width: '210mm',
-                transform: fitToScreen ? `scale(${scale})` : 'none',
-                transformOrigin: 'top left'
-              }}
-            >
-              {template === 'simple' && <TemplateSimple data={resumeData} themeColor={themeColor} />}
-              {template === 'modern' && <TemplateModern data={resumeData} themeColor={themeColor} />}
-              {template === 'creative' && <TemplateCreative data={resumeData} themeColor={themeColor} />}
-              {template === 'professional' && <TemplateProfessional data={resumeData} themeColor={themeColor} />}
-              {template === 'executive' && <TemplateExecutive data={resumeData} themeColor={themeColor} />}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="hidden md:block bg-white border-t border-gray-200 p-2 justify-center shrink-0 z-20 shadow-lg">
-        <LeaderboardAd className="mx-auto" />
-      </div>
-      
-      <div className="md:hidden bg-white border-t border-gray-200 p-2 flex justify-around shrink-0 z-20 shadow-lg pb-4">
-        <button onClick={() => setActiveTab('editor')} className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition ${activeTab === 'editor' ? 'bg-blue-50 text-blue-600' : 'text-gray-400'}`}>
-          <Layout size={20}/> <span className="text-xs font-medium">Edit</span>
-        </button>
-        <button onClick={() => setActiveTab('preview')} className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition ${activeTab === 'preview' ? 'bg-blue-50 text-blue-600' : 'text-gray-400'}`}>
-          <Printer size={20}/> <span className="text-xs font-medium">Preview</span>
-        </button>
-      </div>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <MobileLayout title="Resume Maker">
-        {content}
-      </MobileLayout>
-    );
+  function handleImageUpload(e) {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => setProfileImage(reader.result)
+      reader.readAsDataURL(file)
+    }
   }
 
-  return content;
+  function addExperience() {
+    setExperiences((s) => [...s, { role: "", company: "", duration: "", desc: "" }])
+  }
+  function removeExperience(i) {
+    setExperiences((s) => s.filter((_, idx) => idx !== i))
+  }
+  function updateExperience(i, key, value) {
+    setExperiences((s) => s.map((e, idx) => (idx === i ? { ...e, [key]: value } : e)))
+  }
+
+  function addEducation() {
+    setEducations((s) => [...s, { degree: "", institute: "", year: "" }])
+  }
+  function removeEducation(i) {
+    setEducations((s) => s.filter((_, idx) => idx !== i))
+  }
+  function updateEducation(i, key, value) {
+    setEducations((s) => s.map((e, idx) => (idx === i ? { ...e, [key]: value } : e)))
+  }
+
+  async function downloadPDF() {
+    if (!previewRef.current) return
+    await new Promise(resolve => setTimeout(resolve, 300))
+    const element = previewRef.current
+    const opt = {
+      margin: 0,
+      filename: `${(name || "resume").replace(/\s+/g, "-").toLowerCase()}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    }
+    const mod = await import("html2pdf.js")
+    const html2pdf = mod.default ?? mod
+    html2pdf().set(opt).from(element).save()
+  }
+
+  // --- TEMPLATES ---
+  
+  const NaukriTemplate = () => (
+    <div style={{ display: "flex", width: "210mm", minHeight: "297mm", background: "#fff", fontFamily: "'Inter', sans-serif", overflow: "hidden" }}>
+      <div style={{ width: "35%", backgroundColor: themeColor, color: "#fff", padding: "30px 20px", display: "flex", flexDirection: "column", gap: "25px" }}>
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {profileImage ? (
+             <div style={{ width: 110, height: 110, borderRadius: "50%", overflow: "hidden", border: "4px solid rgba(255,255,255,0.2)", boxShadow: "0 4px 10px rgba(0,0,0,0.2)" }}>
+               <img src={profileImage} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+             </div>
+          ) : (
+             <div style={{ width: 110, height: 110, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 45, fontWeight: "bold", border: "4px solid rgba(255,255,255,0.2)" }}>
+               {name.charAt(0)}
+             </div>
+          )}
+        </div>
+        <div style={{ width: "100%" }}>
+           <h4 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid rgba(255,255,255,0.3)", paddingBottom: 8, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8, opacity: 0.9 }}>Contact Details</h4>
+           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 11, fontWeight: 400, lineHeight: 1.5 }}>
+              {phone && <div style={{display:'flex', gap: 8, alignItems: 'flex-start'}}><Icons.Phone /> <span style={{flex: 1}}>{phone}</span></div>}
+              {email && <div style={{display:'flex', gap: 8, alignItems: 'flex-start', wordBreak: "break-all"}}><Icons.Mail /> <span style={{flex: 1}}>{email}</span></div>}
+              {(city || country) && <div style={{display:'flex', gap: 8, alignItems: 'flex-start'}}><Icons.Map /> <span style={{flex: 1}}>{city}, {country}</span></div>}
+              {website && <div style={{display:'flex', gap: 8, alignItems: 'flex-start', wordBreak: "break-all"}}><Icons.Link /> <span style={{flex: 1}}>{website}</span></div>}
+           </div>
+        </div>
+        {skills && (
+          <div style={{ width: "100%" }}>
+            <h4 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid rgba(255,255,255,0.3)", paddingBottom: 8, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8, opacity: 0.9 }}>Skills</h4>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {skills.split(",").map((s, i) => (
+                <span key={i} style={{ fontSize: 10, background: "rgba(255,255,255,0.15)", padding: "4px 8px", borderRadius: 4, fontWeight: 500 }}>{s.trim()}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {languages && (
+          <div style={{ width: "100%" }}>
+             <h4 style={{ fontSize: 12, fontWeight: 700, borderBottom: "1px solid rgba(255,255,255,0.3)", paddingBottom: 8, marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.8, opacity: 0.9 }}>Languages</h4>
+             <div style={{ fontSize: 11, fontWeight: 400, lineHeight: 1.6 }}>
+                {languages.split(",").map((l, i) => <div key={i} style={{marginBottom: 4, display: "flex", alignItems: "center", gap: 6}}><span style={{width: 3, height: 3, background: "white", borderRadius: "50%"}}></span> {l.trim()}</div>)}
+             </div>
+          </div>
+        )}
+      </div>
+      <div style={{ width: "65%", padding: "30px 25px", display: "flex", flexDirection: "column", gap: "22px" }}>
+        <div style={{ borderBottom: `2px solid ${themeColor}`, paddingBottom: 18 }}>
+           <h1 style={{ color: "#1e293b", fontSize: 32, fontWeight: 800, margin: 0, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: -0.5 }}>{name}</h1>
+           <div style={{ fontSize: 15, color: themeColor, letterSpacing: 0.8, textTransform: "uppercase", marginTop: 8, fontWeight: 600 }}>{title}</div>
+        </div>
+        {summary && (
+          <div>
+            <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10, color: "#334155", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{width: 16, height: 3, background: themeColor, borderRadius: 2}}></span> Profile Summary
+            </h3>
+            <p style={{ fontSize: 11, lineHeight: 1.6, color: "#475569", textAlign: "justify", margin: 0 }}>{summary}</p>
+          </div>
+        )}
+        {experiences.length > 0 && (
+           <div>
+             <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, color: "#334155", display: "flex", alignItems: "center", gap: 6 }}>
+               <span style={{width: 16, height: 3, background: themeColor, borderRadius: 2}}></span> Work Experience
+             </h3>
+             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+               {experiences.map((ex, i) => (
+                 <div key={i}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
+                       <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>{ex.role}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: themeColor, fontWeight: 600, marginBottom: 6 }}>
+                      {ex.company} <span style={{color: "#94a3b8", fontWeight: 400, marginLeft: 6}}>| {ex.duration}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5, textAlign: "justify" }}>{ex.desc}</div>
+                 </div>
+               ))}
+             </div>
+           </div>
+        )}
+        {educations.length > 0 && (
+           <div>
+             <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, color: "#334155", display: "flex", alignItems: "center", gap: 6 }}>
+               <span style={{width: 16, height: 3, background: themeColor, borderRadius: 2}}></span> Education
+             </h3>
+             {educations.map((ed, i) => (
+               <div key={i} style={{ marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#1e293b" }}>{ed.degree}</div>
+                  <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500 }}>{ed.institute}</div>
+                  <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{ed.year}</div>
+               </div>
+             ))}
+           </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const CleanTemplate = () => (
+     <div style={{ padding: "35px 40px", background: "#fff", minHeight: "297mm", width: "210mm", fontFamily: "'Inter', sans-serif", color: "#1e293b", display: "flex", flexDirection: "column", gap: "22px" }}>
+        <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: 20 }}>
+           <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5, marginBottom: 6, color: "#0f172a", margin: 0 }}>{name}</h1>
+           <div style={{ fontSize: 15, color: themeColor, fontWeight: 500, marginTop: 6 }}>{title}</div>
+           <div style={{ marginTop: 12, fontSize: 11, color: "#64748b", display: "flex", gap: 15, flexWrap: "wrap" }}>
+              {email && <span>{email}</span>}
+              {phone && <span>{phone}</span>}
+              {city && <span>{city}</span>}
+              {website && <span>{website}</span>}
+           </div>
+        </div>
+        {summary && (
+          <div><p style={{ fontSize: 12, lineHeight: 1.6, color: "#334155", margin: 0 }}>{summary}</p></div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 30 }}>
+           <div>
+              <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 15, margin: 0 }}>Experience</h3>
+              {experiences.map((e, i) => (
+                <div key={i} style={{ marginTop: 15 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{e.role}</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: themeColor, marginBottom: 6 }}>{e.company}</div>
+                  <p style={{ fontSize: 11, lineHeight: 1.5, color: "#475569", margin: 0 }}>{e.desc}</p>
+                  <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 6 }}>{e.duration}</div>
+                </div>
+              ))}
+           </div>
+           <div>
+              <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 15, margin: 0 }}>Education</h3>
+              {educations.map((e, i) => (
+                <div key={i} style={{ marginTop: 12 }}>
+                   <div style={{ fontWeight: 600, fontSize: 12 }}>{e.degree}</div>
+                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{e.institute}</div>
+                   <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{e.year}</div>
+                </div>
+              ))}
+              {skills && (
+                <div style={{ marginTop: 25 }}>
+                   <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "#94a3b8", marginBottom: 12, margin: 0 }}>Skills</h3>
+                   <div style={{ fontSize: 11, lineHeight: 1.5, color: "#334155", marginTop: 10 }}>
+                     {skills.split(",").map((s,i) => <div key={i} style={{marginBottom: 4}}>{s.trim()}</div>)}
+                   </div>
+                </div>
+              )}
+           </div>
+        </div>
+     </div>
+  )
+
+  return (
+    <div className="main-app">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { margin: 0; font-family: 'Inter', sans-serif; background: #f8fafc; }
+
+        .main-app { width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER */
+        .toolbar-container {
+           height: 60px;
+           display: flex;
+           align-items: center;
+           justify-content: space-between;
+           background: rgba(255, 255, 255, 0.95);
+           backdrop-filter: blur(10px);
+           padding: 0 24px;
+           border-bottom: 1px solid #e2e8f0;
+           position: sticky;
+           top: 0;
+           z-index: 50;
+        }
+        .app-title { font-weight: 800; fontSize: 20px; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+        .app-badge { background: #2563eb; color: #fff; padding: 4px 8px; border-radius: 6px; fontSize: 12px; font-weight: 700; }
+        
+        .desktop-actions { display: flex; gap: 12px; align-items: center; }
+
+        /* CONTAINER */
+        .resume-builder-container {
+           flex: 1;
+           display: flex;
+           gap: 30px;
+           max-width: 1400px;
+           margin: 0 auto;
+           padding: 24px;
+           width: 100%;
+           align-items: flex-start;
+        }
+
+        /* EDITOR */
+        .editor-section {
+           flex: 1;
+           min-width: 400px;
+           background: #fff;
+           border-radius: 12px;
+           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+           border: 1px solid #e2e8f0;
+           padding: 24px;
+           padding-bottom: 100px; /* Space for bottom nav on mobile */
+        }
+
+        /* PREVIEW */
+        .preview-section {
+           flex: 1.2;
+           min-width: 450px;
+           position: sticky;
+           top: 80px;
+           max-height: calc(100vh - 100px);
+           overflow-y: auto;
+           display: flex;
+           justify-content: center;
+           padding: 10px;
+           background: #e2e8f0;
+           border-radius: 12px;
+        }
+        .resume-paper { 
+          background: white; 
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+          transform-origin: top center;
+          transition: transform 0.2s ease;
+        }
+
+        /* FORM ELEMENTS */
+        .input-group { margin-bottom: 16px; }
+        .label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; transition: 0.2s; background: #fff; color: #0f172a; }
+        .input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .section-heading { font-size: 14px; font-weight: 700; color: #0f172a; text-transform: uppercase; margin: 30px 0 15px 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        
+        /* BUTTONS */
+        .btn { padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary { background: #0f172a; color: white; }
+        .btn-primary:hover { background: #1e293b; }
+        .btn-outline { background: white; border: 1px solid #cbd5e1; color: #475569; }
+        .btn-outline.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+        
+        .photo-box { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; cursor: pointer; background: #f8fafc; text-align: center; }
+        .card-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
+        .remove-btn { position: absolute; top: 12px; right: 12px; color: #ef4444; background: #fee2e2; border: none; border-radius: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        /* MOBILE BOTTOM NAV */
+        .bottom-nav { display: none; }
+        .fab-download { display: none; }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 900px) {
+           .toolbar-container { padding: 0 16px; height: 56px; }
+           .app-title { font-size: 18px; }
+           .desktop-actions { display: none; } /* Hide desktop toolbar items */
+           
+           .resume-builder-container { padding: 16px; gap: 0; display: block; }
+           
+           /* Toggle Classes */
+           .mobile-hidden { display: none !important; }
+           
+           .editor-section { 
+             width: 100%; min-width: 0; box-shadow: none; border: none; padding: 0 0 80px 0; 
+           }
+           
+           .preview-section { 
+             width: 100%; min-width: 0; position: static; max-height: none; background: transparent; padding: 0 0 80px 0;
+             display: flex; /* Ensure it's flex when visible */
+           }
+           
+           .resume-paper { width: 100%; height: auto; aspect-ratio: 210/297; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+           /* Bottom Nav */
+           .bottom-nav {
+              display: flex;
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              background: #fff;
+              border-top: 1px solid #e2e8f0;
+              padding: 12px;
+              justify-content: space-around;
+              z-index: 100;
+              box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+           }
+           .nav-item {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 4px;
+              font-size: 11px;
+              font-weight: 600;
+              color: #64748b;
+              background: none;
+              border: none;
+              cursor: pointer;
+           }
+           .nav-item.active { color: #2563eb; }
+           
+           /* FAB for Download */
+           .fab-download {
+              display: ${activeMobileTab === 'preview' ? 'flex' : 'none'};
+              position: fixed;
+              bottom: 80px;
+              right: 20px;
+              background: #2563eb;
+              color: white;
+              width: 56px;
+              height: 56px;
+              border-radius: 50%;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+              z-index: 90;
+              border: none;
+              cursor: pointer;
+           }
+        }
+      `}</style>
+
+      {/* HEADER */}
+      <div className="toolbar-container">
+         <div className="app-title">
+           <span className="app-badge">CV</span>
+           Resume Maker
+         </div>
+         
+         {/* Desktop Only Actions */}
+         <div className="desktop-actions">
+            <button className={`btn btn-outline ${template === 'naukri' ? 'active' : ''}`} onClick={() => setTemplate('naukri')}>Naukri</button>
+            <button className={`btn btn-outline ${template === 'clean' ? 'active' : ''}`} onClick={() => setTemplate('clean')}>Clean</button>
+            <div style={{width: 1, height: 24, background: '#cbd5e1', margin: '0 4px'}}></div>
+            <div style={{display: 'flex', alignItems: 'center', gap: 8, background: '#f1f5f9', padding: '4px 8px', borderRadius: 6}}>
+               <span style={{fontSize: 11, fontWeight: 700, color: '#64748b'}}>THEME</span>
+               <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} style={{width: 24, height: 24, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer'}} />
+            </div>
+            <button className="btn btn-primary" onClick={downloadPDF}><Icons.Download /> Download</button>
+         </div>
+      </div>
+
+      <div className="resume-builder-container">
+         
+         {/* EDITOR TAB CONTENT */}
+         <div className={`editor-section ${activeMobileTab === 'preview' ? 'mobile-hidden' : ''}`}>
+            <div className="section-heading"><Icons.User /> Essentials</div>
+
+            <div className="input-group">
+               <label className="photo-box">
+                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{display: 'none'}} />
+                  {profileImage ? (
+                    <img src={profileImage} style={{width: 64, height: 64, borderRadius: '50%', objectFit: 'cover'}} />
+                  ) : (
+                    <div style={{padding: 12, background: '#e2e8f0', borderRadius: '50%'}}><Icons.Camera /></div>
+                  )}
+                  <span style={{fontSize: 12, fontWeight: 600, color: '#64748b'}}>Tap to upload photo</span>
+               </label>
+            </div>
+
+            <div className="input-group"><label className="label">Full Name</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="input-group"><label className="label">Job Title</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12}}>
+               <div className="input-group"><label className="label">Email</label><input className="input" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+               <div className="input-group"><label className="label">Phone</label><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+            </div>
+            <div className="input-group"><label className="label">Location</label><input className="input" value={city} onChange={(e) => setCity(e.target.value)} /></div>
+            <div className="input-group"><label className="label">Summary</label><textarea className="input" rows={4} value={summary} onChange={(e) => setSummary(e.target.value)} /></div>
+
+            <div className="section-heading"><Icons.Briefcase /> Experience</div>
+            {experiences.map((exp, i) => (
+               <div key={i} className="card-item">
+                  <button className="remove-btn" onClick={() => removeExperience(i)}><Icons.Trash /></button>
+                  <div className="input-group"><label className="label">Role</label><input className="input" value={exp.role} onChange={(e) => updateExperience(i, "role", e.target.value)} /></div>
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10}}>
+                     <div className="input-group"><label className="label">Company</label><input className="input" value={exp.company} onChange={(e) => updateExperience(i, "company", e.target.value)} /></div>
+                     <div className="input-group"><label className="label">Date</label><input className="input" value={exp.duration} onChange={(e) => updateExperience(i, "duration", e.target.value)} /></div>
+                  </div>
+                  <div className="input-group"><label className="label">Details</label><textarea className="input" rows={3} value={exp.desc} onChange={(e) => updateExperience(i, "desc", e.target.value)} /></div>
+               </div>
+            ))}
+            <button className="btn btn-outline" style={{width: '100%', justifyContent: 'center', borderStyle: 'dashed'}} onClick={addExperience}><Icons.Plus /> Add Experience</button>
+
+            <div className="section-heading"><Icons.Graduation /> Education</div>
+            {educations.map((ed, i) => (
+               <div key={i} className="card-item">
+                  <button className="remove-btn" onClick={() => removeEducation(i)}><Icons.Trash /></button>
+                  <div className="input-group"><label className="label">Degree</label><input className="input" value={ed.degree} onChange={(e) => updateEducation(i, "degree", e.target.value)} /></div>
+                  <div className="input-group"><label className="label">School</label><input className="input" value={ed.institute} onChange={(e) => updateEducation(i, "institute", e.target.value)} /></div>
+                  <div className="input-group"><label className="label">Year</label><input className="input" value={ed.year} onChange={(e) => updateEducation(i, "year", e.target.value)} /></div>
+               </div>
+            ))}
+            <button className="btn btn-outline" style={{width: '100%', justifyContent: 'center', borderStyle: 'dashed'}} onClick={addEducation}><Icons.Plus /> Add Education</button>
+
+            <div className="section-heading"><Icons.Settings /> Skills & Others</div>
+            <div className="input-group"><label className="label">Skills</label><input className="input" value={skills} onChange={(e) => setSkills(e.target.value)} /></div>
+            <div className="input-group"><label className="label">Languages</label><input className="input" value={languages} onChange={(e) => setLanguages(e.target.value)} /></div>
+            <div className="input-group"><label className="label">Portfolio Link</label><input className="input" value={website} onChange={(e) => setWebsite(e.target.value)} /></div>
+         </div>
+
+         {/* PREVIEW TAB CONTENT */}
+         <div className={`preview-section ${activeMobileTab === 'editor' ? 'mobile-hidden' : ''}`} ref={containerRef}>
+            <div style={{ width: 794 * scale, height: 1123 * scale, position: "relative" }}>
+                <div className="resume-paper" style={{ transform: `scale(${scale})`, position: "absolute", top: 0, left: 0 }}>
+                    <div ref={previewRef} style={{ width: "100%", height: "100%" }}>
+                        {template === "naukri" ? <NaukriTemplate /> : <CleanTemplate />}
+                    </div>
+                </div>
+            </div>
+         </div>
+
+      </div>
+
+      {/* MOBILE FLOATING ACTION BUTTON */}
+      <button className="fab-download" onClick={downloadPDF}><Icons.Download /></button>
+
+      {/* MOBILE BOTTOM NAV */}
+      <div className="bottom-nav">
+         <button className={`nav-item ${activeMobileTab === 'editor' ? 'active' : ''}`} onClick={() => setActiveMobileTab('editor')}>
+            <Icons.Edit /> Edit
+         </button>
+         <button className={`nav-item ${activeMobileTab === 'preview' ? 'active' : ''}`} onClick={() => setActiveMobileTab('preview')}>
+            <Icons.Eye /> Preview
+         </button>
+      </div>
+
+    </div>
+  )
 }
