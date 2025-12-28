@@ -1,5 +1,7 @@
 import React from 'react'
 
-export default function Card({ children, className }) {
-  return <div className={className || 'card'}>{children}</div>
-}
+export const Card = ({ children, className = "" }) => (
+    <div className={`bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl shadow-lg p-3 md:p-6 ${className}`}>
+        {children}
+    </div>
+);

@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from 'next/script'
 import ResponsiveShell from '@/components/ResponsiveShell'
 import React, { Suspense } from 'react';
 import ClientTitle from '@/components/ClientTitle'
@@ -93,6 +94,8 @@ export default function RootLayout({ children }) {
     <html lang="en" data-scroll-behavior="smooth">
       <head>
         <meta name="google-adsense-account" content="ca-pub-5390089359360512" />
+        {/* nap5k tag (loads after hydration) */}
+        <Script id="nap5k-tag" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `(function(s){s.dataset.zone='10387080',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))` }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
