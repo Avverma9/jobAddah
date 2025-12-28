@@ -5,6 +5,7 @@ const url = require("url");
 const Section = require("@/models/gov/section");
 const Site = require("@/models/gov/scrapperSite");
 const govPostList = require("@/models/gov/postList");
+const { clearNextJsCache } = require("@/utils/clear-cache");
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -20,11 +21,9 @@ const ensureProtocol = (inputUrl) => {
   return clean;
 };
 
-// Internal function to scrape a single category (no req/res)
+// Scrape single category
 const scrapeCategoryInternal = async (categoryUrl) => {
   try {
-    console.log(`[SCRAPE] Scraping category: ${categoryUrl}`);
-    
     const response = await axios.get(categoryUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
       timeout: 15000,
@@ -43,7 +42,7 @@ const scrapeCategoryInternal = async (categoryUrl) => {
           const fullLink = new url.URL(link, categoryUrl).href;
           jobs.push({ title, link: fullLink });
         } catch (err) {
-          console.warn(`[SCRAPE] Invalid URL: ${link}`);
+          // Skip invalid URLs silently
         }
       }
     });
@@ -56,38 +55,32 @@ const scrapeCategoryInternal = async (categoryUrl) => {
       { upsert: true, new: true }
     );
 
-    console.log(`[SCRAPE] ✅ Found ${uniqueJobs.length} jobs in category`);
     return { success: true, count: uniqueJobs.length, jobs: uniqueJobs };
   } catch (error) {
-    console.error(`[SCRAPE] ❌ Error scraping ${categoryUrl}:`, error.message);
     return { success: false, error: error.message };
   }
 };
 
-// Combined sync: Categories + Jobs
+// Main sync function
 const syncCategoriesAndJobs = async () => {
+  const startTime = Date.now();
+  const timestamp = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+
   try {
-    console.log(`\n========================================`);
-    console.log(`[CRON] Starting full sync at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
-    console.log(`========================================\n`);
-    
-    // Step 1: Get site URL
+    console.log(`[${timestamp}] Sync started`);
+
+    // Get site URL
     const siteUrl = await Site.find();
     if (!siteUrl || siteUrl.length === 0) {
-      console.error("[CRON] No site URL configured");
-      return;
+      throw new Error("No site URL configured");
     }
 
-    const rawUrl = siteUrl[0].url;
-    const targetUrl = ensureProtocol(rawUrl);
-    
+    const targetUrl = ensureProtocol(siteUrl[0].url);
     if (!targetUrl) {
-      console.error("[CRON] Invalid URL");
-      return;
+      throw new Error("Invalid site URL");
     }
 
-    // Step 2: Scrape categories from main site
-    console.log(`[STEP 1] Fetching categories from: ${targetUrl}`);
+    // Scrape categories
     const response = await axios.get(targetUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
       timeout: 15000,
@@ -118,7 +111,7 @@ const syncCategoriesAndJobs = async () => {
           categories.push({ name, link: fullLink });
         }
       } catch (err) {
-        console.warn(`[STEP 1] Invalid category link: ${href}`);
+        // Skip invalid links
       }
     });
 
@@ -126,28 +119,28 @@ const syncCategoriesAndJobs = async () => {
       ...new Map(categories.map((i) => [i.link, i])).values(),
     ];
 
-    // Save categories to database
+    // Save categories
     await Section.findOneAndUpdate(
       { url: targetUrl },
-      { $set: { url: targetUrl, categories: uniqueCategories, lastSynced: new Date() } },
+      {
+        $set: {
+          url: targetUrl,
+          categories: uniqueCategories,
+          lastSynced: new Date(),
+        },
+      },
       { upsert: true, new: true }
     );
 
-    console.log(`[STEP 1] ✅ Found ${uniqueCategories.length} categories\n`);
-
-    // Step 3: Scrape jobs from each category sequentially
-    console.log(`[STEP 2] Starting to scrape jobs from all categories...`);
-    
+    // Scrape jobs from all categories
     let totalJobsFound = 0;
     let successCount = 0;
     let failCount = 0;
 
     for (let i = 0; i < uniqueCategories.length; i++) {
       const category = uniqueCategories[i];
-      console.log(`\n[${i + 1}/${uniqueCategories.length}] Category: ${category.name}`);
-      
       const result = await scrapeCategoryInternal(category.link);
-      
+
       if (result.success) {
         totalJobsFound += result.count;
         successCount++;
@@ -155,33 +148,45 @@ const syncCategoriesAndJobs = async () => {
         failCount++;
       }
 
-      // Add delay between requests to avoid rate limiting
+      // Delay to avoid rate limiting
       if (i < uniqueCategories.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
-    console.log(`\n========================================`);
-    console.log(`[CRON] ✅ Full sync completed!`);
-    console.log(`Categories: ${uniqueCategories.length}`);
-    console.log(`Jobs found: ${totalJobsFound}`);
-    console.log(`Success: ${successCount} | Failed: ${failCount}`);
-    console.log(`========================================\n`);
+    // Clear Next.js cache
+    await clearNextJsCache();
 
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(
+      `[${timestamp}] ✅ Sync completed in ${duration}s | Categories: ${uniqueCategories.length} | Jobs: ${totalJobsFound} | Success: ${successCount} | Failed: ${failCount}`
+    );
+
+    return {
+      success: true,
+      categories: uniqueCategories.length,
+      jobs: totalJobsFound,
+      successCount,
+      failCount,
+      duration,
+    };
   } catch (error) {
-    console.error("[CRON] ❌ Critical Error:", error.message);
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error(`[${timestamp}] ❌ Sync failed after ${duration}s:`, error.message);
+    return { success: false, error: error.message };
   }
 };
 
-// Express route handler for manual trigger
+// Express route for manual trigger
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
-    if (!categoryUrl)
+    if (!categoryUrl) {
       return res.status(400).json({ error: "Category URL is required" });
+    }
 
     const result = await scrapeCategoryInternal(categoryUrl);
-    
+
     if (result.success) {
       res.json(result);
     } else {
@@ -192,25 +197,29 @@ const scrapeCategory = async (req, res) => {
   }
 };
 
-// Schedule combined job: Every 30 minutes
+// Initialize cron - runs every hour at :00 minutes
 const initCategoryCron = () => {
-  // Run immediately on startup
-  console.log("🚀 Starting initial sync...");
-  syncCategoriesAndJobs();
+  // Schedule: Every hour at :00 minutes (12:00, 1:00, 2:00, etc.)
+  cron.schedule(
+    "0 * * * *",
+    async () => {
+      await syncCategoriesAndJobs();
+    },
+    {
+      scheduled: true,
+      timezone: "Asia/Kolkata",
+    }
+  );
 
-  // Then schedule for every 30 minutes
-  cron.schedule('*/30 * * * *', syncCategoriesAndJobs, {
-    scheduled: true,
-    timezone: "Asia/Kolkata"
-  });
-
-  console.log("✅ Combined cron initialized - running every 30 minutes");
-  console.log("📋 Tasks: 1) Sync categories 2) Scrape all category jobs");
+  const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  console.log(`✅ Cron initialized at ${now}`);
+  console.log("⏰ Schedule: Every hour at :00 minutes");
+  console.log("🌏 Timezone: Asia/Kolkata (IST)");
 };
 
-module.exports = { 
-  initCategoryCron, 
+module.exports = {
+  initCategoryCron,
   syncCategoriesAndJobs,
-  scrapeCategory, // For manual API calls
-  scrapeCategoryInternal // For internal use
+  scrapeCategory,
+  scrapeCategoryInternal,
 };
