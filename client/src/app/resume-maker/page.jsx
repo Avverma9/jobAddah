@@ -50,39 +50,52 @@ export default function Page() {
     { degree: "Bachelor of Fine Arts in Interaction Design", institute: "California College of the Arts", year: "2014 - 2018" }
   ])
 
+  // Improved Logic for Scaling on Mobile
   useEffect(() => {
     function handleResize() {
-      if (containerRef.current) {
-        // Force a resize calculation when switching to preview tab
-        const containerWidth = containerRef.current.offsetWidth
+      // Logic for determining available width
+      let containerWidth = 0;
+      
+      // If ref is available and visible, use its width
+      if (containerRef.current && containerRef.current.offsetWidth > 0) {
+        containerWidth = containerRef.current.offsetWidth;
+      } 
+      // Fallback for mobile if ref is hidden or 0
+      else if (window.innerWidth < 900) {
+        containerWidth = window.innerWidth - 32; // minus padding
+      }
+
+      if (containerWidth > 0) {
         const paperWidth = 794
         const padding = 20
         
-        // If container width is 0 (hidden), don't update scale to avoid issues
-        if (containerWidth > 0) {
-          let newScale = 1
-          if (containerWidth < paperWidth + padding) {
-            newScale = (containerWidth - padding) / paperWidth
-          }
-          setScale(Math.min(newScale, 1))
+        let newScale = 1
+        if (containerWidth < paperWidth + padding) {
+          newScale = (containerWidth - padding) / paperWidth
         }
+        setScale(Math.min(newScale, 1))
       }
     }
     
-    // Initial call
+    // Trigger resize immediately and after short delay to ensure DOM is ready
     handleResize()
+    const timer = setTimeout(handleResize, 50)
     
-    // Add event listener
     window.addEventListener("resize", handleResize)
-    
-    // Also trigger on tab change with a small delay to allow DOM update
-    const timeoutId = setTimeout(handleResize, 50)
-    
     return () => {
       window.removeEventListener("resize", handleResize)
-      clearTimeout(timeoutId)
+      clearTimeout(timer)
     }
   }, [activeMobileTab]) 
+
+  // Handle Tab Switching with Scroll Reset
+  const switchTab = (tab) => {
+    setActiveMobileTab(tab)
+    // Scroll to top to ensure user sees the content
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   function handleImageUpload(e) {
     const file = e.target.files[0]
@@ -132,8 +145,8 @@ export default function Page() {
   // --- TEMPLATES ---
   
   const NaukriTemplate = () => (
-    <div style={{ display: "flex", width: "210mm", minHeight: "297mm", background: "#fff", fontFamily: "'Inter', sans-serif", overflow: "hidden" }}>
-      <div style={{ width: "35%", backgroundColor: themeColor, color: "#fff", padding: "30px 20px", display: "flex", flexDirection: "column", gap: "25px" }}>
+    <div style={{ display: "flex", width: "210mm", height: "297mm", background: "#fff", fontFamily: "'Inter', sans-serif", overflow: "hidden" }}>
+      <div style={{ width: "35%", backgroundColor: themeColor, color: "#fff", padding: "30px 20px", display: "flex", flexDirection: "column", gap: "25px", height: "100%" }}>
         <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {profileImage ? (
              <div style={{ width: 110, height: 110, borderRadius: "50%", overflow: "hidden", border: "4px solid rgba(255,255,255,0.2)", boxShadow: "0 4px 10px rgba(0,0,0,0.2)" }}>
@@ -173,7 +186,7 @@ export default function Page() {
           </div>
         )}
       </div>
-      <div style={{ width: "65%", padding: "30px 25px", display: "flex", flexDirection: "column", gap: "22px" }}>
+      <div style={{ width: "65%", padding: "30px 25px", display: "flex", flexDirection: "column", gap: "22px", height: "100%" }}>
         <div style={{ borderBottom: `2px solid ${themeColor}`, paddingBottom: 18 }}>
            <h1 style={{ color: "#1e293b", fontSize: 32, fontWeight: 800, margin: 0, lineHeight: 1.1, textTransform: "uppercase", letterSpacing: -0.5 }}>{name}</h1>
            <div style={{ fontSize: 15, color: themeColor, letterSpacing: 0.8, textTransform: "uppercase", marginTop: 8, fontWeight: 600 }}>{title}</div>
@@ -225,7 +238,7 @@ export default function Page() {
   )
 
   const CleanTemplate = () => (
-     <div style={{ padding: "35px 40px", background: "#fff", minHeight: "297mm", width: "210mm", fontFamily: "'Inter', sans-serif", color: "#1e293b", display: "flex", flexDirection: "column", gap: "22px" }}>
+     <div style={{ padding: "35px 40px", background: "#fff", height: "297mm", width: "210mm", fontFamily: "'Inter', sans-serif", color: "#1e293b", display: "flex", flexDirection: "column", gap: "22px", overflow: "hidden" }}>
         <div style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: 20 }}>
            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5, marginBottom: 6, color: "#0f172a", margin: 0 }}>{name}</h1>
            <div style={{ fontSize: 15, color: themeColor, fontWeight: 500, marginTop: 6 }}>{title}</div>
@@ -377,8 +390,7 @@ export default function Page() {
            
            .resume-builder-container { padding: 16px; gap: 0; display: block; }
            
-           /* Toggle Classes */
-           .mobile-hidden { display: none !important; }
+           /* Explicitly control display with state styles */
            
            .editor-section { 
              width: 100%; min-width: 0; box-shadow: none; border: none; padding: 0 0 80px 0; 
@@ -421,7 +433,7 @@ export default function Page() {
            
            /* FAB for Download */
            .fab-download {
-              display: ${activeMobileTab === 'preview' ? 'flex' : 'none'};
+              display: flex; /* controlled by inline style */
               position: fixed;
               bottom: 80px;
               right: 20px;
@@ -463,7 +475,7 @@ export default function Page() {
       <div className="resume-builder-container">
          
          {/* EDITOR TAB CONTENT */}
-         <div className={`editor-section ${activeMobileTab === 'preview' ? 'mobile-hidden' : ''}`}>
+         <div className="editor-section" style={{ display: (typeof window !== 'undefined' && window.innerWidth < 900 && activeMobileTab === 'preview') ? 'none' : 'block' }}>
             <div className="section-heading"><Icons.User /> Essentials</div>
 
             <div className="input-group">
@@ -519,7 +531,7 @@ export default function Page() {
          </div>
 
          {/* PREVIEW TAB CONTENT */}
-         <div className={`preview-section ${activeMobileTab === 'editor' ? 'mobile-hidden' : ''}`} ref={containerRef}>
+         <div className="preview-section" ref={containerRef} style={{ display: (typeof window !== 'undefined' && window.innerWidth < 900 && activeMobileTab === 'editor') ? 'none' : 'flex' }}>
             <div style={{ width: 794 * scale, height: 1123 * scale, position: "relative" }}>
                 <div className="resume-paper" style={{ transform: `scale(${scale})`, position: "absolute", top: 0, left: 0 }}>
                     <div ref={previewRef} style={{ width: "100%", height: "100%" }}>
@@ -532,14 +544,14 @@ export default function Page() {
       </div>
 
       {/* MOBILE FLOATING ACTION BUTTON */}
-      <button className="fab-download" onClick={downloadPDF}><Icons.Download /></button>
+      <button className="fab-download" style={{ display: activeMobileTab === 'preview' ? 'flex' : 'none' }} onClick={downloadPDF}><Icons.Download /></button>
 
       {/* MOBILE BOTTOM NAV */}
       <div className="bottom-nav">
-         <button className={`nav-item ${activeMobileTab === 'editor' ? 'active' : ''}`} onClick={() => setActiveMobileTab('editor')}>
+         <button className={`nav-item ${activeMobileTab === 'editor' ? 'active' : ''}`} onClick={() => switchTab('editor')}>
             <Icons.Edit /> Edit
          </button>
-         <button className={`nav-item ${activeMobileTab === 'preview' ? 'active' : ''}`} onClick={() => setActiveMobileTab('preview')}>
+         <button className={`nav-item ${activeMobileTab === 'preview' ? 'active' : ''}`} onClick={() => switchTab('preview')}>
             <Icons.Eye /> Preview
          </button>
       </div>
