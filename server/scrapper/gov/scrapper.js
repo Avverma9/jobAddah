@@ -8,6 +8,10 @@ const Section = require("@/models/gov/section");
 const GeminiModel = require("@/models/ai/gemini-model");
 const ApiKey = require("@/models/ai/ai-apiKey");
 const Site = require("@/models/gov/scrapperSite");
+const PerplexityModel = require("@/models/ai/perplexity-model");
+const pplKey = require("@/models/ai/perplexity-apikey");
+const { buildPrompt } = require("./prompt");
+const getActiveAIConfig = require("@/utils/aiKey");
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -23,136 +27,74 @@ const ensureProtocol = (inputUrl) => {
   return clean;
 };
 
-const formatWithAI = async (scrapedData) => {
+// formatWithAI(scrapedData): builds prompt, runs Gemini or falls back to Perplexity
+const formatWithAI = async (scrapedData, hints = {}) => {
   try {
-    const modelNameData = await GeminiModel.findOne().sort({ createdAt: -1 });
-    if (!modelNameData) {
-      throw new Error("No Gemini model configured in the database");
+    const { provider, modelName, apiKey } = await getActiveAIConfig();
+
+    const prompt = buildPrompt(scrapedData, hints);
+
+    // ===============================
+    // 🔹 GEMINI FLOW
+    // ===============================
+    if (provider === "gemini") {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.2,
+        },
+      });
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
     }
-    const apiKeyData = await ApiKey.findOne({}).sort({ createdAt: -1 });
-    if (!apiKeyData) {
-      throw new Error("No API key configured (env or DB)");
+
+    // ===============================
+    // 🔹 PERPLEXITY FLOW
+    // ===============================
+    const pplResponse = await fetch(
+      "https://api.perplexity.ai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: modelName || "sonar",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a data formatting expert. Return only valid JSON matching the provided schema.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 4000,
+        }),
+      }
+    );
+
+    if (!pplResponse.ok) {
+      const err = await pplResponse.json();
+      throw new Error(err.error?.message || "Perplexity API error");
     }
-    effectiveKey = apiKeyData.apiKey;
 
-    const genAI = new GoogleGenerativeAI(effectiveKey);
-    const model = genAI.getGenerativeModel({
-      model: modelNameData.modelName,
-      generationConfig: { responseMimeType: "application/json" },
-    });
+    const pplResult = await pplResponse.json();
+    const content = pplResult.choices?.[0]?.message?.content;
 
-    const prompt =
-      "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
-      "GLOBAL HARD RULES:\n" +
-      "1) Output MUST be valid JSON.\n" +
-      '2) Output MUST contain ONLY one top-level key: "recruitment".\n' +
-      "3) You MUST NOT add any extra top-level keys.\n" +
-      '4) Inside "recruitment", you may use ONLY the keys defined in the structure below. You MUST NOT invent or add any other keys.\n' +
-      "5) You MUST NOT rename keys. You may only FILL their values from scrapedData.\n" +
-      '6) If some data is missing in scrapedData, keep the key but leave it empty ("", {}, [], or 0 exactly as in the structure).\n' +
-      "7) JSON MUST NOT contain comments, trailing commas, undefined, NaN, functions, or any explanation text.\n" +
-      "8) Output MUST NOT be wrapped in markdown or any extra text. Return ONLY pure JSON.\n\n" +
-      "⚠️ CRITICAL TITLE REPHRASING RULE (PLAGIARISM DETECTION - AUTOMATIC REJECTION) ⚠️\n" +
-      "⛔ WARNING: If you copy the title directly, the output will be REJECTED and DELETED immediately.\n" +
-      "⛔ WARNING: Any title with >70% similarity to the original will trigger AUTOMATIC STRIKE and PENALTY.\n" +
-      "⛔ WARNING: Repeated violations will result in PERMANENT BAN from the system.\n\n" +
-      "MANDATORY TITLE TRANSFORMATION RULES:\n" +
-      "- The 'title' field MUST be 100% ORIGINAL and COMPLETELY REPHRASED.\n" +
-      "- You MUST rewrite the title in your OWN WORDS with a DIFFERENT sentence structure.\n" +
-      "- You MUST NOT copy ANY phrase longer than 2-3 words from the original title.\n" +
-      "- Keep the core information (Organization, Post, Year) but express it DIFFERENTLY.\n" +
-      "- Make it SEO-friendly, professional, and engaging.\n" +
-      "- Use synonyms, different word order, and alternative phrasing.\n\n" +
-      "TITLE TRANSFORMATION EXAMPLES (MANDATORY TO FOLLOW THIS PATTERN):\n" +
-      "❌ BAD (Will be REJECTED): 'UP Police Constable Recruitment 2025 Apply Online'\n" +
-      "✅ GOOD (Accepted): 'Uttar Pradesh Police 2025: Constable Position - Online Applications Now Open'\n\n" +
-      "❌ BAD (Will be REJECTED): 'SSC CGL 2025 Notification Released Apply Online'\n" +
-      "✅ GOOD (Accepted): 'Staff Selection Commission Combined Graduate Level 2025 - Application Process Started'\n\n" +
-      "❌ BAD (Will be REJECTED): 'Railway Recruitment 2025 for 10000 Posts'\n" +
-      "✅ GOOD (Accepted): 'Indian Railways 2025: Massive Hiring Drive for Ten Thousand Positions'\n\n" +
-      "⚠️ FINAL WARNING: DO NOT COPY-PASTE THE TITLE. WRITE IT COMPLETELY NEW. THIS IS NON-NEGOTIABLE.\n\n" +
-      "ALLOWED JSON STRUCTURE (YOU MUST FOLLOW THIS EXACTLY):\n" +
-      "{\n" +
-      '  "recruitment": {\n' +
-      '    "title": "REPHRASED_UNIQUE_TITLE_HERE",\n' +
-      '    "organization": {\n' +
-      '      "name": "",\n' +
-      '      "shortName": "",\n' +
-      '      "website": "",\n' +
-      '      "officialWebsite": ""\n' +
-      "    },\n" +
-      '    "importantDates": {\n' +
-      '      "notificationDate": "",\n' +
-      '      "applicationStartDate": "",\n' +
-      '      "applicationLastDate": "",\n' +
-      '      "feePaymentLastDate": "",\n' +
-      '      "correctionDate": "",\n' +
-      '      "preExamDate": "",\n' +
-      '      "mainsExamDate": "",\n' +
-      '      "examDate": "",\n' +
-      '      "admitCardDate": "",\n' +
-      '      "resultDate": "",\n' +
-      '      "answerKeyReleaseDate": "",\n' +
-      '      "finalAnswerKeyDate": "",\n' +
-      '      "meritListDate": "",\n' +
-      '      "documentVerificationDate": ""\n' +
-      "    },\n" +
-      '    "vacancyDetails": {\n' +
-      '      "totalPosts": 0,\n' +
-      '      "positions": []\n' +
-      "    },\n" +
-      '    "applicationFee": {},\n' +
-      '    "ageLimit": {},\n' +
-      '    "eligibility": {},\n' +
-      '    "selectionProcess": [],\n' +
-      '    "importantLinks": {},\n' +
-      '    "districtWiseData": []\n' +
-      "  }\n" +
-      "}\n\n" +
-      "SMART MAPPING RULES (VERY IMPORTANT):\n" +
-      "- You MUST intelligently decide which scraped fields belong to which section, based on their meaning and labels.\n" +
-      "- Map date-like fields to importantDates when they clearly represent a schedule.\n" +
-      '  * Any scraped key containing words like "start", "begin", "from" -> applicationStartDate.\n' +
-      '  * Any key containing "last date", "apply online last" -> applicationLastDate.\n' +
-      '  * Any key containing "fee payment" -> feePaymentLastDate.\n' +
-      '  * Any key containing "correction" or "edit" -> correctionDate.\n' +
-      '  * Any key containing "pre exam" -> preExamDate.\n' +
-      '  * Any key containing "mains" -> mainsExamDate.\n' +
-      '  * Any key containing "exam date" -> examDate.\n' +
-      '  * Any key containing "admit card" or "hall ticket" -> admitCardDate.\n' +
-      '  * Any key containing "result" -> resultDate.\n' +
-      '  * Any key containing "answer key" -> answerKeyReleaseDate or finalAnswerKeyDate.\n' +
-      '  * Any key containing "merit list" -> meritListDate.\n' +
-      '  * Any key containing "document verification" or "DV" -> documentVerificationDate.\n' +
-      "- Organization-like text MUST be mapped into organization fields.\n" +
-      "- Category-wise / post-wise counts MUST go into vacancyDetails.positions + totalPosts.\n" +
-      "- Fee information MUST go into applicationFee.\n" +
-      "- Age-related info MUST go into ageLimit.\n" +
-      "- Eligibility / qualifications MUST go into eligibility.\n" +
-      "- Stage-wise selection steps MUST go into selectionProcess.\n" +
-      "- All URLs, notification links, apply links MUST go into importantLinks.\n" +
-      "- District/state-wise data MUST go into districtWiseData.\n\n" +
-      "SPECIAL IMPORTANTLINKS RULE:\n" +
-      '- If any URL in importantLinks contains "whatsapp.com", "wa.me", or "api.whatsapp.com", remove that entry entirely. DO NOT include any WhatsApp links.\n\n' +
-      "STRICT IGNORE RULE:\n" +
-      "- Ignore any scraped fields that cannot be mapped to the defined structure.\n" +
-      "- Do NOT create any new keys beyond what is defined.\n\n" +
-      "Scraped Data (source):\n" +
-      JSON.stringify(scrapedData, null, 2) +
-      "\n\nFINAL OUTPUT RULE:\n" +
-      "Return ONLY one JSON object exactly matching the allowed structure. NO markdown, NO comments, NO explanation.\n";
+    if (!content) throw new Error("Perplexity returned empty content");
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("AI Formatting Error:", error.message);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+  } catch (err) {
+    console.error("AI Formatting Error:", err.message);
     return null;
   }
 };
@@ -165,13 +107,17 @@ const scrapper = async (req, res) => {
     }
 
     // If URL is relative (e.g., /ssc-delhi-police...), prepend the base site URL
-    if (jobUrl.startsWith('/')) {
+    if (jobUrl.startsWith("/")) {
       const siteConfig = await Site.findOne().sort({ createdAt: -1 });
       if (!siteConfig || !siteConfig.url) {
-        return res.status(500).json({ error: "Base site URL is not configured" });
+        return res
+          .status(500)
+          .json({ error: "Base site URL is not configured" });
       }
       // Ensure base URL doesn't have a trailing slash before joining
-      const baseUrl = siteConfig.url.endsWith('/') ? siteConfig.url.slice(0, -1) : siteConfig.url;
+      const baseUrl = siteConfig.url.endsWith("/")
+        ? siteConfig.url.slice(0, -1)
+        : siteConfig.url;
       jobUrl = baseUrl + jobUrl;
     }
 
@@ -371,7 +317,77 @@ const scrapper = async (req, res) => {
       }
     });
 
-    const formattedData = await formatWithAI(scrapedData);
+    // Extract deterministic important links heuristically so AI has real URLs to use
+    const extractImportantLinks = (sd) => {
+      const hints = {
+        applyOnline: "",
+        officialNotification: "",
+        shortNotice: "",
+        officialWebsite: "",
+      };
+
+      const urlHost = (() => {
+        try {
+          return new url.URL(sd.url).host;
+        } catch (e) {
+          return null;
+        }
+      })();
+
+      for (const link of sd.links || []) {
+        const text = (link.text || "").toLowerCase();
+        const href = link.href || link.fullUrl || "";
+        const hrefLower = href.toLowerCase();
+
+        if (
+          !hints.applyOnline &&
+          (text.includes("apply") ||
+            hrefLower.includes("apply") ||
+            text.includes("registration"))
+        ) {
+          hints.applyOnline = href;
+        }
+
+        if (
+          !hints.officialNotification &&
+          (text.includes("notification") ||
+            hrefLower.includes("notification") ||
+            text.includes("notice") ||
+            hrefLower.includes("notice"))
+        ) {
+          hints.officialNotification = href;
+        }
+
+        if (
+          !hints.shortNotice &&
+          (text.includes("short notice") ||
+            text.includes("short-notice") ||
+            text.includes("shortnotice"))
+        ) {
+          hints.shortNotice = href;
+        }
+
+        // prefer same-host links as official website
+        if (!hints.officialWebsite && urlHost) {
+          try {
+            const linkHost = new url.URL(href).host;
+            if (linkHost === urlHost) hints.officialWebsite = href;
+          } catch (e) {}
+        }
+
+        // last resort: if pdf found and no notification yet
+        if (!hints.officialNotification && hrefLower.endsWith(".pdf")) {
+          hints.officialNotification = href;
+        }
+      }
+
+      return hints;
+    };
+
+    const hints = extractImportantLinks(scrapedData);
+
+    // Pass scrapedData + hints to AI
+    const formattedData = await formatWithAI(scrapedData, hints);
 
     if (!formattedData) {
       return res
@@ -392,6 +408,37 @@ const scrapper = async (req, res) => {
 
     // 2️⃣ Ensure formattedData me cleanUrl daal do
     formattedData.url = cleanUrl;
+
+    // Post-process importantLinks: replace anchor-text placeholders (e.g., "Click Here")
+    // with deterministic hints when possible.
+    try {
+      const outLinks = formattedData?.recruitment?.importantLinks || {};
+      for (const key of Object.keys(outLinks)) {
+        const val = (outLinks[key] || "").toString().trim();
+        const lower = val.toLowerCase();
+        const isUrl = val.startsWith("http://") || val.startsWith("https://");
+        const isPlaceholder =
+          !isUrl ||
+          lower === "click here" ||
+          lower === "here" ||
+          lower === "click";
+        if (isPlaceholder) {
+          // map key names from AI to our hints keys where possible
+          const hintKey =
+            key in hints ? key : key.replace(/([A-Z])/g, "_$1").toLowerCase();
+          if (hints[hintKey]) {
+            formattedData.recruitment.importantLinks[key] = hints[hintKey];
+          } else {
+            // try to use any non-empty hint value
+            const anyHint = Object.values(hints).find((h) => h && h.length > 0);
+            formattedData.recruitment.importantLinks[key] = anyHint || "";
+          }
+        }
+      }
+    } catch (e) {
+      // don't fail the whole scrape for link-fix errors
+      console.warn("importantLinks post-process failed:", e.message);
+    }
 
     await Post.findOneAndUpdate(
       { url: cleanUrl }, // DB me sirf path save karna hai
@@ -470,8 +517,6 @@ const getCategories = async (req, res) => {
   }
 };
 
-
-
 const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
@@ -510,173 +555,9 @@ const scrapeCategory = async (req, res) => {
   }
 };
 
-const deleteDuplicates = async (req, res) => {
-  try {
-    const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
-
-    const duplicatesToDelete = [];
-    const processedPairs = new Set();
-
-    // Compare each post with every other post
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const post1 = allPosts[i]; // Older post (earlier createdAt)
-        const post2 = allPosts[j]; // Newer post (later createdAt)
-
-        // Avoid comparing same pair twice
-        const pairKey = `${post1._id}-${post2._id}`;
-        if (processedPairs.has(pairKey)) continue;
-        processedPairs.add(pairKey);
-
-        try {
-          const similarity = calculateRecruitmentSimilarity(post1, post2);
-
-          // If similarity >= 60%, DELETE older post (post1), KEEP newer post (post2)
-          if (similarity >= 60) {
-            duplicatesToDelete.push({
-              deleteId: post1._id, // ← DELETE OLDER
-              keepId: post2._id, // ← KEEP NEWER
-              similarity: similarity,
-              deleteTitle: post1.recruitment?.title || post1.url,
-              keepTitle: post2.recruitment?.title || post2.url,
-              deleteCreatedAt: post1.createdAt,
-              keepCreatedAt: post2.createdAt,
-            });
-          }
-        } catch (error) {
-          console.error(`Error comparing posts:`, error.message);
-        }
-      }
-    }
-
-    if (duplicatesToDelete.length === 0) {
-      return res.json({
-        success: true,
-        duplicatesFound: 0,
-        duplicatesDeleted: 0,
-        message: "No duplicates found in database",
-      });
-    }
-
-    // Delete duplicate posts
-    const deletionResults = [];
-
-    for (const duplicate of duplicatesToDelete) {
-      try {
-        const deleted = await Post.findByIdAndDelete(duplicate.deleteId);
-
-        if (deleted) {
-          deletionResults.push({
-            deleted: true,
-            deletedId: duplicate.deleteId,
-            keptId: duplicate.keepId,
-            similarity: duplicate.similarity,
-            deletedTitle: duplicate.deleteTitle,
-            keptTitle: duplicate.keepTitle,
-            deletedCreatedAt: duplicate.deleteCreatedAt,
-            keptCreatedAt: duplicate.keepCreatedAt,
-          });
-        } else {
-          deletionResults.push({
-            deleted: false,
-            deletedId: duplicate.deleteId,
-            error: "Deletion failed",
-          });
-        }
-      } catch (error) {
-        console.error(`Error deleting ${duplicate.deleteId}:`, error.message);
-        deletionResults.push({
-          deleted: false,
-          deletedId: duplicate.deleteId,
-          error: error.message,
-        });
-      }
-    }
-
-    const successCount = deletionResults.filter((r) => r.deleted).length;
-    res.json({
-      success: true,
-      duplicatesFound: duplicatesToDelete.length,
-      duplicatesDeleted: successCount,
-      results: deletionResults,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Delete Duplicates Error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-/**
- * Optional: Get duplicate analysis WITHOUT deleting
- * (Dry-run mode to see what would be deleted)
- */
-const analyzeDuplicates = async (req, res) => {
-  try {
-    const allPosts = await Post.find({}).sort({ createdAt: 1 }).lean();
-    const duplicateAnalysis = [];
-    const processedPairs = new Set();
-
-    for (let i = 0; i < allPosts.length; i++) {
-      for (let j = i + 1; j < allPosts.length; j++) {
-        const post1 = allPosts[i];
-        const post2 = allPosts[j];
-
-        const pairKey = `${post1._id}-${post2._id}`;
-        if (processedPairs.has(pairKey)) continue;
-        processedPairs.add(pairKey);
-
-        try {
-          const similarity = calculateRecruitmentSimilarity(post1, post2);
-
-          if (similarity >= 60) {
-            duplicateAnalysis.push({
-              similarity: similarity.toFixed(2),
-              keep: {
-                id: post1._id,
-                title: post1.recruitment?.title || post1.url,
-                url: post1.url,
-                createdAt: post1.createdAt,
-              },
-              delete: {
-                id: post2._id,
-                title: post2.recruitment?.title || post2.url,
-                url: post2.url,
-                createdAt: post2.createdAt,
-              },
-            });
-          }
-        } catch (error) {
-          console.error(`Error analyzing:`, error.message);
-        }
-      }
-    }
-
-    if (duplicateAnalysis.length === 0) {
-      return res.json({
-        success: true,
-        message: "No duplicates found",
-        analysis: [],
-      });
-    }
-
-    res.json({
-      success: true,
-      duplicatesFound: duplicateAnalysis.length,
-      analysis: duplicateAnalysis,
-      info: "This is a dry-run analysis. No data was deleted. Use /api/delete-duplicates endpoint to actually delete.",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Analyze Duplicates Error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
 
 module.exports = {
   scrapper,
   getCategories,
   scrapeCategory,
-  deleteDuplicates,
-  analyzeDuplicates,
 };

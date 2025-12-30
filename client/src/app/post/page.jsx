@@ -3,24 +3,21 @@ import axios from "axios";
 import {
   BookOpen,
   Calendar,
-  CheckCircle,
   Clock,
   CreditCard,
   Download,
   ExternalLink,
   MapPin,
   Briefcase,
-  Share2,
   Printer,
-  ChevronRight,
-  Info
+  FileText,
+  ClipboardList // Added for Documentation icon
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ErrorScreen,
   LoadingSkeleton,
-  VacancyTable,
   extractRecruitmentData,
 } from "../../lib/post-helper";
 import GovtPostMobile from "../../components/mobile/GovtPostMobile";
@@ -168,6 +165,25 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
 
   const pageTitle = data?.title ? `${data.title} — JobsAddah` : "Job Details";
 
+  // --- Helper to extract dates for the top header if the specific key is missing ---
+  const findDateValue = (keywords) => {
+     if (!data.dates || !Array.isArray(data.dates)) return null;
+     const entry = data.dates.find(d => {
+        const lower = d.toLowerCase();
+        return keywords.some(k => lower.includes(k));
+     });
+     if (entry) {
+        const parts = entry.split(/[:|-]/);
+        if (parts.length > 1) return parts.slice(1).join("").trim();
+        return entry; 
+     }
+     return null;
+  };
+
+  const displayStartDate = data.importantDates?.applicationStartDate || findDateValue(["begin", "start", "open"]) || "Available Soon";
+  const displayEndDate = data.importantDates?.applicationLastDate || findDateValue(["last date", "end", "close"]) || "Check Notification";
+
+
   // --- Compact Components ---
 
   const SectionTitle = ({ title, icon: Icon }) => (
@@ -244,7 +260,6 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
                     </div>
                 </div>
                 <div className="hidden md:block">
-                     {/* Placeholder for Logo or Action */}
                      <button 
                         onClick={() => window.print()}
                         className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded transition-colors"
@@ -256,17 +271,17 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
             </div>
           </header>
 
-          {/* Quick Info Grid (Very Compact) */}
+          {/* Quick Info Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 border-b border-slate-200">
-             <KeyValueGrid label="Application Start" value={data.importantDates?.applicationStartDate || "Available Soon"} />
-             <KeyValueGrid label="Last Date" value={data.importantDates?.applicationLastDate || "Check Notification"} />
+             <KeyValueGrid label="Application Start" value={displayStartDate} />
+             <KeyValueGrid label="Last Date" value={displayEndDate} />
              <KeyValueGrid label="Total Vacancy" value={data.vacancy.total} />
              <KeyValueGrid label="Official Website" value={data.website ? "Available" : "N/A"} />
           </div>
 
           <div className="p-4 md:p-8 space-y-6">
             
-            {/* Top Row: Dates & Fees (Side by Side) */}
+            {/* Top Row: Dates & Fees */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Dates Table */}
@@ -330,7 +345,39 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
                 </div>
             </div>
 
-            {/* Vacancy Table (Compact & Bordered) */}
+            {/* Selection Process (Restored) */}
+            {data.selection && data.selection.length > 0 && (
+                <div>
+                    <SectionTitle title="Selection Process" icon={BookOpen} />
+                    <div className="border border-slate-300 rounded-sm p-4 bg-white">
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                            {data.selection.map((item, idx) => {
+                                const text = typeof item === 'object' ? item.text || item.name : item;
+                                return <li key={idx}>{text}</li>;
+                            })}
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            {/* --- NEW: Required Documentation Section (Added Logic) --- */}
+            {data.documentation && data.documentation.length > 0 && (
+                <div>
+                    <SectionTitle title="Required Documentation" icon={ClipboardList} />
+                    <div className="border border-slate-300 rounded-sm p-4 bg-white">
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-700">
+                            {data.documentation.map((doc, idx) => (
+                                <li key={idx} className="flex items-start gap-2">
+                                    <FileText size={16} className="text-slate-400 mt-0.5 shrink-0"/>
+                                    <span>{doc}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            {/* Vacancy Table */}
             <div>
                  <div className="flex justify-between items-end mb-2 border-b-2 border-slate-800 pb-1">
                     <div className="flex items-center gap-2">
@@ -340,7 +387,6 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
                     <span className="text-xs font-bold bg-slate-200 px-2 py-1 rounded">Total: {data.vacancy.total}</span>
                  </div>
                  
-                 {/* Custom Compact Vacancy Render to replace bulky component */}
                  <div className="overflow-x-auto border border-slate-300 rounded-sm">
                     <table className="w-full text-sm text-left border-collapse">
                         <thead className="bg-slate-100 text-slate-700 uppercase text-xs">
@@ -369,7 +415,7 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
                  </div>
             </div>
 
-            {/* Links Table (The Action Area) */}
+            {/* Links Table */}
             <div id="links-area">
                 <SectionTitle title="Important Links" icon={Download} />
                 <div className="border border-slate-300 rounded-sm overflow-hidden">
@@ -396,7 +442,7 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
                 </div>
             </div>
 
-            {/* Disclaimer / Footer inside Paper */}
+            {/* Footer */}
             <div className="mt-8 pt-4 border-t border-slate-200 text-center">
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest">
                     JobsAddah • Recruitment Services • {new Date().getFullYear()}

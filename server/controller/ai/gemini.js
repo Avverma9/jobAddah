@@ -3,6 +3,54 @@ const fs = require('fs');
 const path = require('path');
 const GeminiModel = require("@/models/ai/gemini-model");
 
+const changeStatus = async (req, res) => {
+  try {
+    const { modelName, status } = req.body;
+
+    // 1️⃣ Hard validation
+    if (!modelName || typeof status !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "modelName and boolean status are required"
+      });
+    }
+
+    // 2️⃣ Debug log (remove later)
+    console.log("Updating model:", modelName, "=> status:", status);
+
+    // 3️⃣ Update with strict options
+    const modelRecord = await GeminiModel.findOneAndUpdate(
+      { modelName: modelName.trim() },
+      { $set: { status } },
+      {
+        new: true,
+        runValidators: true,
+        strict: true
+      }
+    );
+
+    if (!modelRecord) {
+      return res.status(404).json({
+        success: false,
+        message: "Model not found in database"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Model status updated successfully",
+      model: modelRecord
+    });
+
+  } catch (err) {
+    console.error("Error changing Gemini model status:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error"
+    });
+  }
+};
+
 
 const setModel = async (req, res) => {
   try {
@@ -38,20 +86,31 @@ const getModel = async (req, res) => {
   try {
     const modelRecord = await GeminiModel.findOne({});
 
+    if (!modelRecord) {
+      return res.json({
+        success: true,
+        modelName: null,
+        status: true,
+        _id: null
+      });
+    }
+
     return res.json({
       success: true,
-      modelName: modelRecord ? modelRecord.modelName : null
+      modelName: modelRecord.modelName,
+      status: modelRecord.status,   // 🔥 THIS WAS MISSING
+      _id: modelRecord._id
     });
 
   } catch (err) {
     console.error("Error getting Gemini model:", err);
-    
     return res.status(500).json({
       success: false,
       message: "Internal server error"
     });
   }
 };
+
 
 const setApiKey = async (req, res) => {
   try {
@@ -125,5 +184,7 @@ module.exports = {
 getModel,
 setModel,
 getApiKey,
-setApiKey
+setApiKey,
+changeStatus
+
 };

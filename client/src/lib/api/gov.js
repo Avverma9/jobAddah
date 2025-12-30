@@ -339,21 +339,20 @@ export const getReminders = async (request) => {
   try {
     const { searchParams } = new URL(request.url);
 
+    /* ------------------ DAYS WINDOW ------------------ */
     const daysWindowRaw = Number(searchParams.get("days") ?? 2);
     const daysWindow = Number.isFinite(daysWindowRaw)
       ? Math.min(Math.max(daysWindowRaw, 1), 30)
       : 2;
 
-    // 🚀 Check cache (cache by days parameter)
-    const cacheKey = `${CACHE_KEYS.REMINDERS}${daysWindow}`;
+    /* ------------------ CACHE ------------------ */
+    const cacheKey = `${CACHE_KEYS.REMINDERS}_${daysWindow}`;
     const cached = getCache(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT: ${cacheKey}`);
       return NextResponse.json(cached, { status: 200 });
     }
 
-    console.log(`❌ Cache MISS: ${cacheKey}`);
-
+    /* ------------------ DATE RANGE ------------------ */
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -361,18 +360,21 @@ export const getReminders = async (request) => {
     endDate.setDate(endDate.getDate() + daysWindow);
     endDate.setHours(23, 59, 59, 999);
 
+    /* ------------------ DATE FIELDS ------------------ */
     const dateFields = [
-      "recruitment.importantDates.applicationLastDate",
-      "recruitment.importantDates.applicationEndDate",
-      "recruitment.importantDates.lastDateToApplyOnline",
-      "recruitment.importantDates.onlineApplyLastDate",
-      "recruitment.importantDates.lastDateOfRegistration",
-      "recruitment.importantDates.lastDate",
+      "$recruitment.importantDates.applicationLastDate",
+      "$recruitment.importantDates.applicationEndDate",
+      "$recruitment.importantDates.lastDateToApplyOnline",
+      "$recruitment.importantDates.onlineApplyLastDate",
+      "$recruitment.importantDates.lastDateOfRegistration",
+      "$recruitment.importantDates.lastDate",
     ];
 
     await connect();
 
+    /* ================== AGGREGATION ================== */
     const reminders = await Post.aggregate([
+      /* ---------- Base Fields ---------- */
       {
         $project: {
           _id: 1,
@@ -380,45 +382,108 @@ export const getReminders = async (request) => {
           title: "$recruitment.title",
           organization: "$recruitment.organization.name",
           totalPosts: "$recruitment.vacancyDetails.totalPosts",
-          datesToCheck: dateFields.map((field) => `$${field}`),
+          rawDates: dateFields,
+          createdAt: 1,
         },
       },
-      { $unwind: { path: "$datesToCheck", preserveNullAndEmptyArrays: false } },
-      { $match: { datesToCheck: { $type: "string", $ne: "" } } },
+
+      /* ---------- Parse + Filter Dates ---------- */
       {
         $addFields: {
-          parsedDate: {
-            $dateFromString: {
-              dateString: { $trim: { input: "$datesToCheck" } },
-              onError: null,
-              onNull: null,
+          parsedDates: {
+            $filter: {
+              input: {
+                $map: {
+                  input: "$rawDates",
+                  as: "d",
+                  in: {
+                    $dateFromString: {
+                      dateString: { $trim: { input: "$$d" } },
+                      onError: null,
+                      onNull: null,
+                    },
+                  },
+                },
+              },
+              as: "pd",
+              cond: {
+                $and: [
+                  { $ne: ["$$pd", null] },
+                  { $gte: ["$$pd", today] },
+                  { $lte: ["$$pd", endDate] },
+                ],
+              },
             },
           },
         },
       },
-      { $match: { parsedDate: { $gte: today, $lte: endDate } } },
+
+      /* ---------- Must have at least one valid date ---------- */
       {
-        $project: {
-          _id: 1,
-          title: { $ifNull: ["$title", "Untitled"] },
-          organization: { $ifNull: ["$organization", "N/A"] },
-          applicationLastDate: "$datesToCheck",
-          totalPosts: { $ifNull: ["$totalPosts", 0] },
-          url: 1,
+        $match: {
+          "parsedDates.0": { $exists: true },
+        },
+      },
+
+      /* ---------- Pick Nearest Date ---------- */
+      {
+        $addFields: {
+          applicationLastDate: { $min: "$parsedDates" },
+        },
+      },
+
+      /* ---------- Days Left ---------- */
+      {
+        $addFields: {
           daysLeft: {
             $ceil: {
               $divide: [
-                { $subtract: ["$parsedDate", today] },
+                { $subtract: ["$applicationLastDate", today] },
                 1000 * 60 * 60 * 24,
               ],
             },
           },
         },
       },
+
+      /* ---------- Sort by urgency ---------- */
+      { $sort: { daysLeft: 1, createdAt: -1 } },
+
+      /* =================================================
+         🔥 DEDUPLICATION LAYER (MOST IMPORTANT)
+         ================================================= */
+      {
+        $group: {
+          _id: {
+            organization: "$organization",
+            applicationLastDate: "$applicationLastDate",
+            totalPosts: "$totalPosts",
+          },
+          reminder: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $replaceRoot: { newRoot: "$reminder" },
+      },
+
+      /* ---------- Final Shape ---------- */
+      {
+        $project: {
+          _id: 1,
+          url: 1,
+          title: { $ifNull: ["$title", "Untitled"] },
+          organization: { $ifNull: ["$organization", "N/A"] },
+          totalPosts: { $ifNull: ["$totalPosts", 0] },
+          applicationLastDate: 1,
+          daysLeft: 1,
+        },
+      },
+
       { $sort: { daysLeft: 1 } },
-      { $limit: 100 },
+      { $limit: 50 },
     ]);
 
+    /* ------------------ RESPONSE ------------------ */
     const response = {
       success: true,
       count: reminders.length,
@@ -429,18 +494,22 @@ export const getReminders = async (request) => {
           : `Found ${reminders.length} reminders`,
     };
 
-    // 💾 Cache reminders (shorter TTL since date-sensitive)
+    /* ------------------ CACHE SAVE ------------------ */
     setCache(cacheKey, response, CACHE_TTL.SHORT);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    console.error("Error fetching reminders:", error);
+    console.error("getReminders error:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Failed to fetch reminders" },
+      {
+        success: false,
+        message: error.message || "Failed to fetch reminders",
+      },
       { status: 500 }
     );
   }
 };
+
 
 // ==================== FIX URLS (No caching - admin function) ====================
 function stripDomain(url) {
