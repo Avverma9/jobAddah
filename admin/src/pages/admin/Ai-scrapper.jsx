@@ -1,32 +1,32 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast";
 import {
-  FileText,
+  BarChart3,
   Briefcase,
-  Search,
   ChevronLeft,
   ChevronRight,
-  Star,
-  RefreshCcw,
-  Plus,
-  XCircle,
-  Loader2,
   DownloadCloud,
-  RotateCw,
+  FileText,
   Layers,
+  Loader2,
   Play,
+  Plus,
+  RefreshCcw,
+  RotateCw,
+  Search,
   Square,
+  Star,
   Trash2,
-  BarChart3,
+  XCircle,
 } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   deleteJob,
-  markFav,
-  getSections,
   getPostlist,
+  getSections,
   getSite,
+  markFav,
   setSite,
 } from "../../../redux/slices/job";
 import api from "../../../util/api";
@@ -199,10 +199,39 @@ export default function Scrapper() {
       const res = await api.get("/scrapper/analyze-duplicates");
       if (res.status >= 200 && res.status < 300) {
         toast.success("Analysis complete!", { id: toastId });
-        setDuplicatesModal({
-          type: "analysis",
-          data: res.data,
-        });
+        // Normalize response shape so UI works with both old and new API shapes.
+        const raw = res.data || {};
+        const normalized = {
+          // duplicatesFound may be provided, otherwise fall back to results/analysis length
+          duplicatesFound:
+            raw.duplicatesFound ??
+            (Array.isArray(raw.results)
+              ? raw.results.length
+              : Array.isArray(raw.analysis)
+                ? raw.analysis.length
+                : 0),
+          // prefer existing `analysis`, otherwise map `results` -> `analysis` items to the expected shape
+          analysis: Array.isArray(raw.analysis)
+            ? raw.analysis
+            : Array.isArray(raw.results)
+              ? raw.results.map((r) => ({
+                  similarity: r.similarity,
+                  decision: r.decision,
+                  // older UI expects `willDelete`/`willKeep` with title/url
+                  willDelete: r.deletedPost
+                    ? { title: r.deletedPost.title, url: r.deletedPost.url }
+                    : r.willDelete || {},
+                  willKeep: r.keptPost
+                    ? { title: r.keptPost.title, url: r.keptPost.url }
+                    : r.willKeep || {},
+                  deleted: r.deleted,
+                }))
+              : [],
+          // include raw metadata for debugging
+          mode: raw.mode,
+        };
+
+        setDuplicatesModal({ type: "analysis", data: normalized });
       } else {
         throw new Error("Failed");
       }
@@ -217,12 +246,23 @@ export default function Scrapper() {
     setDeletingDuplicates(true);
     const toastId = toast.loading("Deleting duplicates...");
     try {
-      const res = await api.post("/scrapper/delete-duplicates");
+      // Delete via the analyze endpoint by passing delete=true (GET)
+      const res = await api.get("/scrapper/analyze-duplicates", {
+        params: { delete: true },
+      });
       if (res.status >= 200 && res.status < 300) {
-        toast.success(
-          `${res.data.duplicatesDeleted} duplicates deleted!`,
-          { id: toastId }
-        );
+        const raw = res.data || {};
+        // Prefer explicit counts from server
+        let deletedCount = raw.deletedCount ?? raw.duplicatesDeleted;
+        // If not present, infer from results array where `deleted` flag is true
+        if (deletedCount === undefined && Array.isArray(raw.results)) {
+          deletedCount = raw.results.reduce(
+            (acc, r) => acc + (r.deleted ? 1 : 0),
+            0
+          );
+        }
+        deletedCount = deletedCount ?? 0;
+        toast.success(`${deletedCount} duplicates deleted!`, { id: toastId });
         setDuplicatesModal(null);
         setRefreshTrigger((prev) => prev + 1);
       } else {
@@ -822,10 +862,8 @@ const ListItem = React.memo(
             if (foundId) setFetchedId(foundId);
 
             if (data.fav !== undefined) setLocalFav(!!data.fav);
-            else if (data.data?.fav !== undefined)
-              setLocalFav(!!data.data.fav);
-            else if (data.job?.fav !== undefined)
-              setLocalFav(!!data.job.fav);
+            else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
+            else if (data.job?.fav !== undefined) setLocalFav(!!data.job.fav);
           } catch (err) {
             console.error(err);
           }
@@ -862,8 +900,7 @@ const ListItem = React.memo(
             if (newId) setFetchedId(newId);
 
             if (data.fav !== undefined) setLocalFav(!!data.fav);
-            else if (data.data?.fav !== undefined)
-              setLocalFav(!!data.data.fav);
+            else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
           } catch (err) {
             console.error(err);
           }
@@ -1046,8 +1083,8 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
             p === currentPage
               ? "bg-slate-900 text-white shadow-md"
               : typeof p === "number"
-              ? "text-slate-600 hover:bg-slate-100"
-              : "text-slate-400 cursor-default"
+                ? "text-slate-600 hover:bg-slate-100"
+                : "text-slate-400 cursor-default"
           }`}
         >
           {p}

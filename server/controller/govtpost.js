@@ -185,15 +185,15 @@ const getReminders = async (req, res) => {
     endDate.setHours(23, 59, 59, 999);
 
     const dateFields = [
-      "recruitment.importantDates.applicationLastDate",
-      "recruitment.importantDates.applicationEndDate",
-      "recruitment.importantDates.lastDateToApplyOnline",
-      "recruitment.importantDates.onlineApplyLastDate",
-      "recruitment.importantDates.lastDateOfRegistration",
-      "recruitment.importantDates.lastDate",
-      "recruitment.importantDates.applicationEnd",
-      "recruitment.importantDates.onlineApplyEnd",
-      "recruitment.importantDates.lastDateForRegistration",
+      "$recruitment.importantDates.applicationLastDate",
+      "$recruitment.importantDates.applicationEndDate",
+      "$recruitment.importantDates.lastDateToApplyOnline",
+      "$recruitment.importantDates.onlineApplyLastDate",
+      "$recruitment.importantDates.lastDateOfRegistration",
+      "$recruitment.importantDates.lastDate",
+      "$recruitment.importantDates.applicationEnd",
+      "$recruitment.importantDates.onlineApplyEnd",
+      "$recruitment.importantDates.lastDateForRegistration",
     ];
 
     const reminders = await Post.aggregate([
@@ -204,42 +204,74 @@ const getReminders = async (req, res) => {
           title: "$recruitment.title",
           organization: "$recruitment.organization.name",
           totalPosts: "$recruitment.vacancyDetails.totalPosts",
-          datesToCheck: dateFields.map((field) => `$${field}`),
+          rawDates: dateFields,
         },
       },
-      { $unwind: { path: "$datesToCheck", preserveNullAndEmptyArrays: false } },
-      { $match: { datesToCheck: { $type: "string", $ne: "" } } },
+
+      // Convert all date strings → Date objects
       {
         $addFields: {
-          parsedDate: {
-            $dateFromString: {
-              dateString: { $trim: { input: "$datesToCheck" } },
-              onError: null,
-              onNull: null,
+          parsedDates: {
+            $filter: {
+              input: {
+                $map: {
+                  input: "$rawDates",
+                  as: "d",
+                  in: {
+                    $dateFromString: {
+                      dateString: { $trim: { input: "$$d" } },
+                      onError: null,
+                      onNull: null,
+                    },
+                  },
+                },
+              },
+              as: "pd",
+              cond: {
+                $and: [
+                  { $ne: ["$$pd", null] },
+                  { $gte: ["$$pd", today] },
+                  { $lte: ["$$pd", endDate] },
+                ],
+              },
             },
           },
         },
       },
+
+      // Skip posts with no valid date in window
       {
         $match: {
-          parsedDate: { $gte: today, $lte: endDate },
+          "parsedDates.0": { $exists: true },
         },
       },
+
+      // Pick NEAREST date only
+      {
+        $addFields: {
+          nearestDate: { $min: "$parsedDates" },
+        },
+      },
+
       {
         $project: {
           _id: 1,
           title: { $ifNull: ["$title", "Untitled"] },
           organization: { $ifNull: ["$organization", "N/A"] },
-          applicationLastDate: "$datesToCheck",
-          totalPosts: { $ifNull: ["$totalPosts", 0] },
           url: 1,
+          totalPosts: { $ifNull: ["$totalPosts", 0] },
+          applicationLastDate: "$nearestDate",
           daysLeft: {
             $ceil: {
-              $divide: [{ $subtract: ["$parsedDate", today] }, 1000 * 60 * 60 * 24],
+              $divide: [
+                { $subtract: ["$nearestDate", today] },
+                1000 * 60 * 60 * 24,
+              ],
             },
           },
         },
       },
+
       { $sort: { daysLeft: 1 } },
       { $limit: 100 },
     ]);
@@ -248,12 +280,17 @@ const getReminders = async (req, res) => {
       success: true,
       count: reminders.length,
       reminders,
-      message: reminders.length === 0
+      message:
+        reminders.length === 0
           ? `No reminders within ${daysWindow} days`
           : `Found ${reminders.length} reminders`,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message || "Failed to fetch reminders" });
+    console.error("Reminder API Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch reminders",
+    });
   }
 };
 

@@ -1,13 +1,17 @@
 "use client";
 
 import {
-    ArrowLeft, Calendar, CreditCard,
-    ExternalLink,
-    FileText,
-    GraduationCap,
-    LogIn,
-    Share2,
-    User
+  ArrowLeft,
+  Calendar,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  LogIn,
+  Share2,
+  User,
+  BookOpen, // For Selection
+  ClipboardList // For Documentation
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SEO, { generateJobPostingSchema } from "@/lib/SEO";
@@ -148,7 +152,6 @@ const QuickInfoGrid = ({ dates, fees, age }) => {
 
 // Eligibility Section
 const EligibilitySection = ({ eligibility }) => {
-  // Handle different eligibility formats
   let eligibilityItems = [];
   
   if (Array.isArray(eligibility)) {
@@ -161,20 +164,16 @@ const EligibilitySection = ({ eligibility }) => {
 
   if (!eligibilityItems || eligibilityItems.length === 0) return null;
 
-  // Helper to safely convert item to string
   const getItemText = (item) => {
     if (typeof item === 'string') return item;
       if (item && typeof item === 'object') {
-      // Handle {name, criteria} format
       if (item.name && item.criteria) return `${item.name}: ${extractText(item.criteria)}`;
-      // Handle {label, text} or {type, text} formats
       if (item.label && item.text) return `${item.label}: ${extractText(item.text)}`;
       if (item.type && item.text) return `${item.type}: ${extractText(item.text)}`;
       if (item.text) return extractText(item.text);
       if (item.value) return extractText(item.value);
       if (item.label) return extractText(item.label);
       if (item.name) return extractText(item.name);
-      // Fallback: try to extract something readable
       return extractText(item);
     }
     return String(item || '');
@@ -194,12 +193,51 @@ const EligibilitySection = ({ eligibility }) => {
   );
 };
 
+// --- NEW: Selection Process Section ---
+const SelectionSection = ({ selection }) => {
+  if (!selection || selection.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <h3 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-2">
+        <BookOpen size={18} className="text-indigo-600" /> Selection Process
+      </h3>
+      <ul className="list-disc list-outside ml-4 text-xs text-gray-600 space-y-1">
+        {selection.map((item, idx) => {
+           const text = typeof item === 'object' ? item.text || item.name : item;
+           return <li key={idx}>{text}</li>;
+        })}
+      </ul>
+    </div>
+  );
+};
+
+// --- NEW: Documentation Section ---
+const DocumentationSection = ({ documentation }) => {
+  if (!documentation || documentation.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+        <ClipboardList size={18} className="text-teal-600" /> Required Documents
+      </h3>
+      <ul className="grid grid-cols-1 gap-2 text-xs text-gray-600">
+        {documentation.map((doc, idx) => (
+          <li key={idx} className="flex items-start gap-2">
+            <FileText size={14} className="text-gray-400 mt-0.5 shrink-0"/>
+            <span>{doc}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 // Vacancy Table Component
 const VacancyTable = ({ vacancy, districtData }) => {
   const vacancies = vacancy?.positions || districtData || [];
   
   if (!vacancies || vacancies.length === 0) {
-    // Show total if available
     if (vacancy?.total) {
       return (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -255,7 +293,6 @@ const VacancyTable = ({ vacancy, districtData }) => {
 
 // Important Links Section
 const ImportantLinksSection = ({ links }) => {
-  // links is an ARRAY of {label, url} objects from extractLinks()
   if (!links || !Array.isArray(links) || links.length === 0) return null;
 
   const getLinkStyle = (label) => {
@@ -284,7 +321,7 @@ const ImportantLinksSection = ({ links }) => {
     <div className="space-y-2 pb-6">
       <h3 className="font-bold text-gray-800 text-sm px-1">Important Links</h3>
       {links.map((link, idx) => {
-  const label = toTitleCase(link.label || `Link ${idx + 1}`);
+        const label = toTitleCase(link.label || `Link ${idx + 1}`);
         const url = link.url || '#';
         
         return (
@@ -329,11 +366,9 @@ const AllDatesSection = ({ dates }) => {
 const AllFeesSection = ({ fees }) => {
   if (!fees || fees.length === 0) return null;
 
-  // Helper to safely convert fee to string
   const getFeeText = (fee) => {
     if (typeof fee === 'string') return fee;
     if (fee && typeof fee === 'object') {
-      // Handle {type, text} or similar formats
       if (fee.text) return fee.text;
       if (fee.type && fee.amount) return `${fee.type}: ${fee.amount}`;
       return extractText(fee);
@@ -385,7 +420,6 @@ export default function GovtPostMobile({ post }) {
     }
   };
 
-  // Data is already extracted by post.jsx using extractRecruitmentData
   const {
     title = "Job Details",
     organization = "",
@@ -397,6 +431,7 @@ export default function GovtPostMobile({ post }) {
     selection = [],
     links = {},
     districtData = [],
+    documentation = [], // Destructured documentation here
     // For SEO
     shortDescription,
     importantDates,
@@ -405,7 +440,6 @@ export default function GovtPostMobile({ post }) {
     qualification
   } = post || {};
 
-  // Construct URL param similar to PostDetails
   const paramUrl = searchParams?.get("url") || null;
   const paramId = searchParams?.get("id") || searchParams?.get("_id") || null;
 
@@ -467,13 +501,19 @@ export default function GovtPostMobile({ post }) {
         {/* 5. Eligibility */}
         <EligibilitySection eligibility={eligibility} />
 
-        {/* 6. Vacancy Table */}
+        {/* 6. Selection Process (Added) */}
+        <SelectionSection selection={selection} />
+
+        {/* 7. Documentation (Added) */}
+        <DocumentationSection documentation={documentation} />
+
+        {/* 8. Vacancy Table */}
         <VacancyTable 
           vacancy={vacancy}
           districtData={districtData}
         />
 
-        {/* 7. Important Links */}
+        {/* 9. Important Links */}
         <ImportantLinksSection links={links} />
       </div>
     </div>
