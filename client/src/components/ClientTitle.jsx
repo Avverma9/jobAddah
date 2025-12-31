@@ -32,7 +32,7 @@ export default function ClientTitle() {
       link.type = 'image/png';
       link.rel = 'icon';
       // Use /logo.png (public folder)
-      link.href = '/logo.png';
+  link.href = '/logo.png?v=2';
       if (!document.querySelector("link[rel*='icon']")) document.getElementsByTagName('head')[0].appendChild(link);
     } catch (e) {
       // ignore

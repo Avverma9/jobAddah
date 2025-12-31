@@ -71,9 +71,9 @@ export const metadata = {
     images: ["/og-image.png"],
   },
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo.png?v=2",
+    shortcut: "/logo.png?v=2",
+    apple: "/logo.png?v=2",
   },
   robots: {
     index: true,
@@ -94,6 +94,10 @@ export default function RootLayout({ children }) {
     <html lang="en" data-scroll-behavior="smooth">
       <head>
         <meta name="google-adsense-account" content="ca-pub-5390089359360512" />
+        {/* Explicit favicons from public/ to ensure correct icon is used */}
+        <link rel="icon" href="/logo.png" />
+        <link rel="shortcut icon" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         {/* nap5k tag (loads after hydration) */}
         {/* <Script
           id="nap5k-tag"
