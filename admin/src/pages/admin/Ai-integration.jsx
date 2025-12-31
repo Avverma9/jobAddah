@@ -66,7 +66,8 @@ const PERPLEXITY_MODELS = [
 
 const PERPLEXITY_PRESET_API_KEYS = [
   { id: "anv9576", label: "Primary Search Key", env: "VITE_PERPLEXITY_API_KEY_1", hint: "Main Account" },
-  { id: "av95766", label: "Backup Search Key", env: "VITE_PERPLEXITY_API_KEY_2", hint: "Failover Account" },
+  { id: "av95766", label: "Backup Search Key", env: "VITE_PERPLEXITY_API_KEY_3", hint: "Failover Account" },
+  { id: "romrom", label: "Local Dev Key", env: "VITE_PERPLEXITY_API_KEY_3", hint: "Local Development" },
 ];
 
 const ToggleSwitch = ({ checked, onChange, disabled, ariaLabel }) => (
