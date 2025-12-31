@@ -5,11 +5,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Post = require("@/models/gov/govtpost");
 const govPostList = require("@/models/gov/postList");
 const Section = require("@/models/gov/section");
-const GeminiModel = require("@/models/ai/gemini-model");
-const ApiKey = require("@/models/ai/ai-apiKey");
 const Site = require("@/models/gov/scrapperSite");
-const PerplexityModel = require("@/models/ai/perplexity-model");
-const pplKey = require("@/models/ai/perplexity-apikey");
 const { buildPrompt } = require("./prompt");
 const getActiveAIConfig = require("@/utils/aiKey");
 
@@ -37,6 +33,7 @@ const formatWithAI = async (scrapedData, hints = {}) => {
     // ===============================
     // 🔹 GEMINI FLOW
     // ===============================
+    console.log("Using AI Provider:", provider, "Model:", modelName, "API Key:", apiKey ? "Configured" : "Missing");
     if (provider === "gemini") {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({

@@ -14,13 +14,23 @@ const formatResponse = (data) => ({
 // 1. Create a New Post
 const createPost = async (req, res) => {
   try {
-    const newPost = new Post(req.body);
+    const { _id, createdAt, updatedAt, ...cleanBody } = req.body;
+
+    const newPost = new Post(cleanBody);
     const savedPost = await newPost.save();
-    res.status(201).json({ success: true, data: savedPost });
+
+    res.status(201).json({
+      success: true,
+      data: savedPost,
+    });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 
 // 2. Insert Bulk Posts
 const insertBulkPosts = async (req, res) => {
