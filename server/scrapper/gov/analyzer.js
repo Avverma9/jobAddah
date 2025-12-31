@@ -1,152 +1,224 @@
 const Post = require("@/models/gov/govtpost");
+const axios = require("axios");
 
+/* =====================================================
+   CONFIG
+===================================================== */
 
-const isValidUrl = (url) => {
-  if (!url || typeof url !== "string") return false;
-  if (url.length < 8) return false;
+const USE_AI = false; // ⚠️ default false = LOW COST MODE
+const SIMILARITY_THRESHOLD = 65;
 
-  const lowered = url.toLowerCase();
-  if (
-    lowered.includes("click here") ||
-    lowered === "#" ||
-    lowered === "na" ||
-    lowered === "n/a"
-  ) {
-    return false;
-  }
-
-  try {
-    new URL(url.startsWith("http") ? url : `https://${url}`);
-    return true;
-  } catch {
-    return false;
-  }
-};
-const scoreImportantLinks = (links = {}) => {
-  if (!links || typeof links !== "object") return 0;
-
-  let score = 0;
-  let total = 0;
-
-  for (const key of Object.keys(links)) {
-    total++;
-    if (isValidUrl(links[key])) score++;
-  }
-
-  return total === 0 ? 0 : score / total; // 0 → 1
-};
+/* =====================================================
+   UTILS
+===================================================== */
 
 const normalize = (s = "") =>
-  s.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-const similarity = (a, b) => {
+const textSimilarity = (a, b) => {
   if (!a || !b) return 0;
-
   const A = new Set(normalize(a).split(" "));
   const B = new Set(normalize(b).split(" "));
-
-  const intersection = [...A].filter((x) => B.has(x));
-  return (intersection.length / Math.max(A.size, B.size)) * 100;
+  const common = [...A].filter((x) => B.has(x));
+  return (common.length / Math.max(A.size, B.size)) * 100;
 };
 
-const comparePosts = (p1, p2) => {
-  const titleScore = similarity(
-    p1.recruitment?.title,
-    p2.recruitment?.title
-  );
+const isValidValue = (v) => {
+  if (!v) return false;
+  if (typeof v === "string") {
+    const t = v.toLowerCase();
+    return !["", "na", "n/a", "#", "null", "undefined"].includes(t);
+  }
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v).length > 0;
+  return true;
+};
 
-  const orgScore = similarity(
+const countQualityScore = (obj = {}) => {
+  let score = 0;
+
+  const deepCheck = (o) => {
+    if (!o || typeof o !== "object") return;
+    for (const k in o) {
+      const v = o[k];
+      if (isValidValue(v)) score++;
+      if (typeof v === "object") deepCheck(v);
+    }
+  };
+
+  deepCheck(obj);
+  return score;
+};
+
+/* =====================================================
+   FAST DUPLICATE CHECK (NO AI)
+===================================================== */
+
+const basicDuplicateScore = (p1, p2) => {
+  const title = textSimilarity(p1.recruitment?.title, p2.recruitment?.title);
+  const org = textSimilarity(
     p1.recruitment?.organization?.name,
     p2.recruitment?.organization?.name
   );
+  const url = textSimilarity(p1.url, p2.url);
 
-  const urlScore = similarity(p1.url, p2.url);
-
-  // weighted score
-  return (
-    titleScore * 0.6 +
-    orgScore * 0.25 +
-    urlScore * 0.15
-  );
+  return title * 0.6 + org * 0.25 + url * 0.15;
 };
 
+/* =====================================================
+   OPTIONAL AI (PERPLEXITY)
+===================================================== */
+
+async function analyzeWithPerplexity({ older, newer }) {
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+  if (!apiKey) throw new Error("Perplexity API key missing");
+
+  const prompt = `
+Compare two Indian govt job posts.
+Check EVERY section, key, value.
+
+Decide:
+- Are they duplicates?
+- Which one is better and why?
+
+Return STRICT JSON ONLY:
+{
+  "isDuplicate": true|false,
+  "keep": "OLDER"|"NEWER",
+  "reason": "short explanation"
+}
+
+OLDER:
+${JSON.stringify(older, null, 2)}
+
+NEWER:
+${JSON.stringify(newer, null, 2)}
+`;
+
+  const res = await axios.post(
+    "https://api.perplexity.ai/chat/completions",
+    {
+      model: "sonar-pro",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 400,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return JSON.parse(res.data.choices[0].message.content);
+}
+
+/* =====================================================
+   MAIN CONTROLLER
+===================================================== */
 
 exports.analyzeSmartDuplicates = async (req, res) => {
   try {
     const shouldDelete = req.query.delete === "true";
 
-    const posts = await Post.find({})
-      .sort({ createdAt: 1 }) // OLDER → NEWER
+    // ✅ ONLY LAST 1 MONTH DATA
+    const ONE_MONTH_AGO = new Date();
+    ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
+
+    const posts = await Post.find({
+      $or: [
+        { createdAt: { $gte: ONE_MONTH_AGO } },
+        { updatedAt: { $gte: ONE_MONTH_AGO } },
+      ],
+    })
+      .sort({ createdAt: 1 })
       .lean();
 
     const results = [];
-    const deletedIds = new Set();
+    const deleted = new Set();
 
     for (let i = 0; i < posts.length; i++) {
       const older = posts[i];
-      if (deletedIds.has(String(older._id))) continue;
+      if (deleted.has(String(older._id))) continue;
 
       for (let j = i + 1; j < posts.length; j++) {
         const newer = posts[j];
-        if (deletedIds.has(String(newer._id))) continue;
+        if (deleted.has(String(newer._id))) continue;
 
-        const simScore = comparePosts(older, newer);
-        if (simScore < 60) continue;
+        const sim = basicDuplicateScore(older, newer);
+        if (sim < SIMILARITY_THRESHOLD) continue;
 
-        // Quality scores
-        const olderLinkScore = scoreImportantLinks(
-          older.recruitment?.importantLinks
-        );
-        const newerLinkScore = scoreImportantLinks(
-          newer.recruitment?.importantLinks
-        );
+        // 🔥 QUALITY CHECK (NO AI)
+        const olderScore = countQualityScore(older.recruitment);
+        const newerScore = countQualityScore(newer.recruitment);
 
-        // Decision (who is better)
-        let decision = "KEEP_NEWER";
-        if (olderLinkScore > newerLinkScore) decision = "KEEP_OLDER";
+        let keep = newerScore >= olderScore ? "NEWER" : "OLDER";
+        let reason = "Auto decision based on data completeness";
 
-        // 🚨 DELETE RULE (as per your request)
-        const deletePost = older; // ALWAYS older
-        const keepPost = newer;
+        // 🧠 OPTIONAL AI (only if very close)
+        if (USE_AI && Math.abs(olderScore - newerScore) < 5) {
+          try {
+            const ai = await analyzeWithPerplexity({ older, newer });
+            if (ai?.isDuplicate) {
+              keep = ai.keep;
+              reason = ai.reason;
+            } else {
+              continue;
+            }
+          } catch (e) {
+            reason = "AI skipped (fallback to quality score)";
+          }
+        }
 
-        // Perform delete if enabled
+        const deletePost = keep === "OLDER" ? newer : older;
+        const keepPost = keep === "OLDER" ? older : newer;
+
         if (shouldDelete) {
           await Post.findByIdAndDelete(deletePost._id);
-          deletedIds.add(String(deletePost._id));
+          deleted.add(String(deletePost._id));
         }
 
         results.push({
           similarity: simScore.toFixed(2),
-          decision,
+          keep: decision,
+          reason: "Auto decision based on data completeness",
           deleted: shouldDelete,
+
           deletedPost: {
             id: deletePost._id,
-            title: deletePost.recruitment?.title,
-            url: deletePost.url,
+            title: deletePost.recruitment?.title || "N/A",
+            organization: deletePost.recruitment?.organization?.name || "N/A",
             createdAt: deletePost.createdAt,
           },
+
           keptPost: {
             id: keepPost._id,
-            title: keepPost.recruitment?.title,
-            url: keepPost.url,
+            title: keepPost.recruitment?.title || "N/A",
+            organization: keepPost.recruitment?.organization?.name || "N/A",
             createdAt: keepPost.createdAt,
           },
         });
 
-        break; // stop once duplicate resolved
+        break;
       }
     }
 
     return res.json({
       success: true,
       mode: shouldDelete ? "ANALYZE + DELETE" : "ANALYZE ONLY",
+      scannedPosts: posts.length,
       duplicatesFound: results.length,
-      deletedCount: shouldDelete ? deletedIds.size : 0,
+      deletedCount: deleted.size,
       results,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("Smart Analyzer Error:", err);
+    console.error("Duplicate Analyzer Error:", err);
     res.status(500).json({
       success: false,
       error: err.message,

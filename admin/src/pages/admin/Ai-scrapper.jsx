@@ -202,6 +202,8 @@ export default function Scrapper() {
         // Normalize response shape so UI works with both old and new API shapes.
         const raw = res.data || {};
         const normalized = {
+          // carry through scannedPosts if provided
+          scannedPosts: raw.scannedPosts,
           // duplicatesFound may be provided, otherwise fall back to results/analysis length
           duplicatesFound:
             raw.duplicatesFound ??
@@ -215,16 +217,36 @@ export default function Scrapper() {
             ? raw.analysis
             : Array.isArray(raw.results)
               ? raw.results.map((r) => ({
-                  similarity: r.similarity,
-                  decision: r.decision,
-                  // older UI expects `willDelete`/`willKeep` with title/url
+                  similarity: r.similarity ?? r.similarityPercent ?? "",
+                  // normalize decision/keep field
+                  decision: r.decision ?? r.keep ?? "",
+                  reason: r.reason,
+                  // adapt deletedPost/keptPost to older `willDelete`/`willKeep` shape
                   willDelete: r.deletedPost
-                    ? { title: r.deletedPost.title, url: r.deletedPost.url }
+                    ? {
+                        title: r.deletedPost.title || "",
+                        url:
+                          r.deletedPost.url ||
+                          r.deletedPost.path ||
+                          r.deletedPost.id ||
+                          "",
+                        organization: r.deletedPost.organization,
+                        createdAt: r.deletedPost.createdAt,
+                      }
                     : r.willDelete || {},
                   willKeep: r.keptPost
-                    ? { title: r.keptPost.title, url: r.keptPost.url }
+                    ? {
+                        title: r.keptPost.title || "",
+                        url:
+                          r.keptPost.url ||
+                          r.keptPost.path ||
+                          r.keptPost.id ||
+                          "",
+                        organization: r.keptPost.organization,
+                        createdAt: r.keptPost.createdAt,
+                      }
                     : r.willKeep || {},
-                  deleted: r.deleted,
+                  deleted: !!r.deleted,
                 }))
               : [],
           // include raw metadata for debugging
@@ -1190,6 +1212,24 @@ const DuplicatesModal = ({ modal, onClose, onDelete, isDeleting }) => {
                         {dup.willDelete.url}
                       </p>
 
+                      {(dup.willDelete.organization ||
+                        dup.willDelete.createdAt) && (
+                        <p className="text-[11px] text-slate-400 mb-3">
+                          {dup.willDelete.organization && (
+                            <span>{dup.willDelete.organization}</span>
+                          )}
+                          {dup.willDelete.organization &&
+                            dup.willDelete.createdAt && <span> • </span>}
+                          {dup.willDelete.createdAt && (
+                            <span>
+                              {new Date(
+                                dup.willDelete.createdAt
+                              ).toLocaleString()}
+                            </span>
+                          )}
+                        </p>
+                      )}
+
                       <div className="flex items-center gap-2 mb-2">
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-100">
                           <Star size={12} fill="currentColor" /> WILL KEEP
@@ -1201,6 +1241,24 @@ const DuplicatesModal = ({ modal, onClose, onDelete, isDeleting }) => {
                       <p className="text-xs text-slate-500 line-clamp-2">
                         {dup.willKeep.url}
                       </p>
+
+                      {(dup.willKeep.organization ||
+                        dup.willKeep.createdAt) && (
+                        <p className="text-[11px] text-slate-400">
+                          {dup.willKeep.organization && (
+                            <span>{dup.willKeep.organization}</span>
+                          )}
+                          {dup.willKeep.organization &&
+                            dup.willKeep.createdAt && <span> • </span>}
+                          {dup.willKeep.createdAt && (
+                            <span>
+                              {new Date(
+                                dup.willKeep.createdAt
+                              ).toLocaleString()}
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-purple-600">
