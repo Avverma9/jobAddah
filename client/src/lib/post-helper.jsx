@@ -69,6 +69,7 @@ export const extractRecruitmentData = (data) => {
     vacancy: extractVacancy(rec.vacancyDetails || rec.vacancy || {}),
     eligibility: extractEligibility(rec.eligibility || {}),
     selection: rec.selectionProcess || rec.selection || [],
+    documentation: rec.documentation || [],
     links: extractLinks(rec.importantLinks || rec.links || {}),
     districtData: normalizeDistricts(rec.districtWiseData || rec.districtData || []),
   };
