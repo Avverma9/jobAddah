@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, BellRing, Clock } from 'lucide-react';
+import { ArrowRight, BellRing, Clock, ChevronDown, ChevronUp } from 'lucide-react'; // Added Icons
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -49,9 +49,13 @@ export default function ReminderComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // New State for toggling "View All"
+  const [isExpanded, setIsExpanded] = useState(false);
+
   useEffect(() => {
     async function fetchReminders() {
       try {
+        // You might want to increase this limit (e.g., days=7 or no limit) so "View All" has more data to show
         const res = await fetch('/api/gov/reminders?days=3');
         const data = await res.json().catch(() => null);
         if (data && data.success) setReminders(data.reminders || []);
@@ -101,21 +105,25 @@ export default function ReminderComponent() {
         </div>
       </div>
 
-      {/* Container: 
-          -mx-4 px-4: Mobile pe edge-to-edge scroll
-          pb-4: Touch space
-          sm:grid: Desktop layout
-      */}
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 lg:grid-cols-3">
         {reminders.map((reminder, index) => {
           const isUrgent = reminder.daysLeft <= 1;
           const href = buildPostLink(reminder?.url || reminder?.link || reminder?.postUrl || '', reminder?._id || reminder?.id);
+          
+          // LOGIC: If not expanded AND index is 3 or more, hide ONLY on Large screens
+          const isHiddenOnLarge = !isExpanded && index >= 3;
+
           return (
             <Link
               key={reminder._id || index}
               href={href}
-              // Fixed: Width reduced to w-[70vw] and added max-w-[300px]
-              className={`shrink-0 w-[75vw] max-w-[300px] sm:w-auto sm:max-w-none snap-center group relative flex flex-col justify-between p-3 rounded-xl border transition-all duration-300 bg-white hover:bg-orange-50/30 border-gray-100 hover:border-orange-200 shadow-sm hover:shadow-md hover:-translate-y-0.5`}
+              className={`
+                shrink-0 w-[75vw] max-w-[300px] sm:w-auto sm:max-w-none snap-center 
+                group relative flex flex-col justify-between p-3 rounded-xl border transition-all duration-300 
+                bg-white hover:bg-orange-50/30 border-gray-100 hover:border-orange-200 
+                shadow-sm hover:shadow-md hover:-translate-y-0.5
+                ${isHiddenOnLarge ? 'lg:hidden' : 'lg:flex'} 
+              `}
               style={{ animationDelay: `${index * 75}ms` }}
             >
               <div className="flex justify-between items-start gap-2 mb-2">
@@ -146,6 +154,27 @@ export default function ReminderComponent() {
           );
         })}
       </div>
+
+      {/* Button only visible on Large Screens (lg:flex) and if items > 3 */}
+      {reminders.length > 3 && (
+        <div className="hidden lg:flex justify-center mt-4">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-full transition-all active:scale-95"
+          >
+            {isExpanded ? (
+              <>
+                Show Less <ChevronUp className="w-3.5 h-3.5" />
+              </>
+            ) : (
+              <>
+                View all alerts <ChevronDown className="w-3.5 h-3.5" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

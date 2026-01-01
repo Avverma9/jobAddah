@@ -6,11 +6,12 @@ import SectionsWithPosts from "@/components/SectionsWithPosts";
 import MobileJobListWrapper from "@/components/mobile/MobileJobListWrapper";
 import ReminderComponent from "@/components/ReminderComponent";
 import {
-  ChevronRight,
-  Clock,
-  TrendingUp,
   Briefcase,
   BellDot,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  Clock, // Re-added Clock
 } from "lucide-react";
 import Tools from "@/components/layout/Tools";
 
@@ -55,6 +56,9 @@ export default function TrendingJobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // State to handle expansion on desktop
+  const [isExpanded, setIsExpanded] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -89,7 +93,7 @@ export default function TrendingJobsPage() {
 
     return (
       <>
-        {/* --- MOBILE VIEW: CIRCULAR --- */}
+        {/* --- MOBILE VIEW: CIRCULAR (UNCHANGED) --- */}
         <Link
           href={dest}
           className="sm:hidden flex flex-col items-center gap-1.5 w-[72px] shrink-0 snap-start group active:scale-95 transition-transform"
@@ -118,27 +122,27 @@ export default function TrendingJobsPage() {
           </p>
         </Link>
 
-        {/* --- DESKTOP VIEW: COMPACT RECTANGULAR GRID --- */}
+        {/* --- DESKTOP VIEW: BALANCED COMPACT CARD --- */}
         <Link
           href={dest}
-          className="hidden sm:flex flex-col justify-between bg-white rounded-xl border border-slate-200 p-3.5 hover:border-indigo-300 hover:shadow-md transition-all duration-200 group h-full min-h-[110px]"
+          className="hidden sm:flex flex-col justify-between bg-white rounded-xl border border-slate-200 p-3 hover:border-indigo-400 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group h-full min-h-[90px]"
         >
-          <div className="flex justify-between gap-3">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-tight group-hover:text-indigo-700 transition-colors">
-                {title}
-              </h3>
-            </div>
-            <div className="shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors">
-              <TrendingUp size={18} />
+          {/* Top: Title & Icon */}
+          <div className="flex gap-2 items-start justify-between">
+            <h3 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-indigo-700 transition-colors">
+              {title}
+            </h3>
+            <div className="shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors pt-0.5">
+              <TrendingUp size={16} />
             </div>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <Clock size={13} />
+          {/* Bottom: Date Pill */}
+          <div className="mt-2.5 flex items-center">
+            <div className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded text-[11px] font-medium text-slate-500 group-hover:bg-indigo-50 group-hover:border-indigo-100 group-hover:text-indigo-600 transition-colors">
+              <Clock size={11} />
               <span>
-                Last: <span className="text-slate-800">{dateStr || "N/A"}</span>
+                Last: <span className="text-slate-700 group-hover:text-indigo-700">{dateStr || "N/A"}</span>
               </span>
             </div>
           </div>
@@ -153,12 +157,10 @@ export default function TrendingJobsPage() {
       <SEO title="Trending Jobs — JobsAddah" />
 
       <div className="mx-auto max-w-full sm:max-w-7xl sm:px-6">
-        {/* Reminder Component with reduced margin */}
         <div className="mx-3 sm:mx-0 mb-3">
           <ReminderComponent />
         </div>
 
-        {/* Trending Section */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-3 px-3 sm:px-0">
             <div className="relative shrink-0">
@@ -191,10 +193,10 @@ export default function TrendingJobsPage() {
               </div>
               {/* Desktop Skeleton */}
               <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-28 bg-white border border-slate-100 rounded-xl animate-pulse"
+                    className="h-24 bg-white border border-slate-100 rounded-xl animate-pulse"
                   />
                 ))}
               </div>
@@ -211,19 +213,35 @@ export default function TrendingJobsPage() {
                 <div className="w-1 shrink-0" />
               </div>
 
-              {/* Desktop: Responsive Grid (2 cols on md, 3 on lg, 4 on xl) */}
-              <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {items.map((post) => (
+              {/* Desktop: Grid - 4 Columns for better readability */}
+              <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {/* Show 8 items by default (2 rows) */}
+                {(isExpanded ? items : items.slice(0, 8)).map((post) => (
                   <TrendingJobCard key={post._id} post={post} />
                 ))}
               </div>
+
+              {/* View All Button */}
+              {items.length > 8 && (
+                <div className="hidden sm:flex justify-center mt-5">
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-indigo-600 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 rounded-full transition-all active:scale-95 group shadow-sm"
+                  >
+                    {isExpanded ? "Show Less" : "View All Trending"}
+                    {isExpanded ? (
+                      <ChevronUp className="w-3 h-3 group-hover:-translate-y-0.5 transition-transform" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 group-hover:translate-y-0.5 transition-transform" />
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-      
-          <Tools />
-      
+        <Tools />
       </div>
 
       <div className="mt-2 sm:mt-6">
