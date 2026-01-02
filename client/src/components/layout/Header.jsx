@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TOOLS_CONFIG } from "@/lib/constants";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import Search from "../features/search/search";
 
 export default function Header() {
   const router = useRouter();
@@ -176,6 +177,7 @@ export default function Header() {
                 </Link>
               </div>
 
+<Search/>
               {/* --- CENTER: DESKTOP NAV (Original Links, New Design) --- */}
               <nav className="hidden md:flex items-center space-x-1 lg:space-x-6">
                 
@@ -316,12 +318,12 @@ export default function Header() {
                     >
                       Login
                     </button>
-                    <button
+                    {/* <button
                       onClick={() => setAuthOpen(true)}
                       className="px-5 py-2 text-[15px] font-medium text-white bg-blue-700 border border-transparent rounded-md hover:bg-blue-800 transition-colors shadow-sm"
                     >
                       Register
-                    </button>
+                    </button> */}
                   </>
                 )}
               </div>
