@@ -350,7 +350,6 @@ export default function PdfToolPage() {
         const blob = await generatePDFBlob(true, mid);
         const size = blob.size;
         
-        console.log(`Trying Quality: ${mid.toFixed(2)}, Size: ${(size/1024).toFixed(0)}KB`);
 
         if (size <= targetBytes) {
             bestQuality = mid;

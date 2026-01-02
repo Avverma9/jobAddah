@@ -5,7 +5,6 @@ import React, { Suspense } from "react";
 import ClientTitle from "@/components/ClientTitle";
 import "./globals.css";
 import { keywords } from "@/lib/keywords";
-console.log("Keywords loaded:", keywords.length);
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -88,7 +87,6 @@ export const metadata = {
   },
   category: "employment",
 };
-console.log("Metadata keywords count:", metadata);
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
