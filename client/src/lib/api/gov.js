@@ -49,11 +49,9 @@ export const getGovPostDetails = async (request) => {
     const cacheKey = `${CACHE_KEYS.POST_BY_URL}${url}`;
     const cached = getCache(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT: ${cacheKey}`);
       return NextResponse.json({ success: true, data: cached }, { status: 200 });
     }
 
-    console.log(`❌ Cache MISS: ${cacheKey}`);
 
     await connect();
     const getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
@@ -83,14 +81,11 @@ export const getGovJobSections = async (request) => {
     // 🚀 Check cache
     const cached = getCache(CACHE_KEYS.ALL_SECTIONS);
     if (cached) {
-      console.log("✅ Cache HIT: all-sections");
       return NextResponse.json(
         { success: true, count: cached.length, data: cached },
         { status: 200 }
       );
     }
-
-    console.log("❌ Cache MISS: all-sections");
 
     await connect();
     const getData = await Section.find().sort({ createdAt: -1 }).lean();
@@ -119,14 +114,12 @@ export const getGovPostListBySection = async (request, { params }) => {
     const cacheKey = `${CACHE_KEYS.SECTION_POSTS}${url}`;
     const cached = getCache(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT: ${cacheKey}`);
       return NextResponse.json(
         { success: true, count: cached.length, data: cached },
         { status: 200 }
       );
     }
 
-    console.log(`❌ Cache MISS: ${cacheKey}`);
 
     await connect();
 
@@ -176,7 +169,6 @@ export const getSectionsWithPosts = async () => {
     // 🚀 Check cache first
     const cached = getCache(CACHE_KEYS.SECTIONS_WITH_POSTS);
     if (cached) {
-      console.log("✅ Cache HIT: sections-with-posts");
       return NextResponse.json({
         success: true,
         count: cached.length,
@@ -184,7 +176,6 @@ export const getSectionsWithPosts = async () => {
       });
     }
 
-    console.log("❌ Cache MISS: sections-with-posts");
 
     await connect();
 
@@ -268,14 +259,12 @@ export const getFavPosts = async (request) => {
     // 🚀 Check cache
     const cached = getCache(CACHE_KEYS.FAV_POSTS);
     if (cached) {
-      console.log("✅ Cache HIT: fav-posts");
       return NextResponse.json(
         { success: true, count: cached.length, data: cached },
         { status: 200 }
       );
     }
 
-    console.log("❌ Cache MISS: fav-posts");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -555,7 +544,6 @@ export const fixAllUrls = async (request) => {
 
     // 🗑️ Clear all caches after URL fix
     clearCache();
-    console.log("✅ All caches cleared after URL fix");
 
     return NextResponse.json(
       {
@@ -590,11 +578,9 @@ export const findByTitle = async (request) => {
     const cacheKey = `${CACHE_KEYS.SEARCH}${title.toLowerCase().trim()}`;
     const cached = getCache(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT: ${cacheKey}`);
       return NextResponse.json({ success: true, data: cached });
     }
 
-    console.log(`❌ Cache MISS: ${cacheKey}`);
 
     const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const titleRe = new RegExp(safeTitle, "i");

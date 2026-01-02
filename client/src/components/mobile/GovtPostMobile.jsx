@@ -412,7 +412,7 @@ export default function GovtPostMobile({ post }) {
           url: window.location.href,
         });
       } catch (err) {
-        console.log("Share cancelled");
+        console.error("Share cancelled",err);
       }
     } else {
       navigator.clipboard.writeText(window.location.href);

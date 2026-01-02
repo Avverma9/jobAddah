@@ -6,7 +6,6 @@ export async function POST(request) {
   try {
     // 🗑️ Clear ALL caches (no security check)
     clearCache();
-    console.log("✅ All caches cleared");
 
     return NextResponse.json({
       success: true,
