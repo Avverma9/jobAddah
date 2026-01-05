@@ -25,6 +25,7 @@ import useIsMobile from "../../hooks/useIsMobile";
 import SEO, { generateJobPostingSchema } from "../../lib/SEO";
 import { toTitleCase } from "../../lib/text";
 import Head from "next/head";
+import { HorizontalAd } from "@/components/ads/AdUnits";
 
 const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
   const [loading, setLoading] = useState(true);
@@ -277,6 +278,11 @@ const JobDetailPage = ({ urlParam: forwardedUrl = "", params = {} }) => {
              <KeyValueGrid label="Last Date" value={displayEndDate} />
              <KeyValueGrid label="Total Vacancy" value={data.vacancy.total} />
              <KeyValueGrid label="Official Website" value={data.website ? "Available" : "N/A"} />
+          </div>
+
+          {/* Ad after header */}
+          <div className="p-4 border-b border-slate-200 w-full">
+            <HorizontalAd className="w-full" />
           </div>
 
           <div className="p-4 md:p-8 space-y-6">

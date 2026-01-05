@@ -1,193 +1,163 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-const AD_BASE_URL = 'https://www.highperformanceformat.com';
+const MIN_RENDER_WIDTH = 80; // Google responsive ads need a tangible width
 
-const AD_CONFIGS = {
-  sidebar: {
-    key: '3980da1481f07e66820a4c64083d9467',
-    width: 160,
-    height: 600,
-    format: 'iframe'
-  },
-  mobileBanner: {
-    key: '52a59a395c89727fab5f4acc0d27ac12',
-    width: 320,
-    height: 50,
-    format: 'iframe'
-  },
-  leaderboard: {
-    key: '01bf085eb7b230d788625afbcd2667fa',
-    width: 728,
-    height: 90,
-    format: 'iframe'
-  }
-};
-
-const adQueue = [];
-let isProcessingQueue = false;
-
-const processAdQueue = () => {
-  if (isProcessingQueue) return;
-  const job = adQueue.shift();
-  if (!job) return;
-
-  const { container, config, label, onLoad, onError } = job;
-
-  if (!container || job.cancelled) {
-    processAdQueue();
-    return;
-  }
-
-  try {
-    isProcessingQueue = true;
-
-    container.innerHTML = '';
-
-    const configScript = document.createElement('script');
-    configScript.type = 'text/javascript';
-    configScript.innerHTML = `window.atOptions = ${JSON.stringify(config)};`;
-    container.appendChild(configScript);
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = `${AD_BASE_URL}/${config.key}/invoke.js`;
-    script.async = true;
-
-    const cleanupAndNext = () => {
-      isProcessingQueue = false;
-      processAdQueue();
-    };
-
-    const debugPrefix = `[Ads] ${label}`;
-
-    script.onload = () => {
-      console.debug(`${debugPrefix} script loaded`);
-      if (!job.cancelled && onLoad) onLoad();
-      cleanupAndNext();
-    };
-
-    script.onerror = (event) => {
-      const message = event?.message || 'Failed to load ad script';
-      console.error(`${debugPrefix} error: ${message}`, event);
-      if (!job.cancelled && onError) onError(new Error(message));
-      cleanupAndNext();
-    };
-
-    container.appendChild(script);
-
-    // Failsafe timeout to keep queue moving if ad blocks silently
-    window.setTimeout(() => {
-      if (!isProcessingQueue) return;
-      console.warn(`${debugPrefix} timed out – continuing queue`);
-      cleanupAndNext();
-    }, 6000);
-  } catch (err) {
-    console.error('[Ads] Unexpected error while processing queue', err);
-    isProcessingQueue = false;
-    processAdQueue();
-  }
-};
-
-const enqueueAd = (job) => {
-  adQueue.push(job);
-  processAdQueue();
-};
-
-const AdUnit = ({ type, className = "", slotKey }) => {
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+// Google AdSense Ad Units
+const AdUnit = ({ slot, format = "auto", responsive = true, className = "" }) => {
   const containerRef = useRef(null);
-  const jobRef = useRef(null);
+  const insRef = useRef(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
+  // Detect visibility
   useEffect(() => {
-    setMounted(true);
+    if (!containerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+          }
+        });
+      },
+      { threshold: 0.05 }
+    );
+
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
   }, []);
 
-  const config = AD_CONFIGS[type];
-  if (!config) return null;
-
+  // Track container width with ResizeObserver (fallback to resize event)
   useEffect(() => {
-    if (!mounted) return;
-    const container = containerRef.current;
-    if (!container) {
-      console.warn('[Ads] Missing container', type);
-      return;
+    if (!containerRef.current) return;
+
+    let resizeObserver;
+    const measure = () => {
+      const width = containerRef.current?.getBoundingClientRect().width || 0;
+      setContainerWidth(width);
+    };
+
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setContainerWidth(entry.contentRect.width);
+        }
+      });
+      resizeObserver.observe(containerRef.current);
+    } else {
+      window.addEventListener('resize', measure);
     }
 
-    setLoading(true);
-    setError(null);
-
-    const label = slotKey || type;
-    const job = {
-      container,
-      config,
-      label,
-      cancelled: false,
-      onLoad: () => {
-        setLoading(false);
-        setError(null);
-      },
-      onError: (err) => {
-        setLoading(false);
-        setError(err?.message || 'Ad blocked');
-      }
-    };
-
-    jobRef.current = job;
-
-    console.debug(`[Ads] enqueue ${label}`, config);
-    enqueueAd(job);
+    measure();
 
     return () => {
-      job.cancelled = true;
-      if (container) {
-        container.innerHTML = '';
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  // Attempt to load ad once visible + has width
+  useEffect(() => {
+    if (!isVisible || isLoaded) return;
+    if (containerWidth < MIN_RENDER_WIDTH) return;
+
+    let cancelled = false;
+
+    const attemptLoad = () => {
+      try {
+        if (cancelled) return;
+        if (typeof window === 'undefined') return;
+
+        const containerEl = containerRef.current;
+        const insEl = insRef.current;
+        if (!containerEl || !insEl) return;
+
+        const computed = window.getComputedStyle(containerEl);
+        if (computed.display === 'none' || computed.visibility === 'hidden' || Number(computed.opacity) === 0) {
+          return;
+        }
+
+        const width = Math.max(containerWidth, MIN_RENDER_WIDTH);
+        insEl.style.width = `${width}px`;
+        insEl.style.minWidth = `${MIN_RENDER_WIDTH}px`;
+        insEl.style.display = 'block';
+
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        setIsLoaded(true);
+      } catch (err) {
+        console.error('AdSense error:', err);
       }
     };
-  }, [mounted, config, type, slotKey]);
 
-  const widthStyle = type === 'mobileBanner' ? '100%' : `${config.width}px`;
-  const maxWidthStyle = type === 'mobileBanner' ? `${config.width}px` : undefined;
+    const timer = window.setTimeout(attemptLoad, 150);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isVisible, isLoaded, containerWidth, slot]);
 
   return (
     <div
+      ref={containerRef}
       className={className}
-      style={{
-        position: 'relative',
-        width: widthStyle,
-        maxWidth: maxWidthStyle,
-        minHeight: `${config.height}px`
-      }}
+      style={{ minHeight: '90px', minWidth: `${MIN_RENDER_WIDTH}px` }}
     >
-      <div ref={containerRef} className="w-full h-full" />
-
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-[10px] uppercase tracking-wide bg-slate-50 border border-dashed border-slate-200">
-          Loading ad…
-        </div>
-      )}
-
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center text-red-500 text-[10px] uppercase tracking-wide bg-red-50 border border-red-200">
-          {error}
-        </div>
-      )}
+      <ins
+        ref={insRef}
+        className="adsbygoogle"
+        style={{ display: 'block', width: '100%' }}
+        data-ad-client="ca-pub-5390089359360512"
+        data-ad-slot={slot}
+        data-ad-format={format}
+        data-full-width-responsive={responsive.toString()}
+      />
     </div>
   );
 };
 
+// Horizontal ad - main ad unit for content areas
+export const HorizontalAd = ({ className = "" }) => (
+  <AdUnit 
+    slot="5781285537"
+    format="auto"
+    responsive={true}
+    className={`w-full ${className}`}
+  />
+);
+
+// Sidebar ad for desktop (160x600 or responsive)
 export const SidebarAd = ({ className = "" }) => (
-  <AdUnit type="sidebar" className={`hidden lg:block ${className}`} />
+  <AdUnit 
+    slot="5781285537" // Using horizontal ad slot
+    format="auto"
+    responsive={true}
+    className={`hidden lg:flex justify-center ${className}`}
+  />
 );
 
+// Mobile banner ad (320x50 or responsive)
 export const MobileBannerAd = ({ className = "" }) => (
-  <AdUnit type="mobileBanner" className={`block lg:hidden ${className}`} />
+  <AdUnit 
+    slot="5781285537" // Using horizontal ad slot
+    format="auto"
+    responsive={true}
+    className={`flex lg:hidden justify-center ${className}`}
+  />
 );
 
+// Leaderboard ad for desktop (728x90 or responsive)
 export const LeaderboardAd = ({ className = "" }) => (
-  <AdUnit type="leaderboard" className={`hidden md:block ${className}`} />
+  <AdUnit 
+    slot="5781285537" // Using horizontal ad slot
+    format="auto"
+    responsive={true}
+    className={`hidden md:flex justify-center ${className}`}
+  />
 );
 
 export default AdUnit;

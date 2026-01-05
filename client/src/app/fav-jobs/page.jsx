@@ -14,6 +14,7 @@ import {
   Clock, // Re-added Clock
 } from "lucide-react";
 import Tools from "@/components/layout/Tools";
+import { HorizontalAd } from "@/components/ads/AdUnits";
 
 // Scrollbar hiding utility
 const scrollbarHideStyles = `
@@ -239,6 +240,11 @@ export default function TrendingJobsPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Ad after trending jobs */}
+        <div className="px-3 sm:px-0 py-4 w-full">
+          <HorizontalAd className="w-full" />
         </div>
 
         <Tools />
