@@ -158,33 +158,12 @@ export const HorizontalAd = ({ className = "" }) => (
 );
 
 // Sidebar ad for desktop (160x600 or responsive)
-export const SidebarAd = ({ className = "" }) => (
-  <AdUnit 
-    slot="5781285537" // Using horizontal ad slot
-    format="auto"
-    responsive={true}
-    className={`hidden lg:flex justify-center ${className}`}
-  />
-);
+export const SidebarAd = ({ className = "" }) => null;
 
 // Mobile banner ad (320x50 or responsive)
-export const MobileBannerAd = ({ className = "" }) => (
-  <AdUnit 
-    slot="5781285537" // Using horizontal ad slot
-    format="auto"
-    responsive={true}
-    className={`flex lg:hidden justify-center ${className}`}
-  />
-);
+export const MobileBannerAd = ({ className = "" }) => null;
 
 // Leaderboard ad for desktop (728x90 or responsive)
-export const LeaderboardAd = ({ className = "" }) => (
-  <AdUnit 
-    slot="5781285537" // Using horizontal ad slot
-    format="auto"
-    responsive={true}
-    className={`hidden md:flex justify-center ${className}`}
-  />
-);
+export const LeaderboardAd = ({ className = "" }) => null;
 
 export default AdUnit;
