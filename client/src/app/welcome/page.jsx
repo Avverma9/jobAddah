@@ -1,17 +1,28 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 
+const createPseudoRandom = (seed = 2026) => {
+  let value = seed;
+  return () => {
+    value = (value * 9301 + 49297) % 233280;
+    return value / 233280;
+  };
+};
+
 const Snowfall = () => {
-  const snowflakes = Array.from({ length: 50 }).map((_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    animationDuration: `${Math.random() * 3 + 2}s`,
-    animationDelay: `${Math.random() * 2}s`,
-    opacity: Math.random() * 0.5 + 0.3,
-    size: Math.random() * 10 + 5,
-  }));
+  const snowflakes = useMemo(() => {
+    const rand = createPseudoRandom();
+    return Array.from({ length: 50 }).map((_, i) => ({
+      id: i,
+      left: `${rand() * 100}%`,
+      animationDuration: `${rand() * 3 + 2}s`,
+      animationDelay: `${rand() * 2}s`,
+      opacity: rand() * 0.5 + 0.3,
+      size: rand() * 10 + 5,
+    }));
+  }, []);
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
@@ -111,10 +122,13 @@ export default function Welcome() {
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    const isClosed = localStorage.getItem("jobsaddah_welcome_closed_2026");
-    if (!isClosed) {
-      setShowWelcome(true);
-    }
+    const frame = requestAnimationFrame(() => {
+      const isClosed = localStorage.getItem("jobsaddah_welcome_closed_2026");
+      if (!isClosed) {
+        setShowWelcome(true);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const handleClose = () => {

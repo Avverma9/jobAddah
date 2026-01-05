@@ -1,5 +1,4 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import ResponsiveShell from "@/components/ResponsiveShell";
 import React, { Suspense } from "react";
 import ClientTitle from "@/components/ClientTitle";
@@ -90,13 +89,6 @@ export default function RootLayout({ children }) {
           <ResponsiveShell>{children}</ResponsiveShell>
         </Suspense>
 
-        {/* ✅ Google AdSense Script (ONLY ONCE) */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5390089359360512"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );

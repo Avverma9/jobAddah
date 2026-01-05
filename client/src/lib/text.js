@@ -8,4 +8,6 @@ export function toTitleCase(str) {
     .join(" ");
 }
 
-export default { toTitleCase };
+const textUtils = { toTitleCase };
+
+export default textUtils;

@@ -5,6 +5,15 @@ import { useEffect, useRef, useState } from "react";
 
 import { resolveJobDetailHref } from "@/lib/job-url";
 
+const PLACEHOLDERS = [
+  "Search Latest Jobs...",
+  "Search Admit Cards...",
+  "Search Results...",
+  "Search Answer Keys...",
+  "Search Syllabus...",
+  "Search Admission Forms...",
+];
+
 function inferType(linkOrTitle) {
   if (!linkOrTitle) return "Info";
   const s = String(linkOrTitle).toLowerCase();
@@ -36,18 +45,9 @@ export default function Search() {
   const [loopNum, setLoopNum] = useState(0);
   const [typingSpeed, setTypingSpeed] = useState(100);
 
-  const placeholders = [
-    "Search Latest Jobs...",
-    "Search Admit Cards...",
-    "Search Results...",
-    "Search Answer Keys...",
-    "Search Syllabus...",
-    "Search Admission Forms...",
-  ];
-
   useEffect(() => {
-    const i = loopNum % placeholders.length;
-    const fullText = placeholders[i];
+    const i = loopNum % PLACEHOLDERS.length;
+    const fullText = PLACEHOLDERS[i];
 
     const handleTyping = () => {
       setPlaceholderText(

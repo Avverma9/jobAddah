@@ -6,8 +6,8 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <SEO
-        title="About Us | JobsAddah - India's Leading Sarkari Result Portal"
-        description="JobsAddah is India's trusted sarkari result portal providing latest government job notifications, admit cards, exam results, and career guidance for job seekers across India."
+        title="About Us | JobsAddah - India&rsquo;s Leading Sarkari Result Portal"
+        description="JobsAddah is India&rsquo;s trusted sarkari result portal providing latest government job notifications, admit cards, exam results, and career guidance for job seekers across India."
         keywords="about jobsaddah, sarkari result portal, government job portal india, job notification website, career guidance, employment portal"
   canonical="/about"
         section="About Us"
@@ -41,7 +41,7 @@ export default function AboutPage() {
             Our Vision
           </h2>
           <p className="text-lg text-slate-700 leading-relaxed">
-            To become India's most trusted platform for job seekers, providing real-time updates on placement drives, off-campus recruitment, government exams, and career resources. We aim to empower millions with information and opportunities to advance their careers.
+            To become India&rsquo;s most trusted platform for job seekers, providing real-time updates on placement drives, off-campus recruitment, government exams, and career resources. We aim to empower millions with information and opportunities to advance their careers.
           </p>
         </section>
 

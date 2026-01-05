@@ -234,6 +234,7 @@ function SectionWithSortableGrid({ section }) {
     const savedOrder = localStorage.getItem(
       `jobsaddah-cat-order-${section._id}`
     );
+    let frame;
     if (savedOrder && section.categories) {
       try {
         const orderIds = JSON.parse(savedOrder);
@@ -244,11 +245,14 @@ function SectionWithSortableGrid({ section }) {
           if (indexB === -1) return -1;
           return indexA - indexB;
         });
-        setCategories(sorted);
+        frame = requestAnimationFrame(() => setCategories(sorted));
       } catch (err) {
-        console.error('Failed to parse saved order:', err);
+        console.error("Failed to parse saved order:", err);
       }
     }
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [section._id, section.categories]);
 
   // Debounced save to localStorage
@@ -372,9 +376,11 @@ export default function SectionsWithPosts({ sections }) {
 
   useEffect(() => {
     if (sectionsProvided) {
-      setLocalSections(sections);
-      setLoading(false);
-      return;
+      const frame = requestAnimationFrame(() => {
+        setLocalSections(sections);
+        setLoading(false);
+      });
+      return () => cancelAnimationFrame(frame);
     }
 
     const controller = new AbortController();
@@ -397,8 +403,10 @@ export default function SectionsWithPosts({ sections }) {
             setShowEmpty(true);
           }, 300);
         } else {
-          setLocalSections(data);
-          setShowEmpty(false);
+          requestAnimationFrame(() => {
+            setLocalSections(data);
+            setShowEmpty(false);
+          });
         }
       } catch (err) {
         if (err.name !== "AbortError")
@@ -414,7 +422,7 @@ export default function SectionsWithPosts({ sections }) {
       controller.abort();
       if (emptyTimer) clearTimeout(emptyTimer);
     };
-  }, [sectionsProvided]);
+  }, [sectionsProvided, sections]);
 
   if (loading || (!Array.isArray(localSections) && !error) || (localSections?.length === 0 && !showEmpty && !error)) {
     return <SectionsSkeleton />;

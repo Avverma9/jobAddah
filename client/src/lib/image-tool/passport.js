@@ -1,13 +1,32 @@
-import { useRef, useState,useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { ImageUploader } from "./imageUploader";
-import {Card} from "@/components/ui/Card";
-import { ArrowRightLeft, ArrowUpDown, Grid3X3, Printer, RotateCcw } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import {
+    ArrowRightLeft,
+    ArrowUpDown,
+    Grid3X3,
+    Printer,
+    RotateCcw,
+} from "lucide-react";
 import { Slider } from "./slider";
 import { Button } from "@/components/ui/Button";
+import { getClipboardImage } from "./helpers";
+
+const PAPER_SIZES = {
+    'a4': { w: 2480, h: 3508, label: 'A4' },
+    '4x6': { w: 1200, h: 1800, label: '4x6"' },
+    '5x7': { w: 1500, h: 2100, label: '5x7"' },
+};
+
+const PHOTO_SIZES = {
+    'passport': { w: 413, h: 531, label: 'Passport (3.5x4.5cm)' },
+    'stamp': { w: 236, h: 295, label: 'Stamp (2x2.5cm)' },
+    'pan': { w: 295, h: 413, label: 'Pan Card (2.5x3.5cm)' },
+};
 
 export const PhotoMakerTool = ({ sharedImage, setSharedImage }) => {
     const canvasRef = useRef(null);
-    const [image, setImage] = useState(null);
+    const [image, setImage] = useState(sharedImage ?? null);
     const [settings, setSettings] = useState({
         paperSize: 'a4',
         photoSize: 'passport',
@@ -24,36 +43,21 @@ export const PhotoMakerTool = ({ sharedImage, setSharedImage }) => {
         borderColor: '#000000',
     });
 
-    const PAPER_SIZES = {
-        'a4': { w: 2480, h: 3508, label: 'A4' },
-        '4x6': { w: 1200, h: 1800, label: '4x6"' },
-        '5x7': { w: 1500, h: 2100, label: '5x7"' },
-    };
-
-    const PHOTO_SIZES = {
-        'passport': { w: 413, h: 531, label: 'Passport (3.5x4.5cm)' },
-        'stamp': { w: 236, h: 295, label: 'Stamp (2x2.5cm)' },
-        'pan': { w: 295, h: 413, label: 'Pan Card (2.5x3.5cm)' },
-    };
-
-    useEffect(() => {
-        if (sharedImage && !image) setImage(sharedImage);
-    }, [sharedImage]);
-
-    const processImage = (img) => {
+    const processImage = useCallback((img) => {
         setImage(img);
         setSharedImage(img);
         setSettings(prev => ({ ...prev, panX: 0, panY: 0, rotation: 0 }));
-    };
+    }, [setSharedImage]);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
         const handlePaste = (e) => getClipboardImage(e, processImage);
         window.addEventListener('paste', handlePaste);
         return () => window.removeEventListener('paste', handlePaste);
-    }, []);
+    }, [processImage]);
 
     const handleUpload = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (evt) => {
@@ -144,6 +148,7 @@ export const PhotoMakerTool = ({ sharedImage, setSharedImage }) => {
     }, [image, settings]);
 
     const download = () => {
+        if (!canvasRef.current) return;
         const link = document.createElement('a');
         link.download = `passport-sheet.png`;
         link.href = canvasRef.current.toDataURL('image/png');

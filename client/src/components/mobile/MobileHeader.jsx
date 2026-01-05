@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Search, Bell } from "lucide-react";
 
@@ -12,9 +13,9 @@ const MobileHeader = ({ onSearchToggle, isSearchActive }) => {
   const [notificationCount, setNotificationCount] = useState(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setNotificationCount(3); // Replace with dynamic fetch if needed
-    }
+    if (typeof window === "undefined") return undefined;
+    const frame = requestAnimationFrame(() => setNotificationCount(3));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Ensure consistent class names for buttons
@@ -33,10 +34,13 @@ const MobileHeader = ({ onSearchToggle, isSearchActive }) => {
           aria-label="JobsAddah home"
           className="group inline-flex items-center gap-2 p-1 -m-1 rounded-xl hover:bg-gray-100/50 transition-all duration-200 hover:shadow-md"
         >
-          <img
+          <Image
             src="/logo.png"
             alt="JobsAddah"
-            className="h-9 w-9 object-contain rounded-lg shadow-sm group-hover:shadow-md transition-shadow"
+            width={36}
+            height={36}
+            className="object-contain rounded-lg shadow-sm group-hover:shadow-md transition-shadow"
+            priority
           />
           <span className="text-xl font-bold bg-linear-to-r from-indigo-600 via-purple-600 to-indigo-700 bg-clip-text text-transparent">
             JobsAddah

@@ -204,7 +204,7 @@ export default function AuthModal({ open, onClose, onSignedIn }) {
                   onClick={() => { setStep('signup-form'); setIsSigningUp(true); setMessage(''); }} 
                   className="text-sm text-gray-600 hover:text-blue-600 font-medium transition-colors"
                 >
-                  Don't have an account? <span className="text-blue-600 underline decoration-blue-600/30 underline-offset-4 hover:decoration-blue-600">Sign up</span>
+                  Don&rsquo;t have an account? <span className="text-blue-600 underline decoration-blue-600/30 underline-offset-4 hover:decoration-blue-600">Sign up</span>
                 </button>
               </div>
             </div>

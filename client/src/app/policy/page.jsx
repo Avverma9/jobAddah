@@ -164,7 +164,7 @@ export default function PrivacyPolicy() {
             <div className="flex-1 text-center md:text-left">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Our Commitment to Privacy</h3>
               <p className="text-slate-600 leading-relaxed">
-                Jobsaddah ("we," "us") operates strictly as a data aggregator. We do not collect PII. 
+                Jobsaddah (&ldquo;we,&rdquo; &ldquo;us&rdquo;) operates strictly as a data aggregator. We do not collect PII. 
                 <span className="block mt-1 text-sm text-slate-400 font-medium">Last updated: December 13, 2025</span>
               </p>
             </div>
