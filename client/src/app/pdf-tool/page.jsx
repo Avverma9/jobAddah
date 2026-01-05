@@ -4,7 +4,7 @@ import SEO from '@/lib/SEO';
 import useIsMobile from '@/hooks/useIsMobile';
 import { AlertCircle, Calculator, Check, FileDown, Image as ImageIcon, Plus, RefreshCw, Scissors, Settings, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { SidebarAd, MobileBannerAd, LeaderboardAd } from '@/components/ads/AdUnits';
+import { SidebarAd, MobileBannerAd, LeaderboardAd, HorizontalAd } from '@/components/ads/AdUnits';
 
 const CropModal = ({ image, onClose, onCrop }) => {
   const canvasRef = useRef(null);
@@ -409,11 +409,8 @@ export default function PdfToolPage() {
         section="Tools"
       />
 
-      <div className="hidden md:flex justify-center mb-6">
-        <LeaderboardAd />
-      </div>
-      <div className="md:hidden flex justify-center mb-4">
-        <MobileBannerAd />
+      <div className="flex justify-center mb-6 w-full">
+        <HorizontalAd className="w-full" />
       </div>
       
       {cropTarget && (
@@ -644,8 +641,8 @@ export default function PdfToolPage() {
           </div>
         </div>
       </div>
-      <div className="md:hidden flex justify-center mt-8">
-        <MobileBannerAd />
+      <div className="flex justify-center mt-8 w-full">
+        <HorizontalAd className="w-full" />
       </div>
     </div>
     );
