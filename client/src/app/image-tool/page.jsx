@@ -43,10 +43,6 @@ const useIsMobile = (breakpoint = 640) => {
   return isMobile;
 };
 
-// Placeholder Components for Ads to prevent build errors
-const SidebarAd = () => null;
-const MobileBannerAd = () => null;
-const LeaderboardAd = () => null;
 
 const drawDateOverlay = (ctx, w, h, text, style, bgColor = "#000000") => {
   const stripHeight = h * 0.2;
@@ -187,13 +183,6 @@ export default function ImageEditor() {
               </p>
             </header>
 
-            <div className="hidden md:flex justify-center mb-4">
-              <LeaderboardAd />
-            </div>
-            <div className="md:hidden flex justify-center mb-4">
-              <MobileBannerAd />
-            </div>
-
             <div className="grid lg:grid-cols-[1fr_auto] gap-6">
               <div>
                 <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 w-fit mx-auto">
@@ -227,14 +216,6 @@ export default function ImageEditor() {
                   {renderContent()}
                 </div>
               </div>
-
-              <div className="hidden xl:flex justify-center">
-                <SidebarAd />
-              </div>
-            </div>
-
-            <div className="md:hidden flex justify-center mt-8">
-              <MobileBannerAd />
             </div>
           </div>
         </div>

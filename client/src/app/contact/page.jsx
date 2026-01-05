@@ -10,7 +10,7 @@ export default function ContactUs() {
         title="Contact Us | JobsAddah - Get in Touch"
         description="Contact JobsAddah for any queries about government jobs, sarkari result, admit cards, or exam results. We're here to help you with your career journey."
         keywords="contact jobsaddah, sarkari result help, govt job query, career support, job portal contact"
-        canonical="/contact-us"
+  canonical="/contact"
         section="Contact"
       />
       <div className="flex justify-center w-full my-4">

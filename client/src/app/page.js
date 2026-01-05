@@ -1,6 +1,5 @@
 import FavJobsPreview from "@/app/fav-jobs/page";
 import Welcome from "./welcome/page";
-import { HorizontalAd } from "@/components/ads/AdUnits";
 
 export default function Home() {
   return (
@@ -13,24 +12,9 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* Ad after heading */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 w-full">
-          <HorizontalAd className="w-full" />
-        </div>
-
         <FavJobsPreview limit={3} />
 
-        {/* Ad between sections */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 w-full">
-          <HorizontalAd className="w-full" />
-        </div>
-
         <Welcome />
-
-        {/* Ad at bottom */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 w-full">
-          <HorizontalAd className="w-full" />
-        </div>
 
         {/* SEO Content Section - Critical for AdSense "Low Value Content" fix */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-slate-700">

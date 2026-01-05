@@ -1,169 +1,40 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
 
-const MIN_RENDER_WIDTH = 80; // Google responsive ads need a tangible width
+import { useEffect, useRef } from "react";
 
-// Google AdSense Ad Units
-const AdUnit = ({ slot, format = "auto", responsive = true, className = "" }) => {
-  const containerRef = useRef(null);
-  const insRef = useRef(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const [containerWidth, setContainerWidth] = useState(0);
+const AdUnit = ({ slot, className = "", format = "auto", responsive = true }) => {
+  const adRef = useRef(null);
+  const pushed = useRef(false);
 
-  // Detect visibility
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!adRef.current) return;
+    if (pushed.current) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-          }
-        });
-      },
-      { threshold: 0.05 }
-    );
-
-    observer.observe(containerRef.current);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Track container width with ResizeObserver (fallback to resize event)
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    let resizeObserver;
-    const measure = () => {
-      const width = containerRef.current?.getBoundingClientRect().width || 0;
-      setContainerWidth(width);
-    };
-
-    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
-      resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          setContainerWidth(entry.contentRect.width);
-        }
-      });
-      resizeObserver.observe(containerRef.current);
-    } else {
-      window.addEventListener('resize', measure);
+    try {
+      pushed.current = true;
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (err) {
+      console.error("AdSense error:", err);
+      pushed.current = false;
     }
-
-    measure();
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
-  // Attempt to load ad once visible + has width
-  useEffect(() => {
-    if (!isVisible || isLoaded) return;
-    if (containerWidth < MIN_RENDER_WIDTH) return;
-
-    let cancelled = false;
-
-    const attemptLoad = () => {
-      try {
-        if (cancelled) return;
-        if (typeof window === 'undefined') return;
-
-        const containerEl = containerRef.current;
-        const insEl = insRef.current;
-        if (!containerEl || !insEl) return;
-
-        // Double check actual DOM dimensions
-        if (containerEl.offsetWidth === 0 || containerEl.offsetHeight === 0) {
-          return;
-        }
-
-        const computed = window.getComputedStyle(containerEl);
-        if (computed.display === 'none' || computed.visibility === 'hidden' || Number(computed.opacity) === 0) {
-          return;
-        }
-
-        const width = Math.max(containerWidth, MIN_RENDER_WIDTH);
-        insEl.style.width = `${width}px`;
-        insEl.style.minWidth = `${MIN_RENDER_WIDTH}px`;
-        insEl.style.display = 'block';
-
-        // Wait for style application to take effect in the DOM
-        requestAnimationFrame(() => {
-          if (cancelled) return;
-          
-          // Final check before push: Ensure elements exist and are connected
-          if (!insEl || !containerEl || !insEl.isConnected || !containerEl.isConnected) return;
-
-          // Check precise dimensions
-          const currentContainerWidth = containerEl.getBoundingClientRect().width;
-          const currentInsWidth = insEl.getBoundingClientRect().width;
-
-          if (currentContainerWidth === 0 || currentInsWidth === 0) {
-            // console.warn("AdUnit: Width became 0 before push. Aborting.");
-            return;
-          }
-          
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-            setIsLoaded(true);
-          } catch (e) {
-            console.error("AdSense push error:", e);
-          }
-        });
-
-      } catch (err) {
-        console.error('AdSense error:', err);
-      }
-    };
-
-    const timer = window.setTimeout(attemptLoad, 150);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [isVisible, isLoaded, containerWidth, slot]);
+  }, [slot]);
 
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      style={{ minHeight: '90px', minWidth: `${MIN_RENDER_WIDTH}px`, overflow: 'hidden' }}
-    >
+    <div className={`w-full overflow-hidden ${className}`}>
       <ins
-        ref={insRef}
-        className="adsbygoogle"
-        style={{ display: 'block', width: '100%' }}
+        ref={adRef}
+        className="adsbygoogle block w-full"
+        style={{ display: "block" }}
         data-ad-client="ca-pub-5390089359360512"
         data-ad-slot={slot}
         data-ad-format={format}
-        data-full-width-responsive={responsive.toString()}
+        data-full-width-responsive={responsive ? "true" : "false"}
       />
     </div>
   );
 };
 
-// Horizontal ad - main ad unit for content areas
-export const HorizontalAd = ({ className = "" }) => (
-  <AdUnit 
-    slot="5781285537"
-    format="auto"
-    responsive={true}
-    className={`w-full ${className}`}
-  />
-);
-
-// Sidebar ad for desktop (160x600 or responsive)
-export const SidebarAd = ({ className = "" }) => null;
-
-// Mobile banner ad (320x50 or responsive)
-export const MobileBannerAd = ({ className = "" }) => null;
-
-// Leaderboard ad for desktop (728x90 or responsive)
-export const LeaderboardAd = ({ className = "" }) => null;
-
 export default AdUnit;
+export const HorizontalAd = ({ className = "" }) => (
+  <AdUnit slot="5781285537" className={className} />
+);
