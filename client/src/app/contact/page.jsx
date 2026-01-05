@@ -41,12 +41,6 @@ export default function ContactUs() {
               desc: "Send us an email anytime",
             },
             {
-              icon: Phone,
-              title: "Phone",
-              value: "+91-XXXX-XXXX-XX",
-              desc: "Monday - Friday, 9AM - 6PM IST",
-            },
-            {
               icon: MapPin,
               title: "Address",
               value: "India",
