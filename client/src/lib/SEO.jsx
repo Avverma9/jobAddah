@@ -2,6 +2,7 @@
 // src/util/SEO.jsx - Comprehensive SEO Component for Google Rankings
 import Head from 'next/head'
 import { usePathname } from "next/navigation";
+import { buildCanonicalPath } from "@/lib/job-url";
 
 // Master keyword list optimized for sarkari job searches
 const MASTER_KEYWORDS =
@@ -264,6 +265,10 @@ export function generateJobPostingSchema(job) {
   };
 
   const urlPath = link ? extractPath(link) : "";
+  const canonicalPath = buildCanonicalPath(urlPath) || "/";
+  const absoluteUrl = canonicalPath.startsWith("http")
+    ? canonicalPath
+    : `https://jobsaddah.com${canonicalPath}`;
 
   return {
     "@context": "https://schema.org",
@@ -303,13 +308,11 @@ export function generateJobPostingSchema(job) {
       },
     }),
     ...(qualification && { qualifications: qualification }),
-    url: urlPath
-      ? "https://jobsaddah.com/post?url=" + encodeURIComponent(urlPath)
-      : "https://jobsaddah.com",
+    url: absoluteUrl,
     identifier: {
       "@type": "PropertyValue",
       name: "JobsAddah",
-      value: urlPath || title,
+      value: canonicalPath || title,
     },
   };
 }

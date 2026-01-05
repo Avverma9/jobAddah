@@ -13,6 +13,7 @@ import {
   Radio,
 } from "lucide-react";
 import Tools from "@/components/layout/Tools";
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 // Scrollbar hiding utility
 const scrollbarHideStyles = `
@@ -158,9 +159,7 @@ export default function TrendingJobsPage({ limit, showToolsInPreview = false } =
     const organization = getOrganization(post);
     const category = deriveCategory(title);
 
-    const dest = post.url
-      ? `/post?url=${encodeURIComponent(post.url)}`
-      : `/post?id=${encodeURIComponent(String(post._id))}`;
+    const dest = resolveJobDetailHref({ url: post?.url, id: post?._id });
 
     return (
       <Link

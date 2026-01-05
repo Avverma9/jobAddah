@@ -2,6 +2,7 @@
 import { ArrowRight, Clock, Flame, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { resolveJobDetailHref } from '@/lib/job-url';
 
 // Scrollbar hide utility
 const scrollbarHideStyles = `
@@ -25,23 +26,7 @@ function trimUrl(fullUrl) {
 }
 
 function buildPostLink(rawUrl, fallbackId) {
-  const urlStr = String(rawUrl || '').trim();
-  if (!urlStr && !fallbackId) return '#';
-  let trimmed = urlStr;
-  try {
-    if (urlStr.startsWith('http')) {
-      const u = new URL(urlStr);
-      trimmed = `${u.pathname}${u.search}${u.hash}`;
-    } else if (!urlStr.startsWith('/')) {
-      trimmed = urlStr.startsWith('/') ? urlStr : `/${urlStr}`;
-    }
-  } catch (e) {}
-
-  if (!trimmed || trimmed === '/' || trimmed === 'null' || trimmed === 'undefined') {
-    return fallbackId ? `/post?id=${encodeURIComponent(String(fallbackId))}` : '#';
-  }
-  trimmed = trimmed.replace(/\/+/, '/');
-  return `/post?url=${encodeURIComponent(trimmed)}`;
+  return resolveJobDetailHref({ url: rawUrl, id: fallbackId });
 }
 
 const deriveCategory = (title = "") => {

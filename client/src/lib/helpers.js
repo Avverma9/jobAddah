@@ -1,6 +1,7 @@
 /**
  * Common utility helper functions used across the app
  */
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 /**
  * Extract path from URL (removes domain)
@@ -31,20 +32,25 @@ export const getPostLink = (idOrUrl) => {
   
   // If object, extract the appropriate field
   if (typeof idOrUrl === "object") {
-    const val = idOrUrl.url || idOrUrl.link || idOrUrl._id || idOrUrl.id;
-    return getPostLink(val);
+    return resolveJobDetailHref({
+      url: idOrUrl.url || idOrUrl.link,
+      id: idOrUrl._id || idOrUrl.id,
+    });
   }
   
   const val = idOrUrl.toString().trim();
   
-  // If it's a URL (full or path), use url parameter
-  if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
-    const path = extractPath(val);
-    return `/post?url=${encodeURIComponent(path)}`;
+  // If it's a URL (full or path), treat as slug
+  if (
+    val.startsWith("http://") ||
+    val.startsWith("https://") ||
+    val.startsWith("/")
+  ) {
+    return resolveJobDetailHref({ url: val });
   }
-  
-  // For MongoDB ObjectId or other IDs, use id parameter
-  return `/post?id=${val}`;
+
+  // For MongoDB ObjectId or other IDs, fall back to legacy redirect
+  return resolveJobDetailHref({ id: val });
 };
 
 /**
