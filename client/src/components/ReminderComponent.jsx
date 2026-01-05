@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, BellRing, Clock, ChevronDown, ChevronUp } from 'lucide-react'; // Added Icons
+import { ArrowRight, Clock, Flame, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -44,6 +44,34 @@ function buildPostLink(rawUrl, fallbackId) {
   return `/post?url=${encodeURIComponent(trimmed)}`;
 }
 
+const deriveCategory = (title = "") => {
+  const normalized = title.toLowerCase();
+  if (normalized.includes("police")) return "Police";
+  if (normalized.includes("railway") || normalized.includes("rrb")) return "Railway";
+  if (normalized.includes("bank") || normalized.includes("sbi") || normalized.includes("ibps")) return "Bank";
+  if (normalized.includes("defence") || normalized.includes("army") || normalized.includes("navy") || normalized.includes("air force")) return "Defence";
+  if (normalized.includes("teacher") || normalized.includes("ssc")) return "SSC";
+  return "Govt";
+};
+
+const formatDate = (value) => {
+  if (!value) return "–";
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
+  } catch (e) {
+    return value;
+  }
+};
+
+const formatVacancy = (count) => {
+  if (!count || Number(count) <= 0) return "N/A";
+  return new Intl.NumberFormat("en-IN").format(count);
+};
+
 export default function ReminderComponent() {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +84,7 @@ export default function ReminderComponent() {
     async function fetchReminders() {
       try {
         // You might want to increase this limit (e.g., days=7 or no limit) so "View All" has more data to show
-        const res = await fetch('/api/gov/reminders?days=3');
+  const res = await fetch('/api/gov/reminders?days=7');
         const data = await res.json().catch(() => null);
         if (data && data.success) setReminders(data.reminders || []);
       } catch (err) {
@@ -87,67 +115,70 @@ export default function ReminderComponent() {
   if (!loading && reminders.length === 0) return null;
 
   return (
-    <div className="mb-8 w-full group/container">
+    <div className="mb-10 w-full">
       <style>{scrollbarHideStyles}</style>
-      <div className="flex items-center gap-2 mb-3 px-1">
-        <div className="relative shrink-0">
-          <div className="p-1.5 bg-orange-50 rounded-full border border-orange-100">
-            <BellRing className="w-4 h-4 text-orange-600 animate-[swing_3s_ease-in-out_infinite]" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 px-1">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-orange-50 text-orange-600 rounded-full">
+            <Flame className="w-4 h-4" />
           </div>
-          <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
-          </span>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Trending & Urgent Deadlines</h3>
+            <p className="text-xs text-slate-500">Applications closing soon, updated live</p>
+          </div>
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-sm font-bold text-gray-900">Deadline Alerts</h3>
-          <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded-full">Next 3 Days</span>
+        <div className="flex items-center gap-2 text-xs font-semibold text-red-500 uppercase tracking-wide">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          </span>
+          <span className="flex items-center gap-1"><Radio className="w-3 h-3" /> Live Updates</span>
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0 lg:grid-cols-3">
+      <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 sm:overflow-visible sm:mx-0 sm:px-0">
         {reminders.map((reminder, index) => {
-          const isUrgent = reminder.daysLeft <= 1;
           const href = buildPostLink(reminder?.url || reminder?.link || reminder?.postUrl || '', reminder?._id || reminder?.id);
-          
-          // LOGIC: If not expanded AND index is 3 or more, hide ONLY on Large screens
-          const isHiddenOnLarge = !isExpanded && index >= 3;
+          const category = deriveCategory(reminder.title || "");
+          const isHighlighted = reminder.daysLeft <= 2;
+
+          if (!isExpanded && index >= 4) {
+            return null;
+          }
 
           return (
             <Link
               key={reminder._id || index}
               href={href}
-              className={`
-                shrink-0 w-[75vw] max-w-[300px] sm:w-auto sm:max-w-none snap-center 
-                group relative flex flex-col justify-between p-3 rounded-xl border transition-all duration-300 
-                bg-white hover:bg-orange-50/30 border-gray-100 hover:border-orange-200 
-                shadow-sm hover:shadow-md hover:-translate-y-0.5
-                ${isHiddenOnLarge ? 'lg:hidden' : 'lg:flex'} 
-              `}
-              style={{ animationDelay: `${index * 75}ms` }}
+              className="shrink-0 w-[80vw] max-w-[320px] sm:w-auto snap-center group bg-white border border-slate-100 rounded-2xl p-4 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] hover:shadow-[0_15px_35px_-18px_rgba(15,23,42,0.55)] transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="flex justify-between items-start gap-2 mb-2">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-gray-800 text-xs sm:text-sm leading-tight line-clamp-2 group-hover:text-orange-600 transition-colors" title={reminder.title}>
-                    {reminder.title}
-                  </h4>
-                  <p className="text-[10px] text-gray-500 mt-1 truncate font-medium">{reminder.organization}</p>
-                </div>
-
-                <div className={`shrink-0 flex flex-col items-center justify-center w-10 h-10 rounded-lg border ${isUrgent ? 'bg-red-50 border-red-100 text-red-600 shadow-sm' : 'bg-orange-50 border-orange-100 text-orange-600'}`}>
-                  <span className={`text-sm font-bold leading-none ${isUrgent ? 'animate-pulse' : ''}`}>{reminder.daysLeft <= 0 ? '!' : reminder.daysLeft}</span>
-                  <span className="text-[8px] uppercase font-bold tracking-wider opacity-80 scale-90">{reminder.daysLeft <= 0 ? 'Now' : 'Days'}</span>
-                </div>
+              <div className="flex items-start justify-between mb-4">
+                <span className="text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                  {category}
+                </span>
+                <span className="text-[11px] text-slate-500 font-semibold">
+                  Vac: <span className="text-slate-900">{formatVacancy(reminder.totalPosts)}</span> Posts
+                </span>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-gray-50 mt-auto">
-                <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
-                  <Clock className="w-3 h-3" />
-                  <span>{reminder.applicationLastDate ? new Date(reminder.applicationLastDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''}</span>
-                </div>
+              <div className="space-y-1 mb-5">
+                <h4 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
+                  {reminder.title}
+                </h4>
+                <p className="text-sm text-slate-500 font-medium truncate">
+                  {reminder.organization}
+                </p>
+              </div>
 
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-1 group-hover:translate-x-0">
-                  Apply <ArrowRight className="w-3 h-3" />
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Deadline</p>
+                  <div className={`text-sm font-bold ${isHighlighted ? 'text-red-500' : 'text-slate-700'}`}>
+                    {formatDate(reminder.applicationLastDate)}
+                  </div>
+                </div>
+                <div className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${isHighlighted ? 'bg-red-50 border-red-100 text-red-500' : 'bg-slate-50 border-slate-200 text-slate-700'} group-hover:bg-slate-900 group-hover:text-white`}>
+                  <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
             </Link>
@@ -155,26 +186,16 @@ export default function ReminderComponent() {
         })}
       </div>
 
-      {/* Button only visible on Large Screens (lg:flex) and if items > 3 */}
-      {reminders.length > 3 && (
-        <div className="hidden lg:flex justify-center mt-4">
+      {reminders.length > 4 && (
+        <div className="flex justify-center mt-4">
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-full transition-all active:scale-95"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-full shadow-sm hover:shadow-md transition-all"
           >
-            {isExpanded ? (
-              <>
-                Show Less <ChevronUp className="w-3.5 h-3.5" />
-              </>
-            ) : (
-              <>
-                View all alerts <ChevronDown className="w-3.5 h-3.5" />
-              </>
-            )}
+            {isExpanded ? 'Show fewer alerts' : 'View full schedule'}
           </button>
         </div>
       )}
-
     </div>
   );
 }

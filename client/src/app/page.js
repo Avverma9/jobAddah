@@ -12,7 +12,7 @@ export default function Home() {
           </h1>
         </div>
 
-        <FavJobsPreview limit={3} />
+  <FavJobsPreview limit={3} showToolsInPreview />
 
         <Welcome />
 
