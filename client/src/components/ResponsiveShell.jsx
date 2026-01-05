@@ -9,6 +9,7 @@ import ToolsView from "@/components/mobile/ToolsView";
 import PrivateJobsView from "@/components/mobile/PrivateJobsView";
 import DeadlinesView from "@/components/mobile/DeadlinesView";
 import { X, Search as SearchIcon } from "lucide-react"; // Using lucide for better icons in overlay
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 export default function ResponsiveShell({ children }) {
   const pathname = usePathname();
@@ -40,31 +41,7 @@ export default function ResponsiveShell({ children }) {
   const searchAbort = useRef(null);
   const inputRef = useRef(null);
 
-  function buildPostLink(rawUrl, fallbackId) {
-    const urlStr = String(rawUrl || "").trim();
-    if (!urlStr && !fallbackId) return "#";
-    let trimmed = urlStr;
-    try {
-      if (urlStr.startsWith("http")) {
-        const u = new URL(urlStr);
-        trimmed = `${u.pathname}${u.search}${u.hash}`;
-      } else if (!urlStr.startsWith("/")) {
-        trimmed = urlStr.startsWith("/") ? urlStr : `/${urlStr}`;
-      }
-    } catch (e) {}
-    if (
-      !trimmed ||
-      trimmed === "/" ||
-      trimmed === "null" ||
-      trimmed === "undefined"
-    ) {
-      return fallbackId
-        ? `/post?id=${encodeURIComponent(String(fallbackId))}`
-        : "#";
-    }
-    trimmed = trimmed.replace(/\/+/g, "/");
-    return `/post?url=${encodeURIComponent(trimmed)}`;
-  }
+
 
   // Handle Search Query
   useEffect(() => {
@@ -476,10 +453,10 @@ export default function ResponsiveShell({ children }) {
                     <li key={doc._id || i}>
                       <button
                         onClick={() => {
-                          const dest = buildPostLink(
-                            jobs[0]?.link || doc.url,
-                            doc._id || doc.id
-                          );
+                          const dest = resolveJobDetailHref({
+                            url: jobs[0]?.link || doc.url,
+                            id: doc._id || doc.id,
+                          });
                           closeSearch();
                           if (dest && dest !== "#") router.push(dest);
                         }}

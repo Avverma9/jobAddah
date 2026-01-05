@@ -4,6 +4,8 @@ import govPostList from "@/lib/models/gov/joblist";
 import Post from "@/lib/models/gov/job";
 import Section from "@/lib/models/gov/section";
 import { getCache, setCache, clearCache } from "@/lib/cache";
+import mongoose from "mongoose";
+import { normalizeJobPath } from "@/lib/job-url";
 
 // Cache keys and TTLs
 const CACHE_KEYS = {
@@ -11,6 +13,7 @@ const CACHE_KEYS = {
   ALL_SECTIONS: "all-sections",
   FAV_POSTS: "fav-posts",
   POST_BY_URL: "post-by-url:", // prefix
+  POST_BY_ID: "post-by-id:",
   SECTION_POSTS: "section-posts:", // prefix
   REMINDERS: "reminders:", // prefix
   SEARCH: "search:", // prefix
@@ -23,50 +26,63 @@ const CACHE_TTL = {
   SEARCH: 180, // 3 minutes - search results
 };
 
+async function findPostDocument({ url, id }) {
+  const normalizedUrl = url ? normalizeJobPath(url) : null;
+  const validId = id && mongoose.Types.ObjectId.isValid(id) ? id : null;
+
+  if (!normalizedUrl && !validId) return null;
+
+  const cacheKey = normalizedUrl
+    ? `${CACHE_KEYS.POST_BY_URL}${normalizedUrl}`
+    : `${CACHE_KEYS.POST_BY_ID}${validId}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  await connect();
+
+  const query = normalizedUrl ? { url: normalizedUrl } : { _id: validId };
+  const data = await Post.findOne(query).sort({ createdAt: -1 }).lean();
+  if (!data) return null;
+
+  setCache(cacheKey, data, CACHE_TTL.LONG);
+  if (normalizedUrl && cacheKey !== `${CACHE_KEYS.POST_BY_URL}${normalizedUrl}`) {
+    setCache(`${CACHE_KEYS.POST_BY_URL}${normalizedUrl}`, data, CACHE_TTL.LONG);
+  }
+  if (validId && cacheKey !== `${CACHE_KEYS.POST_BY_ID}${validId}`) {
+    setCache(`${CACHE_KEYS.POST_BY_ID}${validId}`, data, CACHE_TTL.LONG);
+  }
+
+  return data;
+}
+
+export async function fetchPostByUrlOrId({ url, id }) {
+  return findPostDocument({ url, id });
+}
+
 // ==================== GET POST DETAILS ====================
 export const getGovPostDetails = async (request) => {
   try {
     const { searchParams } = new URL(request.url);
-    let url = searchParams.get("url");
+    const url = searchParams.get("url");
+    const id = searchParams.get("id");
 
-    if (!url) {
+    if (!url && !id) {
       return NextResponse.json(
-        { success: false, error: "URL is required" },
+        { success: false, error: "URL or ID is required" },
         { status: 400 }
       );
     }
 
-    try {
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        const parsed = new URL(url);
-        url = parsed.pathname;
-      }
-    } catch (e) {}
+    const data = await findPostDocument({ url, id });
 
-    url = url.trim();
-
-    // 🚀 Check cache
-    const cacheKey = `${CACHE_KEYS.POST_BY_URL}${url}`;
-    const cached = getCache(cacheKey);
-    if (cached) {
-      return NextResponse.json({ success: true, data: cached }, { status: 200 });
-    }
-
-
-    await connect();
-    const getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
-
-    if (!getData) {
+    if (!data) {
       return NextResponse.json(
         { success: false, error: "Post not found" },
         { status: 404 }
       );
     }
 
-    // 💾 Cache the result
-    setCache(cacheKey, getData, CACHE_TTL.LONG);
-
-    return NextResponse.json({ success: true, data: getData }, { status: 200 });
+    return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (err) {
     return NextResponse.json(
       { success: false, error: err.message || "Internal server error" },

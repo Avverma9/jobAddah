@@ -3,31 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-// Build /post?url=... OR fallback to /post?id=...
-function buildPostLink(rawUrl, fallbackId) {
-  const urlStr = String(rawUrl || "").trim();
-  if (!urlStr && !fallbackId) return "#";
-
-  let trimmed = urlStr;
-
-  try {
-    if (urlStr.startsWith("http")) {
-      const u = new URL(urlStr);
-      trimmed = `${u.pathname}${u.search}${u.hash}`;
-    } else if (!urlStr.startsWith("/")) {
-      trimmed = `/${urlStr}`;
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  if (!trimmed || trimmed === "/" || trimmed === "null" || trimmed === "undefined") {
-    return fallbackId ? `/post?id=${encodeURIComponent(String(fallbackId))}` : "#";
-  }
-
-  trimmed = trimmed.replace(/\/+/g, "/");
-  return `/post?url=${encodeURIComponent(trimmed)}`;
-}
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 function inferType(linkOrTitle) {
   if (!linkOrTitle) return "Info";
@@ -167,7 +143,7 @@ export default function Search() {
     <div className="flex-1 max-w-xl mx-2 md:mx-6 transition-all duration-300" ref={searchBoxRef}>
       <form onSubmit={handleSearch} className="relative group">
         {/* --- ROTATING GRADIENT BORDER --- */}
-        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-75 blur-sm animate-pulse"></div>
+  <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-75 blur-sm animate-pulse"></div>
         <div className="absolute -inset-px rounded-full overflow-hidden pointer-events-none">
           <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(99,102,241,1)_360_deg)] animate-[spin_3s_linear_infinite] opacity-100"></div>
         </div>
@@ -255,7 +231,10 @@ export default function Search() {
 
                   <div className="space-y-2">
                     {jobs.slice(0, 5).map((j, idx2) => {
-                      const dest = buildPostLink(j.link || j.url || j.postUrl || "", j._id || j.id);
+                      const dest = resolveJobDetailHref({
+                        url: j.link || j.url || j.postUrl || doc.url,
+                        id: j._id || j.id || doc._id || doc.id,
+                      });
                       return (
                         <Link
                           key={idx2}

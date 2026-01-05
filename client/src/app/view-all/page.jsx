@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import SEO from "@/lib/SEO";
 import ReminderComponent from "@/components/ReminderComponent";
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 // Helper to format date
 const formatDate = (dateString) => {
@@ -31,18 +32,14 @@ const formatDate = (dateString) => {
 };
 
 // Helper to clean links
-const getCleanLink = (jobLink) => {
-  const link = jobLink || "#";
-  return link.startsWith("http")
-    ? `/post?url=${encodeURIComponent(link)}`
-    : link;
-};
+const getCleanLink = (jobLink, jobId) =>
+  resolveJobDetailHref({ url: jobLink, id: jobId });
 
 // --- Component 1: Grid View Card ---
 const ViewAllJobCard = ({ job }) => {
   return (
     <Link
-      href={getCleanLink(job.link || job.url)}
+      href={getCleanLink(job.link || job.url, job._id || job.id)}
       className="group relative flex flex-col justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 h-full"
     >
       <div>
@@ -75,7 +72,7 @@ const ViewAllJobCard = ({ job }) => {
 const ViewAllJobListItem = ({ job }) => {
   return (
     <Link
-      href={getCleanLink(job.link || job.url)}
+      href={getCleanLink(job.link || job.url, job._id || job.id)}
       className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 gap-4"
     >
       <div className="flex items-start gap-4">
@@ -95,7 +92,7 @@ const ViewAllJobListItem = ({ job }) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between sm:justify-end gap-6 sm:min-w-[200px]">
+  <div className="flex items-center justify-between sm:justify-end gap-6 sm:min-w-50">
         <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full">
           <Calendar size={14} />
           <span>

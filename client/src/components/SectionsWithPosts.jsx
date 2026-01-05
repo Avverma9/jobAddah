@@ -24,23 +24,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { resolveJobDetailHref } from "@/lib/job-url";
 
 // Memoized JobRow - prevents re-renders when parent updates
 const JobRow = memo(function JobRow({ job }) {
   const [isSaved, setIsSaved] = useState(false);
 
-  const getTrimmedPath = useCallback((url) => {
-    if (!url) return '/';
-    try {
-      const withProto = url.startsWith('http') ? url : `https://${url}`;
-      const u = new URL(withProto);
-      return `${u.pathname}${u.search || ''}${u.hash || ''}` || '/';
-    } catch (err) {
-      return url.replace(/^https?:\/\/[^\/]+/, '') || url;
-    }
-  }, []);
-
-  const trimmed = useMemo(() => getTrimmedPath(job.link), [job.link, getTrimmedPath]);
+  const jobHref = useMemo(
+    () => resolveJobDetailHref({ url: job.link || job.url, id: job._id || job.id }),
+    [job.link, job.url, job._id, job.id]
+  );
 
   const handleSaveClick = useCallback((e) => {
     e.preventDefault();
@@ -51,8 +44,8 @@ const JobRow = memo(function JobRow({ job }) {
   return (
     <li className="group/item flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100">
       <Link
-        href={`/post?url=${encodeURIComponent(trimmed)}`}
-        className="flex items-center gap-3 flex-grow min-w-0"
+        href={jobHref}
+        className="flex items-center gap-3 grow min-w-0"
       >
         <div className="p-1.5 bg-gray-100 group-hover/item:bg-indigo-100 rounded-md transition-colors">
           <ChevronRight
@@ -137,7 +130,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
       }`}
     >
       <div
-        className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 flex items-center gap-3 relative overflow-hidden group/header cursor-grab active:cursor-grabbing"
+  className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 flex items-center gap-3 relative overflow-hidden group/header cursor-grab active:cursor-grabbing"
         {...dragHandleProps}
       >
         <div className="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
@@ -150,7 +143,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
           <div className="p-1.5 bg-indigo-500/20 rounded-lg backdrop-blur-sm border border-white/10">
             <Briefcase size={16} className="text-indigo-300" />
           </div>
-          <div className="flex-grow">
+    <div className="grow">
             <h3 className="text-white font-semibold text-sm tracking-wide leading-none mb-1">
               {cat.name}
             </h3>
@@ -161,7 +154,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
         </div>
       </div>
 
-      <div className="p-2 flex-grow bg-white min-h-[200px]">
+  <div className="p-2 grow bg-white min-h-50">
         <ul className="space-y-1">
           {visibleJobs.map((job) => (
             <JobRow key={job.id} job={job} />
@@ -346,14 +339,14 @@ function SectionsSkeleton() {
             key={i}
             className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full"
           >
-            <div className="bg-slate-100 px-4 py-3 flex items-center gap-3 animate-pulse h-[60px]">
+            <div className="bg-slate-100 px-4 py-3 flex items-center gap-3 animate-pulse h-15">
               <div className="w-8 h-8 bg-slate-200 rounded-lg"></div>
-              <div className="flex-grow space-y-2">
+              <div className="grow space-y-2">
                 <div className="h-3 bg-slate-200 rounded w-1/2"></div>
                 <div className="h-2 bg-slate-200 rounded w-1/4"></div>
               </div>
             </div>
-            <div className="p-3 flex-grow bg-white min-h-[200px] space-y-3">
+            <div className="p-3 grow bg-white min-h-50 space-y-3">
               {[1, 2, 3, 4, 5].map((j) => (
                 <div key={j} className="flex items-center gap-3 p-1">
                   <div className="w-5 h-5 bg-gray-100 rounded-md animate-pulse"></div>
