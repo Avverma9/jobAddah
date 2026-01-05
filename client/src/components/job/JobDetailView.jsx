@@ -59,9 +59,21 @@ const CompactRow = ({ label, value, bg = "bg-white" }) => (
   </div>
 );
 
+const formatStableDate = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "--/--/----";
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export default function JobDetailView({ data, canonicalPath, sourcePath }) {
   const isMobile = useIsMobile(640);
   const pageTitle = data?.title ? `${data.title} — JobsAddah` : "Job Details";
+  const now = new Date();
+  const lastUpdatedDisplay = formatStableDate(now);
+  const footerYear = now.getUTCFullYear();
 
   const displayStartDate =
     data?.importantDates?.applicationStartDate ||
@@ -123,7 +135,7 @@ export default function JobDetailView({ data, canonicalPath, sourcePath }) {
                     <Briefcase size={14} /> {data?.vacancy?.total} Posts
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock size={14} /> Last Updated: {new Date().toLocaleDateString()}
+                    <Clock size={14} /> Last Updated: {lastUpdatedDisplay}
                   </span>
                 </div>
               </div>
@@ -312,7 +324,7 @@ export default function JobDetailView({ data, canonicalPath, sourcePath }) {
 
             <div className="mt-8 pt-4 border-t border-slate-200 text-center">
               <p className="text-[10px] text-slate-400 uppercase tracking-widest">
-                JobsAddah • Recruitment Services • {new Date().getFullYear()}
+                JobsAddah • Recruitment Services • {footerYear}
               </p>
             </div>
           </div>
