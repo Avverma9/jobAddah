@@ -134,19 +134,23 @@ export default function Terms() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
-      <SEO title="Terms of Service — JobsAddah" />
+      <SEO
+        title="Terms of Service — JobsAddah"
+        canonical="/terms"
+        section="Terms"
+      />
       
       {/* Decorative Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-100/40 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 mix-blend-multiply"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-100/40 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4 mix-blend-multiply"></div>
+        <div className="absolute top-0 right-0 w-150 h-150 bg-blue-100/40 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 mix-blend-multiply"></div>
+        <div className="absolute bottom-0 left-0 w-125 h-125 bg-indigo-100/40 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4 mix-blend-multiply"></div>
       </div>
 
       {/* Hero Header */}
       <div className="relative bg-slate-900 text-white pt-24 pb-32 px-6 overflow-hidden">
         {/* Abstract shapes in header */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100"></div>
-        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-500 to-transparent opacity-20"></div>
+  <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-slate-500 to-transparent opacity-20"></div>
         
         <div className="relative max-w-6xl mx-auto text-center md:text-left z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 mb-6 backdrop-blur-md">
@@ -157,7 +161,7 @@ export default function Terms() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-none text-white">
-            Terms of <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">Service</span>
+            Terms of <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-teal-300">Service</span>
           </h1>
           
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl leading-relaxed mx-auto md:mx-0">
@@ -173,7 +177,7 @@ export default function Terms() {
         {/* Last Updated Card */}
         <div className="bg-white/80 backdrop-blur-md border border-white/20 p-1 rounded-2xl shadow-xl mb-16">
           <div className="bg-white rounded-xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center md:items-start border border-slate-100">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-100 shadow-inner">
+            <div className="h-14 w-14 rounded-2xl bg-linear-to-br from-blue-50 to-indigo-50 flex items-center justify-center border border-blue-100 shadow-inner">
                <Scale className="text-blue-600" size={28} />
             </div>
             <div className="flex-1 text-center md:text-left">
@@ -195,7 +199,7 @@ export default function Terms() {
               className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-slate-100 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
             >
               {/* Hover Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-6">

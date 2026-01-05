@@ -155,11 +155,19 @@ export default function TrendingJobsPage({ limit } = {}) {
   // In preview mode we should not force a full viewport height (min-h-screen)
   // because that creates large blank space when embedded in other pages.
   const isPreview = typeof limit === "number" && limit > 0;
+  const showSEO = !isPreview;
 
   return (
     <div className={`${isPreview ? "" : "min-h-screen"} bg-slate-50 py-2 sm:py-6`}>
       <style>{scrollbarHideStyles}</style>
-      <SEO title="Trending Jobs — JobsAddah" />
+      {showSEO && (
+        <SEO
+          title="Trending Jobs — JobsAddah"
+          description="Track the most applied government job openings, trending recruitment updates, and urgent deadlines curated by JobsAddah."
+          canonical="/fav-jobs"
+          section="Trending Jobs"
+        />
+      )}
 
       <div className="mx-auto max-w-full sm:max-w-7xl sm:px-6">
         <div className="mx-3 sm:mx-0 mb-3">

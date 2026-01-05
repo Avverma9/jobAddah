@@ -367,7 +367,12 @@ export default function ViewAllPage() {
         </div>
       }
     >
-      <SEO title="Browse All Jobs | JobsAddah" />
+      <SEO
+        title="Browse All Jobs | JobsAddah"
+        description="Explore every government and private job update published on JobsAddah with powerful filters for category, location, and salary."
+        canonical="/view-all"
+        section="All Jobs"
+      />
       <ViewAllContent />
     </Suspense>
   );
