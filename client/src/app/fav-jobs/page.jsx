@@ -6,12 +6,11 @@ import SectionsWithPosts from "@/components/SectionsWithPosts";
 import MobileJobListWrapper from "@/components/mobile/MobileJobListWrapper";
 import ReminderComponent from "@/components/ReminderComponent";
 import {
-  Briefcase,
-  BellDot,
+  ArrowRight,
   ChevronDown,
   ChevronUp,
-  TrendingUp,
-  Clock, // Re-added Clock
+  Flame,
+  Radio,
 } from "lucide-react";
 import Tools from "@/components/layout/Tools";
 
@@ -40,18 +39,87 @@ function pickLastDate(post) {
 }
 
 function formatDate(s) {
-  if (!s) return "";
-  if (/[A-Za-z]/.test(s)) return s.trim();
-  const p = Date.parse(s);
-  if (!isNaN(p))
-    return new Date(p).toLocaleDateString(undefined, {
-      day: "numeric",
+  const parsed = parseDate(s);
+  if (parsed)
+    return parsed.toLocaleDateString(undefined, {
+      day: "2-digit",
       month: "short",
+      year: "numeric",
     });
-  return s;
+  if (!s) return "–";
+  return typeof s === "string" ? s.trim() : String(s);
 }
 
-export default function TrendingJobsPage({ limit } = {}) {
+function parseDate(value) {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+
+  const direct = Date.parse(trimmed);
+  if (!Number.isNaN(direct)) return new Date(direct);
+
+  const normalized = trimmed.replace(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/,
+    (_, d, m, y) => {
+      const year = y.length === 2 ? `20${y}` : y.padStart(4, "0");
+      return `${year}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+  );
+
+  if (normalized !== trimmed) {
+    const alt = Date.parse(normalized);
+    if (!Number.isNaN(alt)) return new Date(alt);
+  }
+
+  return null;
+}
+
+function calculateDaysLeft(value) {
+  const parsed = parseDate(value);
+  if (!parsed) return null;
+  const now = new Date();
+  parsed.setHours(23, 59, 59, 999);
+  return Math.ceil((parsed - now) / (1000 * 60 * 60 * 24));
+}
+
+function formatVacancy(count) {
+  if (!count || Number(count) <= 0) return "N/A";
+  return new Intl.NumberFormat("en-IN").format(count);
+}
+
+function getVacancyCount(post) {
+  const vacancy = post?.recruitment?.vacancyDetails || {};
+  return (
+    vacancy.totalPosts ||
+    vacancy.total ||
+    vacancy.totalVacancy ||
+    post?.recruitment?.totalPosts ||
+    post?.totalPosts ||
+    post?.posts ||
+    0
+  );
+}
+
+function deriveCategory(title = "") {
+  const normalized = title.toLowerCase();
+  if (normalized.includes("police")) return "Police";
+  if (normalized.includes("railway") || normalized.includes("rrb")) return "Railway";
+  if (normalized.includes("bank") || normalized.includes("sbi") || normalized.includes("ibps")) return "Bank";
+  if (normalized.includes("defence") || normalized.includes("army") || normalized.includes("navy") || normalized.includes("air force")) return "Defence";
+  if (normalized.includes("teacher") || normalized.includes("ssc")) return "SSC";
+  return "Govt";
+}
+
+function getOrganization(post) {
+  return (
+    post?.recruitment?.organization?.name ||
+    post?.recruitment?.organization ||
+    post?.organization ||
+    "Multiple Departments"
+  );
+}
+
+export default function TrendingJobsPage({ limit, showToolsInPreview = false } = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +129,6 @@ export default function TrendingJobsPage({ limit } = {}) {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
     fetch("/api/gov/favs")
       .then((r) => r.json())
       .then((json) => {
@@ -85,69 +152,55 @@ export default function TrendingJobsPage({ limit } = {}) {
     const title = post?.recruitment?.title || post.title || "Untitled";
     const last = pickLastDate(post);
     const dateStr = formatDate(last);
-    const [month, day] = dateStr ? dateStr.split(" ") : ["", ""];
+    const daysLeft = calculateDaysLeft(last);
+    const isHighlighted = daysLeft != null && daysLeft <= 2;
+    const vacancyCount = formatVacancy(getVacancyCount(post));
+    const organization = getOrganization(post);
+    const category = deriveCategory(title);
 
     const dest = post.url
       ? `/post?url=${encodeURIComponent(post.url)}`
       : `/post?id=${encodeURIComponent(String(post._id))}`;
 
     return (
-      <>
-        {/* --- MOBILE VIEW: CIRCULAR (UNCHANGED) --- */}
-        <Link
-          href={dest}
-          className="sm:hidden flex flex-col items-center gap-1.5 w-[72px] shrink-0 snap-start group active:scale-95 transition-transform"
-        >
-          <div className="relative w-15 h-15 rounded-full p-0.5 bg-linear-to-tr from-orange-400 via-pink-500 to-indigo-500 shadow-sm">
-            <div className="w-full h-full rounded-full bg-white border-2 border-white flex flex-col items-center justify-center overflow-hidden relative">
-              {day && month ? (
-                <>
-                  <span className="text-[8px] font-bold text-red-500 uppercase leading-none -mb-0.5">
-                    {month}
-                  </span>
-                  <span className="text-base font-black text-slate-800 leading-none">
-                    {day}
-                  </span>
-                </>
-              ) : (
-                <TrendingUp size={20} className="text-indigo-500" />
-              )}
-            </div>
-            <div className="absolute bottom-0 right-0 bg-blue-600 border-2 border-white w-4 h-4 rounded-full flex items-center justify-center">
-              <Briefcase size={8} className="text-white" />
-            </div>
-          </div>
-          <p className="text-[10px] leading-3 text-center font-medium text-slate-700 line-clamp-2 w-full break-words px-0.5">
+      <Link
+        href={dest}
+  className="group shrink-0 w-[82vw] max-w-85 sm:w-full snap-start bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] hover:shadow-[0_15px_35px_-18px_rgba(15,23,42,0.55)] transition-all duration-300 hover:-translate-y-1"
+      >
+        <div className="flex items-start justify-between mb-4">
+          <span className="text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+            {category}
+          </span>
+          <span className="text-[11px] text-slate-500 font-semibold">
+            Vac: <span className="text-slate-900">{vacancyCount}</span> {vacancyCount === "N/A" ? "" : "Posts"}
+          </span>
+        </div>
+
+        <div className="space-y-1.5 mb-5">
+          <h4 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
             {title}
-          </p>
-        </Link>
+          </h4>
+          <p className="text-sm text-slate-500 font-medium truncate">{organization}</p>
+        </div>
 
-        {/* --- DESKTOP VIEW: BALANCED COMPACT CARD --- */}
-        <Link
-          href={dest}
-          className="hidden sm:flex flex-col justify-between bg-white rounded-xl border border-slate-200 p-3 hover:border-indigo-400 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group h-full min-h-[90px]"
-        >
-          {/* Top: Title & Icon */}
-          <div className="flex gap-2 items-start justify-between">
-            <h3 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-indigo-700 transition-colors">
-              {title}
-            </h3>
-            <div className="shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors pt-0.5">
-              <TrendingUp size={16} />
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">Deadline</p>
+            <div className={`text-sm font-bold ${isHighlighted ? "text-red-500" : "text-slate-700"}`}>
+              {dateStr}
             </div>
           </div>
-
-          {/* Bottom: Date Pill */}
-          <div className="mt-2.5 flex items-center">
-            <div className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded text-[11px] font-medium text-slate-500 group-hover:bg-indigo-50 group-hover:border-indigo-100 group-hover:text-indigo-600 transition-colors">
-              <Clock size={11} />
-              <span>
-                Last: <span className="text-slate-700 group-hover:text-indigo-700">{dateStr || "N/A"}</span>
-              </span>
-            </div>
+          <div
+            className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors ${
+              isHighlighted
+                ? "bg-red-50 border-red-100 text-red-500"
+                : "bg-slate-50 border-slate-200 text-slate-700"
+            } group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900`}
+          >
+            <ArrowRight className="w-4 h-4" />
           </div>
-        </Link>
-      </>
+        </div>
+      </Link>
     );
   };
 
@@ -156,6 +209,7 @@ export default function TrendingJobsPage({ limit } = {}) {
   // because that creates large blank space when embedded in other pages.
   const isPreview = typeof limit === "number" && limit > 0;
   const showSEO = !isPreview;
+  const shouldShowTools = !isPreview || showToolsInPreview;
 
   return (
     <div className={`${isPreview ? "" : "min-h-screen"} bg-slate-50 py-2 sm:py-6`}>
@@ -175,41 +229,42 @@ export default function TrendingJobsPage({ limit } = {}) {
         </div>
 
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3 px-3 sm:px-0">
-            <div className="relative shrink-0">
-              <div className="p-1.5 bg-orange-50 rounded-full border border-orange-100">
-                <BellDot className="w-4 h-4 text-orange-600 animate-[swing_3s_ease-in-out_infinite]" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 px-3 sm:px-0">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-orange-50 text-orange-600 rounded-full">
+                <Flame className="w-4 h-4" />
               </div>
-              <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-2 border-white"></span>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Most Applied Jobs</h3>
+                <p className="text-xs text-slate-500">High traffic openings people are applying to right now</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-red-500 uppercase tracking-wide">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="flex items-center gap-1 text-red-500">
+                <Radio className="w-3 h-3" /> Live Trends
               </span>
             </div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-              Most Applied
-            </h3>
           </div>
 
           {loading && (
             <div className="w-full">
-              {/* Mobile Skeleton */}
-              <div className="flex gap-4 overflow-hidden px-3 pb-2 sm:hidden">
-                {Array.from({ length: 5 }).map((_, i) => (
+              <div className="flex gap-3 overflow-x-auto px-3 pb-2 sm:hidden">
+                {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex flex-col items-center gap-2 shrink-0"
-                  >
-                    <div className="w-15 h-15 rounded-full bg-slate-200 animate-pulse" />
-                    <div className="w-12 h-2 bg-slate-200 rounded animate-pulse" />
-                  </div>
+                    className="shrink-0 w-[82vw] max-w-85 h-40 bg-white border border-slate-100 rounded-2xl animate-pulse"
+                  />
                 ))}
               </div>
-              {/* Desktop Skeleton */}
-              <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-24 bg-white border border-slate-100 rounded-xl animate-pulse"
+                    className="h-44 bg-white border border-slate-100 rounded-2xl animate-pulse"
                   />
                 ))}
               </div>
@@ -258,8 +313,8 @@ export default function TrendingJobsPage({ limit } = {}) {
           )}
         </div>
 
-        {/* In preview mode we don't show the full Tools section */}
-        {!isPreview && <Tools />}
+    {/* Tools section can be forced to show even in preview mode */}
+    {shouldShowTools && <Tools />}
       </div>
 
       <div className="mt-2 sm:mt-6">
