@@ -121,7 +121,8 @@ Is file mein 4 ad components hain:
 2. Intersection Observer ensure karta hai ki ad tabhi load ho jab element viewport me aaye
 3. Resize Observer (ya resize listener) se container ka actual width track hota hai
 4. Jab width >= 80px hoti hai aur element visible hota hai tab `window.adsbygoogle.push({})` call hota hai
-5. Ad render hone se pehle `<ins>` element ko measured width assign ki jati hai taaki AdSense ko exact slot size mile
+5. **Robust Check:** Push karne se pehle `offsetWidth` check kiya jata hai aur `requestAnimationFrame` use kiya jata hai taaki DOM styles fully apply ho chuke hon.
+6. Ad render hone se pehle `<ins>` element ko measured width assign ki jati hai taaki AdSense ko exact slot size mile
 
 ### Ad Component Structure:
 ```javascript

@@ -76,6 +76,11 @@ const AdUnit = ({ slot, format = "auto", responsive = true, className = "" }) =>
         const insEl = insRef.current;
         if (!containerEl || !insEl) return;
 
+        // Double check actual DOM dimensions
+        if (containerEl.offsetWidth === 0 || containerEl.offsetHeight === 0) {
+          return;
+        }
+
         const computed = window.getComputedStyle(containerEl);
         if (computed.display === 'none' || computed.visibility === 'hidden' || Number(computed.opacity) === 0) {
           return;
@@ -86,8 +91,30 @@ const AdUnit = ({ slot, format = "auto", responsive = true, className = "" }) =>
         insEl.style.minWidth = `${MIN_RENDER_WIDTH}px`;
         insEl.style.display = 'block';
 
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-        setIsLoaded(true);
+        // Wait for style application to take effect in the DOM
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          
+          // Final check before push: Ensure elements exist and are connected
+          if (!insEl || !containerEl || !insEl.isConnected || !containerEl.isConnected) return;
+
+          // Check precise dimensions
+          const currentContainerWidth = containerEl.getBoundingClientRect().width;
+          const currentInsWidth = insEl.getBoundingClientRect().width;
+
+          if (currentContainerWidth === 0 || currentInsWidth === 0) {
+            // console.warn("AdUnit: Width became 0 before push. Aborting.");
+            return;
+          }
+          
+          try {
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+            setIsLoaded(true);
+          } catch (e) {
+            console.error("AdSense push error:", e);
+          }
+        });
+
       } catch (err) {
         console.error('AdSense error:', err);
       }
@@ -105,7 +132,7 @@ const AdUnit = ({ slot, format = "auto", responsive = true, className = "" }) =>
     <div
       ref={containerRef}
       className={className}
-      style={{ minHeight: '90px', minWidth: `${MIN_RENDER_WIDTH}px` }}
+      style={{ minHeight: '90px', minWidth: `${MIN_RENDER_WIDTH}px`, overflow: 'hidden' }}
     >
       <ins
         ref={insRef}
