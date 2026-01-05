@@ -1,6 +1,7 @@
 "use client";
 // src/util/SEO.jsx - Comprehensive SEO Component for Google Rankings
 import Head from 'next/head'
+import { usePathname } from "next/navigation";
 
 // Master keyword list optimized for sarkari job searches
 const MASTER_KEYWORDS =
@@ -10,7 +11,7 @@ export default function SEO({
   title = "JobsAddah - JobsAddah 2026 | Latest Govt Jobs, Admit Card, Results",
   description = "JobsAddah is India's #1 sarkari result portal for latest government jobs 2025, sarkari naukri notifications, admit cards, exam results. Get SSC, Railway, Bank, UPSC job alerts.",
   keywords = MASTER_KEYWORDS,
-  canonical = "/",
+  canonical = null,
   ogImage = "/og-image.png",
   ogType = "website",
   author = "JobsAddah",
@@ -24,10 +25,20 @@ export default function SEO({
   const siteUrl = process.env.SITE_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com";
   const siteName = "JobsAddah";
   const twitterHandle = "@jobsaddah";
-  const fullCanonical = canonical.startsWith("http")
-    ? canonical
-    : siteUrl + canonical;
-  const fullOgImage = `${siteUrl}/public/logo.png`;
+  const pathname = usePathname();
+  const canonicalSource = canonical ?? pathname ?? "/";
+  const canonicalPath = canonicalSource.startsWith("http")
+    ? canonicalSource
+    : canonicalSource.startsWith("/")
+      ? siteUrl + canonicalSource
+      : `${siteUrl}/${canonicalSource}`;
+
+  const fullCanonical = canonicalPath;
+  const fullOgImage = ogImage.startsWith("http")
+    ? ogImage
+    : ogImage.startsWith("/")
+      ? `${siteUrl}${ogImage}`
+      : `${siteUrl}/${ogImage}`;
 
   // Determine whether site provides Hindi localized pages. Can be enabled per-page
   // via `hasHindi` prop or globally with NEXT_PUBLIC_HAS_HI=true

@@ -94,7 +94,7 @@ export default function TypingTest() {
         title="Free Typing Test Online | Check Typing Speed WPM - JobsAddah"
         description="Free online typing test to check your typing speed in WPM. Practice typing for SSC, Railway, Bank exams. Improve accuracy with easy, medium, and hard levels."
         keywords="typing test, typing speed test, wpm test, online typing test, free typing test, ssc typing test, bank typing test, typing practice"
-        canonical="/tools/typing-test"
+  canonical="/typing-test"
         section="Tools"
       />
       
@@ -140,7 +140,7 @@ export default function TypingTest() {
               onClick={() => setConfig({ ...config, type: mode.id })}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl border transition-all duration-200 ${
                 config.type === mode.id
-                  ? "bg-white border-indigo-500 shadow-md text-indigo-700 translate-y-[-2px]"
+                  ? "bg-white border-indigo-500 shadow-md text-indigo-700 -translate-y-0.5"
                   : "bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
               }`}
             >
@@ -151,7 +151,7 @@ export default function TypingTest() {
         </div>
 
         <div
-          className="relative bg-white rounded-2xl shadow-xl border border-slate-100 p-12 min-h-[200px] flex items-center flex-wrap cursor-text group"
+          className="relative bg-white rounded-2xl shadow-xl border border-slate-100 p-12 min-h-50 flex items-center flex-wrap cursor-text group"
           onClick={() => inputRef.current.focus()}
         >
           <div className="absolute top-4 right-4 flex gap-4 text-slate-400 font-mono text-sm">
@@ -163,7 +163,7 @@ export default function TypingTest() {
             </span>
           </div>
 
-          <p className="text-3xl leading-relaxed font-medium tracking-wide text-slate-300 w-full break-words">
+          <p className="text-3xl leading-relaxed font-medium tracking-wide text-slate-300 w-full wrap-break-word">
             {text.split("").map((char, index) => {
               let color = "text-slate-300";
               let bg = "bg-transparent";
@@ -226,7 +226,7 @@ export default function TypingTest() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center border border-white animate-in fade-in zoom-in duration-300">
             <div className="flex justify-center -mt-16 mb-4">
-              <div className="bg-gradient-to-tr from-indigo-500 to-purple-600 p-4 rounded-full shadow-lg text-white">
+              <div className="bg-linear-to-tr from-indigo-500 to-purple-600 p-4 rounded-full shadow-lg text-white">
                 <Trophy size={48} />
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function TypingTest() {
             </p>
 
             <div className="flex justify-center gap-6 mb-6">
-              <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl min-w-[100px] border border-slate-100">
+              <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl min-w-25 border border-slate-100">
                 <span className="text-3xl font-black text-indigo-600">
                   {wpm}
                 </span>
@@ -247,7 +247,7 @@ export default function TypingTest() {
                   WPM
                 </span>
               </div>
-              <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl min-w-[100px] border border-slate-100">
+              <div className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl min-w-25 border border-slate-100">
                 <span
                   className={`text-3xl font-black ${
                     accuracy === 100 ? "text-green-500" : "text-slate-700"

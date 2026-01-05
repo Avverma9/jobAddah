@@ -14,7 +14,6 @@ import {
   Clock, // Re-added Clock
 } from "lucide-react";
 import Tools from "@/components/layout/Tools";
-import { HorizontalAd } from "@/components/ads/AdUnits";
 
 // Scrollbar hiding utility
 const scrollbarHideStyles = `
@@ -52,7 +51,7 @@ function formatDate(s) {
   return s;
 }
 
-export default function TrendingJobsPage() {
+export default function TrendingJobsPage({ limit } = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -99,7 +98,7 @@ export default function TrendingJobsPage() {
           href={dest}
           className="sm:hidden flex flex-col items-center gap-1.5 w-[72px] shrink-0 snap-start group active:scale-95 transition-transform"
         >
-          <div className="relative w-[60px] h-[60px] rounded-full p-[2px] bg-gradient-to-tr from-orange-400 via-pink-500 to-indigo-500 shadow-sm">
+          <div className="relative w-15 h-15 rounded-full p-0.5 bg-linear-to-tr from-orange-400 via-pink-500 to-indigo-500 shadow-sm">
             <div className="w-full h-full rounded-full bg-white border-2 border-white flex flex-col items-center justify-center overflow-hidden relative">
               {day && month ? (
                 <>
@@ -152,8 +151,13 @@ export default function TrendingJobsPage() {
     );
   };
 
+  // If `limit` is provided this component is being used as a preview.
+  // In preview mode we should not force a full viewport height (min-h-screen)
+  // because that creates large blank space when embedded in other pages.
+  const isPreview = typeof limit === "number" && limit > 0;
+
   return (
-    <div className="min-h-screen bg-slate-50 py-2 sm:py-6">
+    <div className={`${isPreview ? "" : "min-h-screen"} bg-slate-50 py-2 sm:py-6`}>
       <style>{scrollbarHideStyles}</style>
       <SEO title="Trending Jobs — JobsAddah" />
 
@@ -187,7 +191,7 @@ export default function TrendingJobsPage() {
                     key={i}
                     className="flex flex-col items-center gap-2 shrink-0"
                   >
-                    <div className="w-[60px] h-[60px] rounded-full bg-slate-200 animate-pulse" />
+                    <div className="w-15 h-15 rounded-full bg-slate-200 animate-pulse" />
                     <div className="w-12 h-2 bg-slate-200 rounded animate-pulse" />
                   </div>
                 ))}
@@ -207,8 +211,8 @@ export default function TrendingJobsPage() {
           {!loading && !error && items.length > 0 && (
             <div className="w-full">
               {/* Mobile: Horizontal Scroll */}
-              <div className="flex gap-3 overflow-x-auto px-3 pb-4 -mx-0 snap-x snap-mandatory scrollbar-hide sm:hidden">
-                {items.map((post) => (
+              <div className="flex gap-3 overflow-x-auto px-3 pb-4 mx-0 snap-x snap-mandatory scrollbar-hide sm:hidden">
+                {(isPreview ? items.slice(0, limit) : items).map((post) => (
                   <TrendingJobCard key={post._id} post={post} />
                 ))}
                 <div className="w-1 shrink-0" />
@@ -216,14 +220,18 @@ export default function TrendingJobsPage() {
 
               {/* Desktop: Grid - 4 Columns for better readability */}
               <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {/* Show 8 items by default (2 rows) */}
-                {(isExpanded ? items : items.slice(0, 8)).map((post) => (
+                {/* Show limited items in preview, otherwise normal behavior (8 default) */}
+                {(isPreview
+                  ? items.slice(0, limit)
+                  : (isExpanded ? items : items.slice(0, 8))
+                ).map((post) => (
                   <TrendingJobCard key={post._id} post={post} />
                 ))}
               </div>
 
               {/* View All Button */}
-              {items.length > 8 && (
+              {/* Hide View All when used as a preview */}
+              {!isPreview && items.length > 8 && (
                 <div className="hidden sm:flex justify-center mt-5">
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
@@ -242,12 +250,8 @@ export default function TrendingJobsPage() {
           )}
         </div>
 
-        {/* Ad after trending jobs */}
-        <div className="px-3 sm:px-0 py-4 w-full">
-          <HorizontalAd className="w-full" />
-        </div>
-
-        <Tools />
+        {/* In preview mode we don't show the full Tools section */}
+        {!isPreview && <Tools />}
       </div>
 
       <div className="mt-2 sm:mt-6">

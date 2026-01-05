@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import SEO from "@/lib/SEO";
 import ReminderComponent from "@/components/ReminderComponent";
-import { HorizontalAd } from "@/components/ads/AdUnits";
 
 // Helper to format date
 const formatDate = (dateString) => {
@@ -202,9 +201,6 @@ function ViewAllContent() {
   return (
     <div className="min-h-screen bg-slate-50 py-6 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex justify-center w-full my-4">
-          <HorizontalAd className="w-full" />
-        </div>
         {/* --- Header Section --- */}
         <div className="mb-6">
           <Link

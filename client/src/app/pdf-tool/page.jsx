@@ -4,7 +4,6 @@ import SEO from '@/lib/SEO';
 import useIsMobile from '@/hooks/useIsMobile';
 import { AlertCircle, Calculator, Check, FileDown, Image as ImageIcon, Plus, RefreshCw, Scissors, Settings, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { SidebarAd, MobileBannerAd, LeaderboardAd, HorizontalAd } from '@/components/ads/AdUnits';
 
 const CropModal = ({ image, onClose, onCrop }) => {
   const canvasRef = useRef(null);
@@ -405,14 +404,10 @@ export default function PdfToolPage() {
         title="Free Image to PDF Converter | Compress PDF Online - JobsAddah"
         description="Convert images to PDF online for free. Compress PDF size, merge multiple images into single PDF. Perfect for government job applications and document submissions."
         keywords="image to pdf, pdf converter, compress pdf, merge pdf, photo to pdf, jpg to pdf, png to pdf, pdf compressor, free pdf tool"
-        canonical="/tools/pdf-tool"
+  canonical="/pdf-tool"
         section="Tools"
       />
 
-      <div className="flex justify-center mb-6 w-full">
-        <HorizontalAd className="w-full" />
-      </div>
-      
       {cropTarget && (
         <CropModal 
           image={cropTarget} 
@@ -634,15 +629,8 @@ export default function PdfToolPage() {
                 <strong>Pro Tip:</strong> Agar aapko specific size (jaise 200KB) chahiye, toh upar box mein 200 likhein aur "Auto Fit" dabayein. Tool khud best quality set karega.
             </div>
 
-            <div className="hidden lg:flex justify-center">
-              <SidebarAd />
-            </div>
-
           </div>
         </div>
-      </div>
-      <div className="flex justify-center mt-8 w-full">
-        <HorizontalAd className="w-full" />
       </div>
     </div>
     );

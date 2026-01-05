@@ -8,7 +8,6 @@ import BottomNav from "@/components/mobile/BottomNav";
 import ToolsView from "@/components/mobile/ToolsView";
 import PrivateJobsView from "@/components/mobile/PrivateJobsView";
 import DeadlinesView from "@/components/mobile/DeadlinesView";
-import { SidebarAd, MobileBannerAd, LeaderboardAd, HorizontalAd } from "@/components/ads/AdUnits";
 import { X, Search as SearchIcon } from "lucide-react"; // Using lucide for better icons in overlay
 
 export default function ResponsiveShell({ children }) {
@@ -21,8 +20,6 @@ export default function ResponsiveShell({ children }) {
     normalizedPath.includes("/image-tool") ||
     normalizedPath.includes("/resume-maker");
 
-  const shouldShowSidebar = false;
-
   // State
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,17 +29,12 @@ export default function ResponsiveShell({ children }) {
   const [overlayMounted, setOverlayMounted] = useState(false);
   const [reminders, setReminders] = useState({});
   const [remLoading, setRemLoading] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   // Private jobs data (lightweight category fetch so inline view can show tabs/hero)
   const [pvtCategories, setPvtCategories] = useState([]);
   const [pvtCatLoading, setPvtCatLoading] = useState(false);
   const [pvtSectionsByLink, setPvtSectionsByLink] = useState({});
 
-  // Check if component is mounted (for ads)
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // Refs
   const searchAbort = useRef(null);
@@ -521,18 +513,6 @@ export default function ResponsiveShell({ children }) {
         <Header />
       </div>
 
-      {/* Global Ads */}
-      {isMounted && (
-        <>
-          <div className="hidden lg:flex justify-center py-4 px-6 xl:px-10 2xl:px-16">
-            <div className="w-full max-w-[90vw]"><HorizontalAd className="mx-auto w-full" /></div>
-          </div>
-          <div className="lg:hidden flex justify-center py-3 px-4 w-full">
-            <HorizontalAd className="mx-auto w-full" />
-          </div>
-        </>
-      )}
-
       <main className="pb-20 md:pb-0">
         {/* Mobile view switch: show tools or default children */}
         <div className="md:hidden">
@@ -561,31 +541,13 @@ export default function ResponsiveShell({ children }) {
           )}
         </div>
 
-        {/* Desktop: render children with optional sidebar ad */}
+        {/* Desktop content */}
         <div className="hidden md:block">
-          {shouldShowSidebar ? (
-            <div className="w-full px-6 xl:px-10 2xl:px-16">
-              <div className="mx-auto w-full max-w-[90vw] 2xl:max-w-450 3xl:max-w-none grid xl:grid-cols-[minmax(0,1fr)_200px] gap-6 xl:gap-12 2xl:gap-16">
-                <div className="min-w-0">
-                  <div className="w-full">{children}</div>
-                </div>
-                <div className="hidden xl:block w-full max-w-50">
-                  <div className="sticky top-32"><SidebarAd className="block" /></div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mx-auto w-full px-6 xl:px-10 2xl:px-16 max-w-[90vw] 2xl:max-w-450 3xl:max-w-none">{children}</div>
-          )}
+          <div className="mx-auto w-full px-6 xl:px-10 2xl:px-16 max-w-[90vw] 2xl:max-w-450 3xl:max-w-none">
+            {children}
+          </div>
         </div>
       </main>
-
-      {/* Mobile footer ad */}
-      {isMounted && (
-        <div className="md:hidden flex justify-center py-3 px-4 w-full">
-          <HorizontalAd className="mx-auto w-full" />
-        </div>
-      )}
 
       {/* Mobile Bottom Nav */}
       <div className="md:hidden">

@@ -9,7 +9,7 @@ export default function AboutPage() {
         title="About Us | JobsAddah - India's Leading Sarkari Result Portal"
         description="JobsAddah is India's trusted sarkari result portal providing latest government job notifications, admit cards, exam results, and career guidance for job seekers across India."
         keywords="about jobsaddah, sarkari result portal, government job portal india, job notification website, career guidance, employment portal"
-        canonical="/about-us"
+  canonical="/about"
         section="About Us"
       />
       {/* Hero Section */}
