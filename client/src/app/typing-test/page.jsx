@@ -12,12 +12,15 @@ import {
   Type,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function TypingTest() {
   const isMobile = useIsMobile(640);
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setHydrated(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [config, setConfig] = useState({
     type: "sentences",
     difficulty: "medium",
@@ -31,7 +34,7 @@ export default function TypingTest() {
   const [currentJoke, setCurrentJoke] = useState("");
   const inputRef = useRef(null);
 
-  const generateContent = () => {
+  const generateContent = useCallback(() => {
     const source = dataStore[config.type][config.difficulty];
 
     if (config.type === "words" || config.type === "meanings") {
@@ -40,9 +43,9 @@ export default function TypingTest() {
     } else {
       return source[Math.floor(Math.random() * source.length)];
     }
-  };
+  }, [config]);
 
-  const resetGame = () => {
+  const resetGame = useCallback(() => {
     setText(generateContent());
     setInput("");
     setStartTime(null);
@@ -51,11 +54,12 @@ export default function TypingTest() {
     setIsFinished(false);
     setCurrentJoke("");
     if (inputRef.current) inputRef.current.focus();
-  };
+  }, [generateContent]);
 
   useEffect(() => {
-    resetGame();
-  }, [config]);
+    const frame = requestAnimationFrame(() => resetGame());
+    return () => cancelAnimationFrame(frame);
+  }, [resetGame]);
 
   const handleChange = (e) => {
     const val = e.target.value;
@@ -84,7 +88,7 @@ export default function TypingTest() {
     }
   };
 
-  const TypingTestContent = () => (
+  return (
     <div
       className={`min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col items-center p-6 selection:bg-indigo-100 selection:text-indigo-900 ${
         hydrated && isMobile ? "pb-24" : ""
@@ -235,7 +239,7 @@ export default function TypingTest() {
               Test Complete!
             </h2>
             <p className="text-indigo-600 font-medium text-lg mb-6">
-              "{getFeedback(wpm, accuracy)}"
+              &ldquo;{getFeedback(wpm, accuracy)}&rdquo;
             </p>
 
             <div className="flex justify-center gap-6 mb-6">
@@ -293,6 +297,4 @@ export default function TypingTest() {
       </div>
     </div>
   );
-
-  return <TypingTestContent />;
 }

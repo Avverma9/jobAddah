@@ -1,31 +1,32 @@
-import connect from '@/lib/mongodb';
-import Post from '@/lib/models/gov/job';
+import connect from "@/lib/mongodb";
+import Post from "@/lib/models/gov/job";
+import { buildJobHref } from "@/lib/job-url";
 
 export default async function sitemap() {
   const baseUrl = process.env.SITE_ORIGIN || 'https://jobsaddah.com';
 
   // Static routes
   const routes = [
-    '',
-    '/about',
-    '/contact',
-    '/fav-jobs',
-    '/image-tool',
-    '/pdf-tool',
-    '/policy',
-    '/private-jobs',
-    '/quiz-and-earn',
-    '/resume-maker',
-    '/terms',
-    '/typing-test',
-    '/view-all',
-    '/login',
-    '/register',
+    "",
+    "/about",
+    "/contact",
+    "/fav-jobs",
+    "/image-tool",
+    "/pdf-tool",
+    "/policy",
+    "/private-jobs",
+    "/quiz-and-earn",
+    "/resume-maker",
+    "/terms",
+    "/typing-test",
+    "/view-all",
+    "/login",
+    "/register",
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
-    changeFrequency: 'daily',
-    priority: route === '' ? 1 : 0.8,
+    changeFrequency: "daily",
+    priority: route === "" ? 1 : 0.8,
   }));
 
   let posts = [];
@@ -34,34 +35,27 @@ export default async function sitemap() {
     
     // Fetch posts. Limit to 10k to prevent timeouts/memory issues during build
     // In a real large scale app, generateSitemaps (plural) would be used.
-    const allPosts = await Post.find({}, 'url updatedAt createdAt')
+    const allPosts = await Post.find({}, "url updatedAt createdAt")
       .sort({ createdAt: -1 })
       .limit(10000)
       .lean();
 
-    posts = allPosts.map((post) => {
-      let cleanUrl = post.url || '';
-      // Normalize the URL path stored in DB
-      if (cleanUrl.startsWith('http')) {
-        try {
-           const u = new URL(cleanUrl);
-           cleanUrl = u.pathname + u.search + u.hash;
-        } catch(e) {
-           // fallback
+    posts = allPosts
+      .map((post) => {
+        const href = buildJobHref(post.url || "");
+        if (!href || href === "#") {
+          return null;
         }
-      } else if (!cleanUrl.startsWith('/')) {
-        cleanUrl = '/' + cleanUrl;
-      }
-
-      return {
-        url: `${baseUrl}/post?url=${encodeURIComponent(cleanUrl)}`,
-        lastModified: post.updatedAt || post.createdAt || new Date(),
-        changeFrequency: 'weekly',
-        priority: 0.6,
-      };
-    });
+        return {
+          url: `${baseUrl}${href}`,
+          lastModified: post.updatedAt || post.createdAt || new Date(),
+          changeFrequency: "weekly",
+          priority: 0.6,
+        };
+      })
+      .filter(Boolean);
   } catch (error) {
-    console.error('Sitemap generation error:', error);
+    console.error("Sitemap generation error:", error);
   }
 
   return [...routes, ...posts];

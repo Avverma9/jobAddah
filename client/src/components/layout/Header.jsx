@@ -14,13 +14,21 @@ export default function Header() {
   // --- 1. Responsive & Path Logic ---
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   useEffect(() => {
-    const check = () =>
-      setIsSmallScreen(
-        typeof window !== "undefined" && window.innerWidth <= 768
+    let frame;
+    const check = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() =>
+        setIsSmallScreen(
+          typeof window !== "undefined" && window.innerWidth <= 768
+        )
       );
+    };
     check();
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   // Hide global header on mobile post detail pages
@@ -102,20 +110,26 @@ export default function Header() {
 
   // --- 6. Auth Check ---
   useEffect(() => {
-    try {
-      const v = localStorage.getItem("isSignedIn");
-      const u = localStorage.getItem("user");
-      if (v === "true" && u) {
-        setIsSignedIn(true);
-        setUser(JSON.parse(u));
-      } else {
+    let frame;
+    frame = requestAnimationFrame(() => {
+      try {
+        const v = localStorage.getItem("isSignedIn");
+        const u = localStorage.getItem("user");
+        if (v === "true" && u) {
+          setIsSignedIn(true);
+          setUser(JSON.parse(u));
+        } else {
+          setIsSignedIn(false);
+          setUser(null);
+        }
+      } catch (e) {
         setIsSignedIn(false);
         setUser(null);
       }
-    } catch (e) {
-      setIsSignedIn(false);
-      setUser(null);
-    }
+    });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   const handleSignedIn = (u) => {
@@ -158,7 +172,7 @@ export default function Header() {
           className="site-desktop-header sticky top-0 inset-x-0 z-40 bg-white shadow-sm border-b border-gray-200"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-[70px] md:h-[80px]">
+            <div className="flex items-center justify-between h-17.5 md:h-20">
               
               {/* --- LEFT: LOGO (Updated Design) --- */}
               <div className="shrink-0 flex items-center">
@@ -351,7 +365,7 @@ export default function Header() {
           {isMobileMenuOpen && (
             <div className="md:hidden">
               <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setIsMobileMenuOpen(false)} />
-              <div ref={mobileMenuRef} className="fixed top-[var(--site-header-height,70px)] left-0 right-0 z-50 bg-white shadow-xl border-t border-gray-100 max-h-[calc(100vh-70px)] overflow-y-auto">
+              <div ref={mobileMenuRef} className="fixed top-(--site-header-height,70px) left-0 right-0 z-50 bg-white shadow-xl border-t border-gray-100 max-h-[calc(100vh-70px)] overflow-y-auto">
                 <div className="px-4 py-4 space-y-2">
                   <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700">Home</Link>
                   <Link href="/private-jobs" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700">Private Jobs</Link>

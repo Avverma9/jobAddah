@@ -430,7 +430,7 @@ export default function ResponsiveShell({ children }) {
 
               {!isSearching && searchResults.length === 0 && searchQuery && (
                 <div className="p-8 text-center text-gray-500">
-                  No results found for "{searchQuery}"
+                  No results found for &ldquo;{searchQuery}&rdquo;
                 </div>
               )}
 

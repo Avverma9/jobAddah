@@ -4,6 +4,7 @@ import SEO from '@/lib/SEO';
 import useIsMobile from '@/hooks/useIsMobile';
 import { AlertCircle, Calculator, Check, FileDown, Image as ImageIcon, Plus, RefreshCw, Scissors, Settings, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import Image from "next/image";
 
 const CropModal = ({ image, onClose, onCrop }) => {
   const canvasRef = useRef(null);
@@ -482,7 +483,14 @@ export default function PdfToolPage() {
                 {images.map((img, index) => (
                   <div key={img.id} className="group relative bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-200">
                     <div className="aspect-w-3 aspect-h-4 h-48 bg-gray-100 relative">
-                        <img src={img.url} alt="preview" className="w-full h-full object-contain p-2" />
+                        <Image
+                          src={img.url}
+                          alt="preview"
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          className="object-contain p-2"
+                          unoptimized
+                        />
                         
                         <div className="absolute inset-0 bg-slate-900/60 transition-opacity opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-3">
                            <button onClick={() => setCropTarget(img)} className="bg-white text-slate-800 px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-50 flex items-center gap-2 transform hover:scale-105 transition">
@@ -626,7 +634,7 @@ export default function PdfToolPage() {
             </div>
             
             <div className="bg-blue-50 rounded-xl p-4 text-xs text-blue-800 leading-relaxed border border-blue-100">
-                <strong>Pro Tip:</strong> Agar aapko specific size (jaise 200KB) chahiye, toh upar box mein 200 likhein aur "Auto Fit" dabayein. Tool khud best quality set karega.
+                <strong>Pro Tip:</strong> Agar aapko specific size (jaise 200KB) chahiye, toh upar box mein 200 likhein aur &ldquo;Auto Fit&rdquo; dabayein. Tool khud best quality set karega.
             </div>
 
           </div>

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Check, RefreshCcw, Trash2, Upload } from "lucide-react";
 
 export const ImageUploader = ({ label, image, onUpload, onRemove }) => {
@@ -5,8 +6,15 @@ export const ImageUploader = ({ label, image, onUpload, onRemove }) => {
         return (
             <div className="bg-white border border-blue-100 rounded-lg p-2 flex items-center justify-between shadow-sm animate-fade-in">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center shrink-0 border border-gray-200">
-                        <img src={image.src} alt="thumbnail" className="w-full h-full object-cover rounded-md" />
+                    <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center shrink-0 border border-gray-200 overflow-hidden">
+                        <Image
+                            src={image.src}
+                            alt="thumbnail preview"
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                        />
                     </div>
                     <div className="min-w-0">
                         <p className="text-xs font-bold text-gray-700 truncate">{label}</p>

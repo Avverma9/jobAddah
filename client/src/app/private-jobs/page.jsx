@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SEO from "@/lib/SEO";
 
 import axios from "axios";
@@ -21,6 +21,7 @@ export default function PrivateJobsPage() {
   const [catError, setCatError] = useState(null);
 
   const [sectionsByLink, setSectionsByLink] = useState({});
+  const fetchedLinksRef = useRef(new Set());
   const api =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.NEXT_PUBLIC_API_CLIENT ||
@@ -58,13 +59,14 @@ export default function PrivateJobsPage() {
         setCatLoading(false);
       }
     })();
-  }, [api ?? null]);
+  }, [api]);
 
   useEffect(() => {
     if (!categories || categories.length === 0) return;
 
-    const links = categories.map((c) => c.link).filter(Boolean);
-    if (links.length === 0) return;
+  const links = categories.map((c) => c.link).filter(Boolean);
+  const pendingLinks = links.filter((link) => link && !fetchedLinksRef.current.has(link));
+  if (pendingLinks.length === 0) return;
 
     let cancelled = false;
     const concurrency = 3;
@@ -72,18 +74,12 @@ export default function PrivateJobsPage() {
 
     const worker = async () => {
       while (!cancelled) {
-        if (idx >= links.length) break;
+        if (idx >= pendingLinks.length) break;
         const current = idx++;
-        const categoryUrl = links[current];
+        const categoryUrl = pendingLinks[current];
 
         if (!categoryUrl) continue;
-
-        if (
-          sectionsByLink[categoryUrl]?.jobs &&
-          sectionsByLink[categoryUrl].jobs.length > 0
-        ) {
-          continue;
-        }
+        fetchedLinksRef.current.add(categoryUrl);
 
         try {
           setSectionsByLink((prev) => ({
@@ -136,7 +132,7 @@ export default function PrivateJobsPage() {
     return () => {
       cancelled = true;
     };
-  }, [categories, api ?? null]);
+  }, [categories, api]);
 
   // Main content component
   const PrivateJobsContent = () => (
@@ -159,7 +155,7 @@ export default function PrivateJobsPage() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-xl shadow-md">
+            <div className="p-3 bg-linear-to-br from-indigo-600 to-purple-600 text-white rounded-xl shadow-md">
               <Building2 size={28} strokeWidth={1.5} />
             </div>
             <div>
@@ -238,7 +234,7 @@ export default function PrivateJobsPage() {
                   </div>
 
                   {/* Card Body: Jobs List */}
-                  <div className="p-2 flex-1 min-h-[180px]">
+                  <div className="p-2 flex-1 min-h-45">
                     {isLoading ? (
                       // Loading Skeleton
                       <div className="space-y-3 p-3">

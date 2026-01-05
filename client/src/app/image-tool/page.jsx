@@ -1,234 +1,192 @@
 "use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import useIsMobile from "@/hooks/useIsMobile";
 import { BgRemover } from "@/lib/image-tool/bgRemover";
 import { ImageUploader } from "@/lib/image-tool/imageUploader";
 import { PhotoMakerTool } from "@/lib/image-tool/passport";
 import { Slider } from "@/lib/image-tool/slider";
+import { drawDateOverlay } from "@/lib/image-tool/helpers";
 import {
   ArrowRightLeft,
   ArrowUpDown,
   Calendar,
-  Check,
   Columns,
   Download,
   Eraser,
-  Grid3X3,
   Layers,
   Layout,
   Maximize2,
-  MousePointer2,
-  Printer,
-  RefreshCw,
-  RotateCcw,
   Save,
-  Trash2,
-  Undo2,
-  Upload,
-  Wand2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 
-// Internal Hook for Mobile Detection
-const useIsMobile = (breakpoint = 640) => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const check = () => setIsMobile(window.innerWidth < breakpoint);
-      check();
-      window.addEventListener("resize", check);
-      return () => window.removeEventListener("resize", check);
-    }
-  }, [breakpoint]);
-  return isMobile;
-};
-
-
-const drawDateOverlay = (ctx, w, h, text, style, bgColor = "#000000") => {
-  const stripHeight = h * 0.2;
-  const yPos = h - stripHeight;
-
-  if (style === "slate") {
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, yPos, w, stripHeight);
-    ctx.strokeStyle = "#e5e5e5";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(4, yPos + 4, w - 8, stripHeight - 8);
-    ctx.fillStyle = "#ffffff";
-  } else {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, yPos, w, stripHeight);
-    ctx.fillStyle = "#000000";
-  }
-
-  ctx.font = `bold ${stripHeight * 0.45}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, w / 2, yPos + stripHeight / 2);
-};
-
-const getClipboardImage = (e, callback) => {
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf("image") !== -1) {
-      const blob = items[i].getAsFile();
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => callback(img);
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(blob);
-      e.preventDefault();
-      break;
-    }
-  }
-};
+const TOOL_TABS = [
+  { id: "photo-maker", icon: Layout, label: "Passport Photo" },
+  { id: "bg-remover", icon: Eraser, label: "BG Remover" },
+  { id: "overlay", icon: Layers, label: "Overlay" },
+  { id: "resizer", icon: Maximize2, label: "Resizer" },
+  { id: "joiner", icon: Columns, label: "Joiner" },
+];
 
 export default function ImageEditor() {
   const isMobile = useIsMobile(640);
   const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
   const [activeTab, setActiveTab] = useState("photo-maker");
   const [sharedImage, setSharedImage] = useState(null);
 
-  const updateSharedImage = (imgOrUrl) => {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setHydrated(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const handleSharedImage = useCallback((imgOrUrl) => {
+    if (!imgOrUrl) {
+      setSharedImage(null);
+      return;
+    }
+
     if (typeof imgOrUrl === "string") {
       const img = new Image();
       img.onload = () => setSharedImage(img);
       img.src = imgOrUrl;
-    } else {
-      setSharedImage(imgOrUrl);
+      return;
     }
-  };
+
+    if (imgOrUrl instanceof HTMLCanvasElement) {
+      const img = new Image();
+      img.onload = () => setSharedImage(img);
+      img.src = imgOrUrl.toDataURL();
+      return;
+    }
+
+    setSharedImage(imgOrUrl);
+  }, []);
 
   const renderContent = () => {
-    const props = { sharedImage, setSharedImage: updateSharedImage };
     switch (activeTab) {
       case "photo-maker":
-        return <PhotoMakerTool {...props} />;
+        return (
+          <PhotoMakerTool
+            key={sharedImage?.src || "photo-maker"}
+            sharedImage={sharedImage}
+            setSharedImage={handleSharedImage}
+          />
+        );
       case "bg-remover":
-        return <BgRemover {...props} />;
+        return (
+          <BgRemover
+            key={sharedImage?.src || "bg-remover"}
+            sharedImage={sharedImage}
+            setSharedImage={handleSharedImage}
+          />
+        );
       case "overlay":
-        return <OverlayTool {...props} />;
+        return (
+          <OverlayTool
+            key={sharedImage?.src || "overlay"}
+            sharedImage={sharedImage}
+            setSharedImage={handleSharedImage}
+          />
+        );
       case "resizer":
-        return <ResizerTool {...props} />;
+        return (
+          <ResizerTool
+            key={sharedImage?.src || "resizer"}
+            sharedImage={sharedImage}
+            setSharedImage={handleSharedImage}
+          />
+        );
       case "joiner":
-        return <JoinerTool {...props} />;
+        return (
+          <JoinerTool
+            key={sharedImage?.src || "joiner"}
+            sharedImage={sharedImage}
+            setSharedImage={handleSharedImage}
+          />
+        );
       default:
-        return <PhotoMakerTool {...props} />;
+        return null;
     }
   };
 
-  const ImageEditorContent = () => {
-    if (!hydrated) {
-      return (
-        <div className="min-h-screen bg-gray-50 p-2 md:p-6 font-sans text-slate-900">
-          <div className="max-w-6xl mx-auto">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-48 mx-auto mb-6"></div>
-              <div className="h-10 bg-gray-200 rounded w-96 mx-auto mb-6"></div>
-            </div>
-          </div>
-        </div>
-      );
-    }
+  return (
+    <div className="force-light">
+      <style jsx global>{`
+        .force-light .dark\:bg-slate-900,
+        .force-light .dark\:bg-slate-800,
+        .force-light .dark\:bg-slate-700,
+        .force-light .dark\:bg-slate-700\/50,
+        .force-light .dark\:bg-slate-600 {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
 
-    return (
-      <div className="force-light">
-        <style jsx global>{`
-          .force-light .dark\\:bg-slate-900,
-          .force-light .dark\\:bg-slate-800,
-          .force-light .dark\\:bg-slate-700,
-          .force-light .dark\\:bg-slate-700\\/50,
-          .force-light .dark\\:bg-slate-600 {
-            background-color: transparent !important;
-            background-image: none !important;
-          }
+        .force-light .dark\:text-slate-100,
+        .force-light .dark\:text-slate-400,
+        .force-light .dark\:text-gray-300,
+        .force-light .dark\:text-slate-200 {
+          color: inherit !important;
+        }
 
-          .force-light .dark\\:text-slate-100,
-          .force-light .dark\\:text-slate-400,
-          .force-light .dark\\:text-gray-300,
-          .force-light .dark\\:text-slate-200 {
-            color: inherit !important;
-          }
+        .force-light .dark\:border-slate-700,
+        .force-light .dark\:border-slate-600 {
+          border-color: rgba(0, 0, 0, 0.08) !important;
+        }
 
-          .force-light .dark\\:border-slate-700,
-          .force-light .dark\\:border-slate-600 {
-            border-color: rgba(0, 0, 0, 0.08) !important;
-          }
+        .force-light .dark\:hover\:bg-slate-700 {
+          background-color: #f1f5f9 !important;
+        }
+      `}</style>
 
-          .force-light .dark\\:hover\\:bg-slate-700 {
-            background-color: #f1f5f9 !important;
-          }
-        `}</style>
+      <div
+        className={`min-h-screen bg-gray-50 p-2 md:p-6 font-sans text-slate-900 ${
+          hydrated && isMobile ? "pb-24" : ""
+        }`}
+      >
+        <div className="max-w-6xl mx-auto">
+          <header className="mb-6 text-center">
+            <h1 className="text-2xl md:text-4xl font-extrabold text-slate-800 mb-2 tracking-tight">
+              Image Master Suite
+            </h1>
+            <p className="text-sm text-slate-500">
+              Professional tools for everyday tasks
+            </p>
+          </header>
 
-        <div
-          className={`min-h-screen bg-gray-50 p-2 md:p-6 font-sans text-slate-900 ${
-            hydrated && isMobile ? "pb-24" : ""
-          }`}
-        >
-          <div className="max-w-6xl mx-auto">
-            <header className="mb-6 text-center">
-              <h1 className="text-2xl md:text-4xl font-extrabold text-slate-800 dark:text-dark mb-2 tracking-tight">
-                Image Master Suite
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Professional tools for everyday tasks
-              </p>
-            </header>
-
-            <div className="grid lg:grid-cols-[1fr_auto] gap-6">
-              <div>
-                <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white dark:bg-slate-800 p-2 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 w-fit mx-auto">
-                  {[
-                    {
-                      id: "photo-maker",
-                      icon: Layout,
-                      label: "Passport Photo",
-                    },
-                    { id: "bg-remover", icon: Eraser, label: "BG Remover" },
-                    { id: "overlay", icon: Layers, label: "Overlay" },
-                    { id: "resizer", icon: Maximize2, label: "Resizer" },
-                    { id: "joiner", icon: Columns, label: "Joiner" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        activeTab === tab.id
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      <span className="hidden md:inline">{tab.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="transition-all duration-300">
-                  {renderContent()}
-                </div>
+          <div className="grid lg:grid-cols-[1fr_auto] gap-6">
+            <div>
+              <div className="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-gray-100 w-fit mx-auto">
+                {TOOL_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "text-slate-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span className="hidden md:inline">{tab.label}</span>
+                  </button>
+                ))}
               </div>
+
+              <div className="transition-all duration-300">{renderContent()}</div>
             </div>
           </div>
         </div>
       </div>
-    );
-  };
-
-  return <ImageEditorContent />;
+    </div>
+  );
 }
 
 const OverlayTool = ({ sharedImage, setSharedImage }) => {
   const canvasRef = useRef(null);
-  const [baseImage, setBaseImage] = useState(null);
+  const [baseImage, setBaseImage] = useState(sharedImage ?? null);
   const [overlayImage, setOverlayImage] = useState(null);
   const [settings, setSettings] = useState({
     x: 50,
@@ -238,12 +196,8 @@ const OverlayTool = ({ sharedImage, setSharedImage }) => {
   });
   const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    if (sharedImage && !baseImage) setBaseImage(sharedImage);
-  }, [sharedImage]);
-
   const handleImageLoad = (e, type) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
@@ -284,6 +238,7 @@ const OverlayTool = ({ sharedImage, setSharedImage }) => {
       ctx.lineWidth = 3;
       ctx.setLineDash([10, 5]);
       ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
     }
   }, [baseImage, overlayImage, settings]);
 
@@ -380,7 +335,9 @@ const OverlayTool = ({ sharedImage, setSharedImage }) => {
           )}
           <div className="flex flex-col gap-2">
             <Button
+              type="button"
               onClick={() => {
+                if (!canvasRef.current) return;
                 const link = document.createElement("a");
                 link.download = "overlay-result.png";
                 link.href = canvasRef.current.toDataURL();
@@ -392,6 +349,7 @@ const OverlayTool = ({ sharedImage, setSharedImage }) => {
               <Download size={16} /> Download
             </Button>
             <Button
+              type="button"
               onClick={saveToWorkspace}
               className="w-full bg-blue-700 hover:bg-blue-800"
               disabled={!baseImage}
@@ -418,7 +376,7 @@ const OverlayTool = ({ sharedImage, setSharedImage }) => {
 
 const ResizerTool = ({ sharedImage, setSharedImage }) => {
   const canvasRef = useRef(null);
-  const [image, setImage] = useState(null);
+  const [image, setImage] = useState(sharedImage ?? null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
   const [lockRatio, setLockRatio] = useState(true);
   const [transform, setTransform] = useState({ scale: 1, panX: 0, panY: 0 });
@@ -429,18 +387,14 @@ const ResizerTool = ({ sharedImage, setSharedImage }) => {
     bgSlate: "#222222",
   });
 
-  useEffect(() => {
-    if (sharedImage && !image) process(sharedImage);
-  }, [sharedImage]);
-
-  const process = (img) => {
+  const process = useCallback((img) => {
     setImage(img);
     setDims({ w: img.width, h: img.height });
     setTransform({ scale: 1, panX: 0, panY: 0 });
-  };
+  }, []);
 
   const handleUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
@@ -495,6 +449,7 @@ const ResizerTool = ({ sharedImage, setSharedImage }) => {
   }, [image, dims, transform, dateSettings]);
 
   const download = () => {
+    if (!canvasRef.current) return;
     const link = document.createElement("a");
     link.download = `resized-${dims.w}x${dims.h}.png`;
     link.href = canvasRef.current.toDataURL("image/png", 0.9);
@@ -652,10 +607,11 @@ const ResizerTool = ({ sharedImage, setSharedImage }) => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Button onClick={download} className="w-full">
+                <Button type="button" onClick={download} className="w-full">
                   <Download size={16} /> Download Resized
                 </Button>
                 <Button
+                  type="button"
                   onClick={saveToWorkspace}
                   className="w-full bg-blue-700 hover:bg-blue-800"
                 >
@@ -681,17 +637,12 @@ const ResizerTool = ({ sharedImage, setSharedImage }) => {
 
 const JoinerTool = ({ sharedImage, setSharedImage }) => {
   const canvasRef = useRef(null);
-  const [images, setImages] = useState({ img1: null, img2: null });
+  const [images, setImages] = useState({ img1: sharedImage ?? null, img2: null });
   const [direction, setDirection] = useState("horizontal");
   const [gap, setGap] = useState(0);
 
-  useEffect(() => {
-    if (sharedImage && !images.img1)
-      setImages((prev) => ({ ...prev, img1: sharedImage }));
-  }, [sharedImage]);
-
   const handleUpload = (e, key) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
@@ -758,6 +709,7 @@ const JoinerTool = ({ sharedImage, setSharedImage }) => {
           />
           <div className="flex gap-2 bg-slate-50 p-2 rounded">
             <Button
+              type="button"
               variant={direction === "horizontal" ? "primary" : "secondary"}
               onClick={() => setDirection("horizontal")}
               className="flex-1 text-xs"
@@ -765,6 +717,7 @@ const JoinerTool = ({ sharedImage, setSharedImage }) => {
               Side by Side
             </Button>
             <Button
+              type="button"
               variant={direction === "vertical" ? "primary" : "secondary"}
               onClick={() => setDirection("vertical")}
               className="flex-1 text-xs"
@@ -775,7 +728,9 @@ const JoinerTool = ({ sharedImage, setSharedImage }) => {
           <Slider label="Gap" value={gap} min={0} max={100} onChange={setGap} />
           <div className="flex flex-col gap-2">
             <Button
+              type="button"
               onClick={() => {
+                if (!canvasRef.current) return;
                 const link = document.createElement("a");
                 link.download = "joined.png";
                 link.href = canvasRef.current.toDataURL();
@@ -787,6 +742,7 @@ const JoinerTool = ({ sharedImage, setSharedImage }) => {
               Download Joined
             </Button>
             <Button
+              type="button"
               onClick={saveToWorkspace}
               className="w-full bg-blue-700 hover:bg-blue-800"
               disabled={!images.img1 && !images.img2}

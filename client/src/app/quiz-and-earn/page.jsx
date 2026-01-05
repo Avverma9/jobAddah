@@ -12,7 +12,7 @@ import {
   Trophy,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // --- GAME CONFIGURATION ---
 const WINNING_SCORE = 20;
@@ -55,28 +55,33 @@ const generateQuestions = () => {
 export default function QuizAndEarnPage() {
   const isMobile = useIsMobile(640);
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setHydrated(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [gameState, setGameState] = useState("start");
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState(generateQuestions);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [timer, setTimer] = useState(TIME_PER_QUESTION);
   const [upiId, setUpiId] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  useEffect(() => {
-    setQuestions(generateQuestions());
-  }, []);
+  const handleGameOver = useCallback(() => setGameState("gameover"), []);
 
   useEffect(() => {
-    let interval = null;
-    if (gameState === "playing" && timer > 0) {
-      interval = setInterval(() => setTimer((p) => p - 1), 1000);
-    } else if (timer === 0 && gameState === "playing") {
-      handleGameOver();
-    }
+    if (gameState !== "playing") return undefined;
+    const interval = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          handleGameOver();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [timer, gameState]);
+  }, [gameState, handleGameOver]);
 
   const startGame = () => {
     setQuestions(generateQuestions().sort(() => Math.random() - 0.5));
@@ -99,7 +104,6 @@ export default function QuizAndEarnPage() {
     } else handleGameOver();
   };
 
-  const handleGameOver = () => setGameState("gameover");
   const handleToUpi = () => setGameState("upi_input");
 
   const submitUpi = () => {
@@ -110,7 +114,7 @@ export default function QuizAndEarnPage() {
     setTimeout(() => setGameState("success"), 1000);
   };
 
-  const StartScreen = () => (
+  const renderStartScreen = () => (
     <div className="flex flex-col items-center justify-center p-6 space-y-6 text-center animate-fadeIn w-full">
       <div className="bg-yellow-100 p-4 rounded-full border-4 border-yellow-400 shadow-lg">
         <IndianRupee size={64} className="text-yellow-600" />
@@ -142,7 +146,7 @@ export default function QuizAndEarnPage() {
     </div>
   );
 
-  const GameScreen = () => {
+  const renderGameScreen = () => {
     const currentQ = questions[currentQIndex];
     const progress = (timer / TIME_PER_QUESTION) * 100;
     let timerColor = "bg-green-500";
@@ -165,7 +169,7 @@ export default function QuizAndEarnPage() {
             style={{ width: `${progress}%` }}
           ></div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-lg p-6 mb-6 min-h-[160px] flex items-center justify-center text-center">
+  <div className="bg-white border border-slate-200 rounded-2xl shadow-lg p-6 mb-6 min-h-40 flex items-center justify-center text-center">
           <h2 className="text-2xl font-bold text-gray-800">
             {currentQIndex + 1}. {currentQ.q}
           </h2>
@@ -185,7 +189,7 @@ export default function QuizAndEarnPage() {
     );
   };
 
-  const GameOverScreen = () => (
+  const renderGameOverScreen = () => (
     <div className="flex flex-col items-center justify-center p-6 space-y-6 text-center animate-bounce-in w-full">
       <div className="bg-red-100 p-6 rounded-full border-4 border-red-500 mb-4">
         <AlertCircle size={64} className="text-red-600" />
@@ -206,7 +210,7 @@ export default function QuizAndEarnPage() {
     </div>
   );
 
-  const WinScreen = () => (
+  const renderWinScreen = () => (
     <div className="flex flex-col items-center justify-center p-6 space-y-6 text-center w-full">
       <div className="bg-yellow-100 p-6 rounded-full border-4 border-yellow-400 animate-pulse">
         <Trophy size={80} className="text-yellow-600" />
@@ -230,7 +234,7 @@ export default function QuizAndEarnPage() {
   );
 
   // --- FIXED COMPONENT ---
-  const UpiInputScreen = () => (
+  const renderUpiInputScreen = () => (
     <div className="flex flex-col items-center justify-center p-6 space-y-4 w-full max-w-md">
       <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Details</h2>
       <p className="text-gray-600 mb-4 text-center">
@@ -264,7 +268,7 @@ export default function QuizAndEarnPage() {
   );
 
   // --- FIXED COMPONENT ---
-  const SuccessScreen = () => (
+  const renderSuccessScreen = () => (
     <div className="flex flex-col items-center justify-center p-8 space-y-6 text-center w-full">
       <div className="bg-green-100 p-4 rounded-full">
         <CheckCircle size={80} className="text-green-500" />
@@ -290,28 +294,24 @@ export default function QuizAndEarnPage() {
     </div>
   );
 
-  const QuizContent = () => (
-    <div
-      className={`min-h-screen bg-white flex items-center justify-center font-sans p-4 ${
-        hydrated && isMobile ? "pb-24" : ""
-      }`}
-    >
-      <div className="w-full max-w-md bg-slate-50 shadow-2xl rounded-3xl overflow-hidden min-h-[650px] flex flex-col items-center justify-center relative border border-white">
-        <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-purple-500"></div>
-        {gameState === "start" && <StartScreen />}
-        {gameState === "playing" && <GameScreen />}
-        {gameState === "gameover" && <GameOverScreen />}
-        {gameState === "won" && <WinScreen />}
-        {gameState === "upi_input" && <UpiInputScreen />}
-        {gameState === "success" && <SuccessScreen />}
-      </div>
-    </div>
-  );
-
   return (
     <>
       <SEO title="Quiz & Earn — JobsAddah" />
-      <QuizContent />
+      <div
+        className={`min-h-screen bg-white flex items-center justify-center font-sans p-4 ${
+          hydrated && isMobile ? "pb-24" : ""
+        }`}
+      >
+        <div className="w-full max-w-md bg-slate-50 shadow-2xl rounded-3xl overflow-hidden min-h-162.5 flex flex-col items-center justify-center relative border border-white">
+          <div className="absolute top-0 w-full h-1 bg-linear-to-r from-blue-400 to-purple-500"></div>
+          {gameState === "start" && renderStartScreen()}
+          {gameState === "playing" && renderGameScreen()}
+          {gameState === "gameover" && renderGameOverScreen()}
+          {gameState === "won" && renderWinScreen()}
+          {gameState === "upi_input" && renderUpiInputScreen()}
+          {gameState === "success" && renderSuccessScreen()}
+        </div>
+      </div>
     </>
   );
 }

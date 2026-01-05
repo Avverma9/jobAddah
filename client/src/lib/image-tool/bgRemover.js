@@ -1,15 +1,16 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { ImageUploader } from './imageUploader'
 import { Card } from '@/components/ui/Card'
 import { Wand2, Eraser, Calendar, Undo2, Download, Save, MousePointer2 } from 'lucide-react'
 import { Slider } from './slider'
+import { drawDateOverlay } from './helpers'
 
 export const BgRemover = ({ sharedImage, setSharedImage }) => {
     const canvasRef = useRef(null);
     const workCanvasRef = useRef(null);
 
-    const [image, setImage] = useState(null);
+    const [image, setImage] = useState(sharedImage ?? null);
     const [history, setHistory] = useState([]);
 
     const [tool, setTool] = useState('magic');
@@ -27,35 +28,15 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
         bgSlate: '#222222'
     });
 
-    useEffect(() => {
-        if (sharedImage && !image) processLoadedImage(sharedImage);
-    }, [sharedImage]);
+    const saveState = useCallback(() => {
+        const wk = workCanvasRef.current;
+        if (!wk) return;
+        const ctx = wk.getContext('2d');
+        const data = ctx.getImageData(0, 0, wk.width, wk.height);
+        setHistory(prev => [...prev.slice(-4), data]);
+    }, []);
 
-    const processLoadedImage = (img) => {
-        setImage(img);
-        setHistory([]);
-        setLastMagicClick(null);
-        setTimeout(() => {
-            const w = img.width;
-            const h = img.height;
-
-            const wk = document.createElement('canvas');
-            wk.width = w; wk.height = h;
-            const wCtx = wk.getContext('2d');
-            wCtx.drawImage(img, 0, 0);
-            workCanvasRef.current = wk;
-
-            const canvas = canvasRef.current;
-            if (canvas) {
-                canvas.width = w;
-                canvas.height = h;
-                updateDisplay();
-                saveState();
-            }
-        }, 100);
-    };
-
-    const updateDisplay = () => {
+    const updateDisplay = useCallback(() => {
         const wk = workCanvasRef.current;
         const canvas = canvasRef.current;
         if (!wk || !canvas) return;
@@ -80,72 +61,38 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
                 dateSettings.bgSlate
             );
         }
-    };
+    }, [bgColor, dateSettings, isTransparent]);
 
-    useEffect(() => {
-        if (lastMagicClick && tool === 'magic') {
-            const wk = workCanvasRef.current;
-            const ctx = wk.getContext('2d');
-
-            ctx.putImageData(lastMagicClick.data, 0, 0);
-
-            applyMagicWand(ctx, lastMagicClick.data, lastMagicClick.x, lastMagicClick.y, tolerance);
-
-            updateDisplay();
-
-            setHistory(prev => {
-                const newHist = [...prev];
-                if (newHist.length > 0) {
-                    newHist[newHist.length - 1] = ctx.getImageData(0, 0, wk.width, wk.height);
-                }
-                return newHist;
-            });
-        }
-    }, [tolerance]);
-
-    useEffect(() => {
-        if (image) updateDisplay();
-    }, [dateSettings, bgColor, isTransparent]);
-
-    const saveState = () => {
-        const wk = workCanvasRef.current;
-        if (!wk) return;
-        const ctx = wk.getContext('2d');
-        const data = ctx.getImageData(0, 0, wk.width, wk.height);
-        setHistory(prev => [...prev.slice(-4), data]);
-    };
-
-    const undo = () => {
+    const processLoadedImage = useCallback((img) => {
+        setHistory([]);
         setLastMagicClick(null);
-        if (history.length <= 1) return;
-        const newHistory = [...history];
-        newHistory.pop();
-        const prevState = newHistory[newHistory.length - 1];
-        setHistory(newHistory);
+        setTimeout(() => {
+            const w = img.width;
+            const h = img.height;
 
-        const wk = workCanvasRef.current;
-        const ctx = wk.getContext('2d');
-        ctx.putImageData(prevState, 0, 0);
-        updateDisplay();
-    };
+            const wk = document.createElement('canvas');
+            wk.width = w; wk.height = h;
+            const wCtx = wk.getContext('2d');
+            wCtx.drawImage(img, 0, 0);
+            workCanvasRef.current = wk;
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    processLoadedImage(img);
-                    setSharedImage(img);
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+            const canvas = canvasRef.current;
+            if (canvas) {
+                canvas.width = w;
+                canvas.height = h;
+                updateDisplay();
+                saveState();
+            }
+        }, 100);
+    }, [saveState, updateDisplay]);
 
-    const applyMagicWand = (ctx, baseImageData, x, y, t) => {
+    useEffect(() => {
+        if (!image) return undefined;
+        const frame = requestAnimationFrame(() => processLoadedImage(image));
+        return () => cancelAnimationFrame(frame);
+    }, [image, processLoadedImage]);
+
+    const applyMagicWand = useCallback((ctx, baseImageData, x, y, t) => {
         const w = baseImageData.width;
         const h = baseImageData.height;
         const currentData = new ImageData(
@@ -180,6 +127,62 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
             }
         }
         ctx.putImageData(currentData, 0, 0);
+    }, []);
+
+    useEffect(() => {
+        if (lastMagicClick && tool === 'magic') {
+            const wk = workCanvasRef.current;
+            if (!wk) return;
+            const ctx = wk.getContext('2d');
+
+            ctx.putImageData(lastMagicClick.data, 0, 0);
+
+            applyMagicWand(ctx, lastMagicClick.data, lastMagicClick.x, lastMagicClick.y, tolerance);
+
+            updateDisplay();
+
+            setHistory(prev => {
+                const newHist = [...prev];
+                if (newHist.length > 0) {
+                    newHist[newHist.length - 1] = ctx.getImageData(0, 0, wk.width, wk.height);
+                }
+                return newHist;
+            });
+        }
+    }, [lastMagicClick, tool, tolerance, applyMagicWand, updateDisplay]);
+
+    useEffect(() => {
+        if (image) updateDisplay();
+    }, [image, updateDisplay]);
+
+    const undo = () => {
+        setLastMagicClick(null);
+        if (history.length <= 1) return;
+        const newHistory = [...history];
+        newHistory.pop();
+        const prevState = newHistory[newHistory.length - 1];
+        setHistory(newHistory);
+
+        const wk = workCanvasRef.current;
+        const ctx = wk.getContext('2d');
+        ctx.putImageData(prevState, 0, 0);
+        updateDisplay();
+    };
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    setImage(img);
+                    setSharedImage(img);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleCanvasClick = (e) => {
@@ -205,6 +208,7 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
 
     const getPos = (e) => {
         const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -235,6 +239,7 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
 
     const erase = (e) => {
         const wk = workCanvasRef.current;
+        if (!wk) return;
         const ctx = wk.getContext('2d');
         const { x, y } = getPos(e);
 
@@ -247,6 +252,7 @@ export const BgRemover = ({ sharedImage, setSharedImage }) => {
     };
 
     const downloadImage = () => {
+        if (!canvasRef.current) return;
         const link = document.createElement('a');
         link.download = 'removed-bg-edited.png';
         link.href = canvasRef.current.toDataURL('image/png');

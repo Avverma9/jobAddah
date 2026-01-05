@@ -1,12 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function useAuth() {
   const [user, setUser] = useState(null)
-
-  useEffect(() => {
-    // placeholder: restore user from localStorage or cookie
-    setUser(null)
-  }, [])
 
   return {
     user,

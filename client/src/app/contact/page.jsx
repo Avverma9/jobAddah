@@ -8,7 +8,7 @@ export default function ContactUs() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <SEO
         title="Contact Us | JobsAddah - Get in Touch"
-        description="Contact JobsAddah for any queries about government jobs, sarkari result, admit cards, or exam results. We're here to help you with your career journey."
+  description="Contact JobsAddah for any queries about government jobs, sarkari result, admit cards, or exam results. We&rsquo;re here to help you with your career journey."
         keywords="contact jobsaddah, sarkari result help, govt job query, career support, job portal contact"
   canonical="/contact"
         section="Contact"
@@ -26,7 +26,7 @@ export default function ContactUs() {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Contact Us</h1>
           <p className="text-xl text-blue-100">
-            Have questions or feedback? We'd love to hear from you!
+            Have questions or feedback? We&rsquo;d love to hear from you!
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default function ContactUs() {
             {[
               {
                 q: "What should I do if I found an error in a job listing?",
-                a: "Please contact us immediately via email with the job details and the error found. We'll verify and correct it.",
+                a: "Please contact us immediately via email with the job details and the error found. We&rsquo;ll verify and correct it.",
               },
               {
                 q: "Can I post a job on Jobsaddah?",

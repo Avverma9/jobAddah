@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useRef, useState, useEffect } from "react"
 
@@ -482,7 +483,7 @@ export default function Page() {
                <label className="photo-box">
                   <input type="file" accept="image/*" onChange={handleImageUpload} style={{display: 'none'}} />
                   {profileImage ? (
-                    <img src={profileImage} style={{width: 64, height: 64, borderRadius: '50%', objectFit: 'cover'}} />
+                    <img src={profileImage} alt="Uploaded profile preview" style={{width: 64, height: 64, borderRadius: '50%', objectFit: 'cover'}} />
                   ) : (
                     <div style={{padding: 12, background: '#e2e8f0', borderRadius: '50%'}}><Icons.Camera /></div>
                   )}
