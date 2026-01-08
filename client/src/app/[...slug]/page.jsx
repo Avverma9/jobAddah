@@ -1,13 +1,21 @@
-import JobDetailView from "@/components/job/JobDetailView";
+import JobDetailWrapper from "@/components/job/JobDetailWrapper";
 import { loadJobDetail } from "@/lib/job-detail-loader";
-import { pathFromSlugSegments } from "@/lib/job-url";
+import { buildCanonicalPath, pathFromSlugSegments } from "@/lib/job-url";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
 const getJobDetail = cache(async (slugSegments) => {
   const normalizedPath = pathFromSlugSegments(slugSegments);
   if (!normalizedPath) return null;
-  return loadJobDetail({ url: normalizedPath });
+  const resolved = await loadJobDetail({ url: normalizedPath });
+  if (resolved) return resolved;
+
+  return {
+    data: null,
+    canonicalPath: buildCanonicalPath(normalizedPath),
+    sourcePath: normalizedPath,
+    rawDocument: null,
+  };
 });
 
 export async function generateMetadata({ params }) {
@@ -46,15 +54,16 @@ export default async function JobSlugPage({ params }) {
   const resolvedParams = await params;
   const slugSegments = resolvedParams?.slug;
   const job = await getJobDetail(slugSegments);
-  if (!job?.data) {
+  if (!job) {
     notFound();
   }
 
   return (
-    <JobDetailView
-      data={job.data}
+    <JobDetailWrapper
+      initialData={job.data}
       canonicalPath={job.canonicalPath}
       sourcePath={job.sourcePath}
+      url={job.sourcePath}
     />
   );
 }

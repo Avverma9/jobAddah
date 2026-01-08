@@ -60,11 +60,15 @@ export async function fetchPostByUrlOrId({ url, id }) {
 }
 
 // ==================== GET POST DETAILS ====================
+export const maxDuration = 60; // seconds (platform-dependent) [web:25]
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export const getGovPostDetails = async (request) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const url = searchParams.get("url");
-    const id = searchParams.get("id");
+    const sp = request.nextUrl.searchParams;
+    const url = sp.get("url");
+    const id = sp.get("id");
 
     if (!url && !id) {
       return NextResponse.json(
@@ -73,19 +77,39 @@ export const getGovPostDetails = async (request) => {
       );
     }
 
-    const data = await findPostDocument({ url, id });
+    // 1) First attempt
+    let data = await findPostDocument({ url, id });
+    if (data) return NextResponse.json({ success: true, data }, { status: 200 });
 
-    if (!data) {
-      return NextResponse.json(
-        { success: false, error: "Post not found" },
-        { status: 404 }
-      );
+    // 2) Trigger scrape (don’t block on scraper doing everything)
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url, id }),
+      cache: "no-store",
+    }); // fetch usage [web:7]
+
+    // 3) Poll DB for completion
+    const timeoutMs = 25_000; // keep small to avoid timeouts
+    const intervalMs = 1_000;
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+      await sleep(intervalMs);
+      data = await findPostDocument({ url, id });
+      if (data) {
+        return NextResponse.json({ success: true, data }, { status: 200 });
+      }
     }
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    // 4) Still not ready → tell client to retry later
+    return NextResponse.json(
+      { success: false, status: "PROCESSING", error: "Scraping started, try again shortly." },
+      { status: 202 }
+    );
   } catch (err) {
     return NextResponse.json(
-      { success: false, error: err.message || "Internal server error" },
+      { success: false, error: err?.message || "Internal server error" },
       { status: 500 }
     );
   }
