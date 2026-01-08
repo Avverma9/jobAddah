@@ -184,9 +184,9 @@ exports.analyzeSmartDuplicates = async (req, res) => {
         }
 
         results.push({
-          similarity: simScore.toFixed(2),
-          keep: decision,
-          reason: "Auto decision based on data completeness",
+          similarity: sim.toFixed(2),
+          keep,
+          reason,
           deleted: shouldDelete,
 
           deletedPost: {
