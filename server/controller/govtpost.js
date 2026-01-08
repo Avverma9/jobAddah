@@ -26,32 +26,32 @@ const getGovPostDetails = async (req, res) => {
 
     let getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
 
-    if (!getData) {
-      const callUrl = originalUrl || url;
+    // if (!getData) {
+    //   const callUrl = originalUrl || url;
 
-      // Internal call to scraper logic
-      const scrapeResult = await new Promise((resolve) => {
-        const fakeReq = { body: { url: callUrl } };
-        const fakeRes = {
-          _status: 200,
-          status(code) { this._status = code; return this; },
-          json(payload) { resolve({ status: this._status, payload }); },
-          send(payload) { resolve({ status: this._status, payload }); },
-        };
-        try {
-          scrapper(fakeReq, fakeRes);
-        } catch (e) {
-          resolve({ status: 500, payload: null });
-        }
-      });
+    //   // Internal call to scraper logic
+    //   const scrapeResult = await new Promise((resolve) => {
+    //     const fakeReq = { body: { url: callUrl } };
+    //     const fakeRes = {
+    //       _status: 200,
+    //       status(code) { this._status = code; return this; },
+    //       json(payload) { resolve({ status: this._status, payload }); },
+    //       send(payload) { resolve({ status: this._status, payload }); },
+    //     };
+    //     try {
+    //       scrapper(fakeReq, fakeRes);
+    //     } catch (e) {
+    //       resolve({ status: 500, payload: null });
+    //     }
+    //   });
 
-      if (scrapeResult?.payload?.success) {
-        getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
-        if (getData) {
-          return res.status(200).json({ success: true, data: getData, createdByScrape: true });
-        }
-      }
-    }
+    //   if (scrapeResult?.payload?.success) {
+    //     getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
+    //     if (getData) {
+    //       return res.status(200).json({ success: true, data: getData, createdByScrape: true });
+    //     }
+    //   }
+    // }
 
     if (!getData) {
       return res.status(404).json({ success: false, error: "Post not found" });
