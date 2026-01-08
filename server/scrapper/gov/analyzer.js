@@ -1,16 +1,8 @@
 const Post = require("@/models/gov/govtpost");
 const axios = require("axios");
 
-/* =====================================================
-   CONFIG
-===================================================== */
-
-const USE_AI = false; // ⚠️ default false = LOW COST MODE
+const USE_AI = false;
 const SIMILARITY_THRESHOLD = 65;
-
-/* =====================================================
-   UTILS
-===================================================== */
 
 const normalize = (s = "") =>
   s
@@ -40,7 +32,6 @@ const isValidValue = (v) => {
 
 const countQualityScore = (obj = {}) => {
   let score = 0;
-
   const deepCheck = (o) => {
     if (!o || typeof o !== "object") return;
     for (const k in o) {
@@ -49,14 +40,18 @@ const countQualityScore = (obj = {}) => {
       if (typeof v === "object") deepCheck(v);
     }
   };
-
   deepCheck(obj);
   return score;
 };
 
-/* =====================================================
-   FAST DUPLICATE CHECK (NO AI)
-===================================================== */
+const getExamType = (title = "") => {
+  const t = title.toLowerCase();
+  if (t.includes("rrb")) return "RRB";
+  if (t.includes("so")) return "SO";
+  if (t.includes("po")) return "PO";
+  if (t.includes("clerk")) return "CLERK";
+  return "OTHER";
+};
 
 const basicDuplicateScore = (p1, p2) => {
   const title = textSimilarity(p1.recruitment?.title, p2.recruitment?.title);
@@ -65,13 +60,8 @@ const basicDuplicateScore = (p1, p2) => {
     p2.recruitment?.organization?.name
   );
   const url = textSimilarity(p1.url, p2.url);
-
-  return title * 0.6 + org * 0.25 + url * 0.15;
+  return title * 0.7 + url * 0.2 + org * 0.1;
 };
-
-/* =====================================================
-   OPTIONAL AI (PERPLEXITY)
-===================================================== */
 
 async function analyzeWithPerplexity({ older, newer }) {
   const apiKey = process.env.PERPLEXITY_API_KEY;
@@ -79,12 +69,6 @@ async function analyzeWithPerplexity({ older, newer }) {
 
   const prompt = `
 Compare two Indian govt job posts.
-Check EVERY section, key, value.
-
-Decide:
-- Are they duplicates?
-- Which one is better and why?
-
 Return STRICT JSON ONLY:
 {
   "isDuplicate": true|false,
@@ -118,15 +102,10 @@ ${JSON.stringify(newer, null, 2)}
   return JSON.parse(res.data.choices[0].message.content);
 }
 
-/* =====================================================
-   MAIN CONTROLLER
-===================================================== */
-
 exports.analyzeSmartDuplicates = async (req, res) => {
   try {
     const shouldDelete = req.query.delete === "true";
 
-    // ✅ ONLY LAST 1 MONTH DATA
     const ONE_MONTH_AGO = new Date();
     ONE_MONTH_AGO.setMonth(ONE_MONTH_AGO.getMonth() - 1);
 
@@ -150,29 +129,26 @@ exports.analyzeSmartDuplicates = async (req, res) => {
         const newer = posts[j];
         if (deleted.has(String(newer._id))) continue;
 
+        const exam1 = getExamType(older.recruitment?.title);
+        const exam2 = getExamType(newer.recruitment?.title);
+        if (exam1 !== exam2) continue;
+
         const sim = basicDuplicateScore(older, newer);
         if (sim < SIMILARITY_THRESHOLD) continue;
 
-        // 🔥 QUALITY CHECK (NO AI)
         const olderScore = countQualityScore(older.recruitment);
         const newerScore = countQualityScore(newer.recruitment);
 
         let keep = newerScore >= olderScore ? "NEWER" : "OLDER";
         let reason = "Auto decision based on data completeness";
 
-        // 🧠 OPTIONAL AI (only if very close)
         if (USE_AI && Math.abs(olderScore - newerScore) < 5) {
           try {
             const ai = await analyzeWithPerplexity({ older, newer });
-            if (ai?.isDuplicate) {
-              keep = ai.keep;
-              reason = ai.reason;
-            } else {
-              continue;
-            }
-          } catch (e) {
-            reason = "AI skipped (fallback to quality score)";
-          }
+            if (!ai?.isDuplicate) continue;
+            keep = ai.keep;
+            reason = ai.reason;
+          } catch {}
         }
 
         const deletePost = keep === "OLDER" ? newer : older;
@@ -188,14 +164,12 @@ exports.analyzeSmartDuplicates = async (req, res) => {
           keep,
           reason,
           deleted: shouldDelete,
-
           deletedPost: {
             id: deletePost._id,
             title: deletePost.recruitment?.title || "N/A",
             organization: deletePost.recruitment?.organization?.name || "N/A",
             createdAt: deletePost.createdAt,
           },
-
           keptPost: {
             id: keepPost._id,
             title: keepPost.recruitment?.title || "N/A",
@@ -218,7 +192,6 @@ exports.analyzeSmartDuplicates = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("Duplicate Analyzer Error:", err);
     res.status(500).json({
       success: false,
       error: err.message,
