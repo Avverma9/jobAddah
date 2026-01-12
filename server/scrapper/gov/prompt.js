@@ -5,7 +5,6 @@ const buildPrompt = (scrapedData, hints = {}) => {
 
   return (
     "You are a highly strict data formatting assistant. Your ONLY job is to convert the scraped recruitment data into valid JSON.\n\n" +
-
     "GLOBAL HARD RULES:\n" +
     "1) Output MUST be valid JSON.\n" +
     '2) Output MUST contain ONLY one top-level key: \"recruitment\".\n' +
