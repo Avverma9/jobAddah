@@ -12,7 +12,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./config/db");
 const router = require("./routes/index");
-const { initCategoryCron } = require('./scrapper/gov/runAutomatic');
+const { initCategoryCron, syncCategoriesAndJobs } = require('./scrapper/gov/runAutomatic');
 
 const app = express();
 
@@ -25,6 +25,7 @@ app.use(express.json({ limit: "2mb" }));
 initCategoryCron()
 
 app.use("/api/v1",router );
+app.use("/test-cron",syncCategoriesAndJobs)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
