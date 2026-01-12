@@ -9,6 +9,55 @@ const Site = require("@/models/gov/scrapperSite");
 const { buildPrompt } = require("./prompt");
 const getActiveAIConfig = require("@/utils/aiKey");
 
+const normalize = (s = "") =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const textSimilarity = (a, b) => {
+  if (!a || !b) return 0;
+  const A = new Set(normalize(a).split(" "));
+  const B = new Set(normalize(b).split(" "));
+  const common = [...A].filter((x) => B.has(x));
+  return (common.length / Math.max(A.size, B.size)) * 100;
+};
+
+const calculateSimilarityScore = (incoming, existing) => {
+  const titleScore = textSimilarity(
+    incoming.recruitment?.title,
+    existing.recruitment?.title
+  );
+  const orgScore = textSimilarity(
+    incoming.recruitment?.organization?.name,
+    existing.recruitment?.organization?.name
+  );
+  const urlScore = textSimilarity(incoming.url, existing.url);
+  return titleScore * 0.6 + orgScore * 0.3 + urlScore * 0.1;
+};
+
+const mergePostData = (existing, incoming) => {
+  const merged = { ...existing.toObject(), ...incoming };
+
+  if (
+    existing.recruitment?.importantLinks &&
+    incoming.recruitment?.importantLinks
+  ) {
+    merged.recruitment.importantLinks = {
+      ...existing.recruitment.importantLinks,
+      ...incoming.recruitment.importantLinks,
+    };
+  }
+
+  merged._id = existing._id;
+  merged.createdAt = existing.createdAt;
+  merged.updatedAt = new Date();
+  merged.url = incoming.url || existing.url;
+
+  return merged;
+};
+
 const cleanText = (text) => {
   if (!text) return "";
   return text.replace(/\s+/g, " ").replace(/\n+/g, " ").trim();
@@ -23,17 +72,11 @@ const ensureProtocol = (inputUrl) => {
   return clean;
 };
 
-// formatWithAI(scrapedData): builds prompt, runs Gemini or falls back to Perplexity
 const formatWithAI = async (scrapedData, hints = {}) => {
   try {
     const { provider, modelName, apiKey } = await getActiveAIConfig();
-
     const prompt = buildPrompt(scrapedData, hints);
 
-    // ===============================
-    // 🔹 GEMINI FLOW
-    // ===============================
-    console.log("Using AI Provider:", provider, "Model:", modelName, "API Key:", apiKey ? "Configured" : "Missing");
     if (provider === "gemini") {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
@@ -51,9 +94,6 @@ const formatWithAI = async (scrapedData, hints = {}) => {
       return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
     }
 
-    // ===============================
-    // 🔹 PERPLEXITY FLOW
-    // ===============================
     const pplResponse = await fetch(
       "https://api.perplexity.ai/chat/completions",
       {
@@ -103,7 +143,6 @@ const scrapper = async (req, res) => {
       return res.status(400).json({ error: "URL is required" });
     }
 
-    // If URL is relative (e.g., /ssc-delhi-police...), prepend the base site URL
     if (jobUrl.startsWith("/")) {
       const siteConfig = await Site.findOne().sort({ createdAt: -1 });
       if (!siteConfig || !siteConfig.url) {
@@ -111,7 +150,6 @@ const scrapper = async (req, res) => {
           .status(500)
           .json({ error: "Base site URL is not configured" });
       }
-      // Ensure base URL doesn't have a trailing slash before joining
       const baseUrl = siteConfig.url.endsWith("/")
         ? siteConfig.url.slice(0, -1)
         : siteConfig.url;
@@ -314,7 +352,6 @@ const scrapper = async (req, res) => {
       }
     });
 
-    // Extract deterministic important links heuristically so AI has real URLs to use
     const extractImportantLinks = (sd) => {
       const hints = {
         applyOnline: "",
@@ -364,7 +401,6 @@ const scrapper = async (req, res) => {
           hints.shortNotice = href;
         }
 
-        // prefer same-host links as official website
         if (!hints.officialWebsite && urlHost) {
           try {
             const linkHost = new url.URL(href).host;
@@ -372,7 +408,6 @@ const scrapper = async (req, res) => {
           } catch (e) {}
         }
 
-        // last resort: if pdf found and no notification yet
         if (!hints.officialNotification && hrefLower.endsWith(".pdf")) {
           hints.officialNotification = href;
         }
@@ -382,8 +417,6 @@ const scrapper = async (req, res) => {
     };
 
     const hints = extractImportantLinks(scrapedData);
-
-    // Pass scrapedData + hints to AI
     const formattedData = await formatWithAI(scrapedData, hints);
 
     if (!formattedData) {
@@ -391,23 +424,15 @@ const scrapper = async (req, res) => {
         .status(500)
         .json({ success: false, error: "Failed to format data with AI" });
     }
-    // jobUrl me domain ho sakta hai – jaise https://sarkariresult.com.cm/xyz
-    let cleanUrl = jobUrl;
 
-    // 1️⃣ Try to remove domain using URL()
+    let cleanUrl = jobUrl;
     try {
       const parsed = new URL(jobUrl);
-      cleanUrl = parsed.pathname; // "/xyz"
-    } catch (err) {
-      // If jobUrl is already a pathname, ignore
-      console.warn("Invalid URL, using as-is:", jobUrl);
-    }
+      cleanUrl = parsed.pathname;
+    } catch (err) {}
 
-    // 2️⃣ Ensure formattedData me cleanUrl daal do
     formattedData.url = cleanUrl;
 
-    // Post-process importantLinks: replace anchor-text placeholders (e.g., "Click Here")
-    // with deterministic hints when possible.
     try {
       const outLinks = formattedData?.recruitment?.importantLinks || {};
       for (const key of Object.keys(outLinks)) {
@@ -420,33 +445,58 @@ const scrapper = async (req, res) => {
           lower === "here" ||
           lower === "click";
         if (isPlaceholder) {
-          // map key names from AI to our hints keys where possible
           const hintKey =
             key in hints ? key : key.replace(/([A-Z])/g, "_$1").toLowerCase();
           if (hints[hintKey]) {
             formattedData.recruitment.importantLinks[key] = hints[hintKey];
           } else {
-            // try to use any non-empty hint value
             const anyHint = Object.values(hints).find((h) => h && h.length > 0);
             formattedData.recruitment.importantLinks[key] = anyHint || "";
           }
         }
       }
-    } catch (e) {
-      // don't fail the whole scrape for link-fix errors
-      console.warn("importantLinks post-process failed:", e.message);
+    } catch (e) {}
+
+    let existingPost = await Post.findOne({ url: cleanUrl });
+
+    if (!existingPost) {
+      const TWO_MONTHS_AGO = new Date();
+      TWO_MONTHS_AGO.setMonth(TWO_MONTHS_AGO.getMonth() - 2);
+
+      const recentPosts = await Post.find({
+        updatedAt: { $gte: TWO_MONTHS_AGO },
+      })
+        .select("recruitment.title recruitment.organization.name url createdAt")
+        .lean();
+
+      for (const post of recentPosts) {
+        const score = calculateSimilarityScore(formattedData, post);
+        if (score > 65) {
+          existingPost = await Post.findById(post._id);
+          break;
+        }
+      }
     }
 
-    await Post.findOneAndUpdate(
-      { url: cleanUrl }, // DB me sirf path save karna hai
-      { $set: formattedData },
-      { upsert: true, new: true }
-    );
+    let savedPost;
+    let actionType = "";
+
+    if (existingPost) {
+      const mergedData = mergePostData(existingPost, formattedData);
+      Object.assign(existingPost, mergedData);
+      savedPost = await existingPost.save();
+      actionType = "PATCHED_EXISTING";
+    } else {
+      savedPost = await new Post(formattedData).save();
+      actionType = "CREATED_NEW";
+    }
 
     res.json({
       success: true,
+      action: actionType,
+      id: savedPost._id,
       timestamp: new Date().toISOString(),
-      formatted: formattedData,
+      formatted: savedPost,
     });
   } catch (error) {
     console.error("Scraper Error:", error);
@@ -458,8 +508,6 @@ const getCategories = async (req, res) => {
   try {
     const siteUrl = await Site.find();
     const rawUrl = siteUrl[0].url;
-
-    console.log(siteUrl);
 
     const targetUrl = ensureProtocol(rawUrl);
     if (!targetUrl) return res.status(400).json({ error: "Invalid URL" });
@@ -551,7 +599,6 @@ const scrapeCategory = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 module.exports = {
   scrapper,
