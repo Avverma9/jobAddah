@@ -1,5 +1,4 @@
 import FavJobsPreview from "@/app/fav-jobs/page";
-import Welcome from "./welcome/page";
 import { HorizontalAd } from "@/components/ads/AdUnits";
 import Link from "next/link";
 
@@ -19,9 +18,7 @@ export default function Home() {
           className="w-full"
         />
 
-        <FavJobsPreview limit={3} />
-
-        <Welcome />
+  <FavJobsPreview limit={3} />
 
         {/* SEO Content Section - Critical for AdSense "Low Value Content" fix */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-slate-700">

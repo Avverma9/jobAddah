@@ -21,43 +21,119 @@ import {
   Briefcase,
   ChevronRight,
   GripHorizontal,
+  Timer,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { resolveJobDetailHref } from "@/lib/job-url";
 
+/* -------------------- date helpers -------------------- */
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function toDateSafe(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// (optional) parse dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy from title
+function parseDateFromTitle(title = "") {
+  const t = String(title || "").trim();
+  const m = t.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/);
+  if (!m) return null;
+
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  const yyyy = Number(m[3]);
+  if (!dd || !mm || !yyyy) return null;
+
+  const d = new Date(yyyy, mm - 1, dd);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function isNewWithinDays(createdAt, updatedAt, days = 3) {
+  const d = toDateSafe(createdAt) || toDateSafe(updatedAt);
+  if (!d) return false;
+  const diffDays = (Date.now() - d.getTime()) / MS_PER_DAY;
+  return diffDays >= 0 && diffDays <= days;
+}
+
+function isDueSoon(lastDate, title = "", days = 3) {
+  const d = toDateSafe(lastDate) || parseDateFromTitle(title);
+  if (d) {
+    const diffDays = (d.getTime() - Date.now()) / MS_PER_DAY;
+    return diffDays >= 0 && diffDays <= days;
+  }
+
+  // fallback keywords
+  const t = (title || "").toLowerCase();
+  if (t.includes("last date today")) return true;
+  if (t.includes("last date tomorrow")) return true;
+
+  return false;
+}
+
+/* -------------------- JobRow -------------------- */
 // Memoized JobRow - prevents re-renders when parent updates
 const JobRow = memo(function JobRow({ job }) {
   const [isSaved, setIsSaved] = useState(false);
 
   const jobHref = useMemo(
-    () => resolveJobDetailHref({ url: job.link || job.url, id: job._id || job.id }),
+    () =>
+      resolveJobDetailHref({
+        url: job.link || job.url,
+        id: job._id || job.id,
+      }),
     [job.link, job.url, job._id, job.id]
+  );
+
+  const showNew = useMemo(
+    () => isNewWithinDays(job.createdAt, job.updatedAt, 3),
+    [job.createdAt, job.updatedAt]
+  );
+
+  const showTimer = useMemo(
+    () => isDueSoon(job.lastDate, job.title, 3),
+    [job.lastDate, job.title]
   );
 
   const handleSaveClick = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsSaved(prev => !prev);
+    setIsSaved((prev) => !prev);
   }, []);
 
   return (
     <li className="group/item flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50/50 transition-all border border-transparent hover:border-indigo-100">
-      <Link
-        href={jobHref}
-        className="flex items-center gap-3 grow min-w-0"
-      >
+      <Link href={jobHref} className="flex items-center gap-3 grow min-w-0">
         <div className="p-1.5 bg-gray-100 group-hover/item:bg-indigo-100 rounded-md transition-colors">
           <ChevronRight
             size={14}
             className="text-gray-400 group-hover/item:text-indigo-600"
           />
         </div>
-        <p className="text-[13px] font-medium text-gray-700 group-hover/item:text-indigo-700 truncate">
-          {job.title}
+
+        <p className="text-[13px] font-medium text-gray-700 group-hover/item:text-indigo-700 truncate flex items-center gap-2 min-w-0">
+          <span className="truncate">{job.title}</span>
+
+          {/* {showNew && (
+            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+              NEW
+            </span>
+          )} */}
         </p>
       </Link>
+
       <div className="flex items-center gap-2 pl-2">
+        {showTimer && (
+          <span
+            className="p-1.5 rounded-full bg-rose-50 text-rose-600"
+            title="Last date is near"
+          >
+            <Timer size={16} />
+          </span>
+        )}
+
         <button
           onClick={handleSaveClick}
           className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
@@ -77,35 +153,60 @@ const JobRow = memo(function JobRow({ job }) {
   );
 });
 
+/* -------------------- CategoryCard -------------------- */
 // Memoized CategoryCard - only re-renders when cat data changes
-const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverlay = false }) {
+const CategoryCard = memo(function CategoryCard({
+  cat,
+  dragHandleProps,
+  isOverlay = false,
+}) {
   const INITIAL_LIMIT = 15;
 
   const uniqueJobs = useMemo(() => {
     const jobs = [];
     const seen = new Set();
-    
+
     (cat.data || []).forEach((post) => {
       if (Array.isArray(post.jobs)) {
         post.jobs.forEach((j) => {
           if (j?.title && !seen.has(j.title)) {
             seen.add(j.title);
-            jobs.push({ 
-              title: j.title, 
-              link: j.link || post.url,
-              id: `${j.title}-${j.link || post.url}` // Unique ID for key
+
+            const link = j.link || post.url;
+
+            jobs.push({
+              title: j.title,
+              link,
+              createdAt: j.createdAt || post.createdAt,
+              updatedAt: j.updatedAt || post.updatedAt,
+
+              // try multiple locations for lastDate
+              lastDate:
+                j.lastDate ||
+                j?.recruitment?.importantDates?.lastDate ||
+                post.lastDate ||
+                post?.recruitment?.importantDates?.lastDate ||
+                null,
+
+              id: `${j.title}-${link}`,
             });
           }
         });
-      } else if (post.title && !seen.has(post.title)) {
+      } else if (post?.title && !seen.has(post.title)) {
         seen.add(post.title);
-        jobs.push({ 
-          title: post.title, 
+
+        jobs.push({
+          title: post.title,
           link: post.url,
-          id: `${post.title}-${post.url}`
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt,
+          lastDate:
+            post.lastDate || post?.recruitment?.importantDates?.lastDate || null,
+          id: `${post.title}-${post.url}`,
         });
       }
     });
+
     return jobs;
   }, [cat.data]);
 
@@ -130,7 +231,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
       }`}
     >
       <div
-  className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 flex items-center gap-3 relative overflow-hidden group/header cursor-grab active:cursor-grabbing"
+        className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 flex items-center gap-3 relative overflow-hidden group/header cursor-grab active:cursor-grabbing"
         {...dragHandleProps}
       >
         <div className="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
@@ -143,7 +244,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
           <div className="p-1.5 bg-indigo-500/20 rounded-lg backdrop-blur-sm border border-white/10">
             <Briefcase size={16} className="text-indigo-300" />
           </div>
-    <div className="grow">
+          <div className="grow">
             <h3 className="text-white font-semibold text-sm tracking-wide leading-none mb-1">
               {cat.name}
             </h3>
@@ -154,7 +255,7 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
         </div>
       </div>
 
-  <div className="p-2 grow bg-white min-h-50">
+      <div className="p-2 grow bg-white min-h-50">
         <ul className="space-y-1">
           {visibleJobs.map((job) => (
             <JobRow key={job.id} job={job} />
@@ -182,28 +283,29 @@ const CategoryCard = memo(function CategoryCard({ cat, dragHandleProps, isOverla
   );
 });
 
+/* -------------------- SortableCategoryItem -------------------- */
 // Memoized SortableItem - prevents unnecessary re-renders during drag
 const SortableCategoryItem = memo(function SortableCategoryItem({ cat, id }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
 
-  const style = useMemo(() => ({
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-    zIndex: isDragging ? 99 : "auto",
-  }), [transform, transition, isDragging]);
+  const style = useMemo(
+    () => ({
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.3 : 1,
+      zIndex: isDragging ? 99 : "auto",
+    }),
+    [transform, transition, isDragging]
+  );
 
-  const dragHandleProps = useMemo(() => ({
-    ...attributes,
-    ...listeners,
-  }), [attributes, listeners]);
+  const dragHandleProps = useMemo(
+    () => ({
+      ...attributes,
+      ...listeners,
+    }),
+    [attributes, listeners]
+  );
 
   return (
     <div ref={setNodeRef} style={style} className="h-full">
@@ -212,7 +314,7 @@ const SortableCategoryItem = memo(function SortableCategoryItem({ cat, id }) {
   );
 });
 
-// Debounced localStorage save
+/* -------------------- Debounced localStorage save -------------------- */
 function useDebouncedLocalStorage(key, value, delay = 500) {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -235,6 +337,7 @@ function SectionWithSortableGrid({ section }) {
       `jobsaddah-cat-order-${section._id}`
     );
     let frame;
+
     if (savedOrder && section.categories) {
       try {
         const orderIds = JSON.parse(savedOrder);
@@ -250,6 +353,7 @@ function SectionWithSortableGrid({ section }) {
         console.error("Failed to parse saved order:", err);
       }
     }
+
     return () => {
       if (frame) cancelAnimationFrame(frame);
     };
@@ -273,6 +377,13 @@ function SectionWithSortableGrid({ section }) {
 
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
+
+    // guard: over can be null
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
+
     if (active.id !== over.id) {
       setCategories((items) => {
         const oldIndex = items.findIndex(
@@ -284,6 +395,7 @@ function SectionWithSortableGrid({ section }) {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
+
     setActiveId(null);
   }, []);
 
@@ -389,6 +501,7 @@ export default function SectionsWithPosts({ sections }) {
     async function fetchSections() {
       setLoading(true);
       setShowEmpty(false);
+
       try {
         const res = await fetch("/api/gov/sections-with-posts", {
           signal: controller.signal,
@@ -424,12 +537,16 @@ export default function SectionsWithPosts({ sections }) {
     };
   }, [sectionsProvided, sections]);
 
-  if (loading || (!Array.isArray(localSections) && !error) || (localSections?.length === 0 && !showEmpty && !error)) {
+  if (
+    loading ||
+    (!Array.isArray(localSections) && !error) ||
+    (localSections?.length === 0 && !showEmpty && !error)
+  ) {
     return <SectionsSkeleton />;
   }
-  
+
   if (error) return <p className="text-center py-12 text-red-500">{error}</p>;
-  
+
   if (Array.isArray(localSections) && localSections.length === 0 && showEmpty) {
     return (
       <p className="text-center py-20 text-gray-500">No sections available.</p>
