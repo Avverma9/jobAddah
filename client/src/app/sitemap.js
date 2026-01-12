@@ -19,9 +19,9 @@ const STATIC_ROUTES = [
   { path: "/contact", changeFrequency: "monthly", priority: 0.5 },
   { path: "/policy", changeFrequency: "yearly", priority: 0.4 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.4 },
-  { path: "/login", changeFrequency: "monthly", priority: 0.3 },
-  { path: "/register", changeFrequency: "monthly", priority: 0.3 },
 ];
+
+const EXCLUDED_STATIC_PATHS = new Set(["/login", "/register"]);
 
 const toIsoString = (value) => {
   const date = value ? new Date(value) : new Date();
@@ -37,7 +37,9 @@ export default async function sitemap() {
 
   const seenUrls = new Set();
 
-  const staticEntries = STATIC_ROUTES.map((route) => {
+  const staticEntries = STATIC_ROUTES.filter(
+    (route) => !EXCLUDED_STATIC_PATHS.has(route.path)
+  ).map((route) => {
     const path = route.path === "/" ? "" : route.path;
     const url = `${baseUrl}${path}`;
     seenUrls.add(url);
