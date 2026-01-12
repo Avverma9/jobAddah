@@ -38,22 +38,47 @@ const calculateSimilarityScore = (incoming, existing) => {
 };
 
 const mergePostData = (existing, incoming) => {
-  const merged = { ...existing.toObject(), ...incoming };
+  const merged = existing.toObject();
 
-  if (
-    existing.recruitment?.importantLinks &&
-    incoming.recruitment?.importantLinks
-  ) {
+  if (incoming.url) {
+    merged.url = incoming.url;
+  }
+
+  if (incoming.recruitment?.title) {
+    merged.recruitment.title = incoming.recruitment.title;
+  }
+
+  if (incoming.recruitment?.organization) {
+    merged.recruitment.organization = {
+      ...merged.recruitment.organization,
+      ...incoming.recruitment.organization,
+    };
+  }
+
+  if (incoming.recruitment?.importantLinks) {
     merged.recruitment.importantLinks = {
-      ...existing.recruitment.importantLinks,
+      ...(merged.recruitment.importantLinks || {}),
       ...incoming.recruitment.importantLinks,
     };
   }
 
-  merged._id = existing._id;
-  merged.createdAt = existing.createdAt;
+  const fieldsToUpdate = [
+    "importantDates",
+    "vacancyDetails",
+    "applicationFee",
+    "ageLimit",
+    "eligibility",
+    "selectionProcess",
+    "documentation",
+  ];
+
+  fieldsToUpdate.forEach((field) => {
+    if (incoming.recruitment?.[field]) {
+      merged.recruitment[field] = incoming.recruitment[field];
+    }
+  });
+
   merged.updatedAt = new Date();
-  merged.url = incoming.url || existing.url;
 
   return merged;
 };
@@ -425,6 +450,7 @@ const scrapper = async (req, res) => {
         .json({ success: false, error: "Failed to format data with AI" });
     }
 
+    const originalUrl = jobUrl;
     let cleanUrl = jobUrl;
     try {
       const parsed = new URL(jobUrl);
@@ -432,6 +458,7 @@ const scrapper = async (req, res) => {
     } catch (err) {}
 
     formattedData.url = cleanUrl;
+    formattedData.sourceUrl = originalUrl;
 
     try {
       const outLinks = formattedData?.recruitment?.importantLinks || {};
@@ -483,11 +510,22 @@ const scrapper = async (req, res) => {
 
     if (existingPost) {
       const mergedData = mergePostData(existingPost, formattedData);
-      Object.assign(existingPost, mergedData);
-      savedPost = await existingPost.save();
+
+      existingPost.set(mergedData); // or Object.assign(existingPost, mergedData) [web:3]
+      existingPost.set({
+        url: cleanUrl,
+        sourceUrl: originalUrl,
+        updatedAt: new Date(),
+      });
+
+      savedPost = await existingPost.save(); // save() ensures update happens [web:4]
       actionType = "PATCHED_EXISTING";
     } else {
-      savedPost = await new Post(formattedData).save();
+      savedPost = await new Post({
+        ...formattedData,
+        url: cleanUrl,
+        sourceUrl: originalUrl,
+      }).save();
       actionType = "CREATED_NEW";
     }
 
