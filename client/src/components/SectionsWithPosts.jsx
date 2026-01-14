@@ -73,6 +73,52 @@ function isDueSoon(lastDate, title = "", days = 3) {
   return false;
 }
 
+/* -------------------- category ordering helpers -------------------- */
+const DEFAULT_CATEGORY_ORDER = [
+  "Result",
+  "Admit Card",
+  "Latest Job",
+  "Admission",
+  "Syllabus",
+  "Answer Key",
+];
+
+const createOrderMap = (order = []) => {
+  const map = new Map();
+  order.forEach((value, index) => {
+    if (value === undefined || value === null) return;
+    const key = typeof value === "string" ? value : String(value);
+    map.set(key.toLowerCase(), index);
+  });
+  return map;
+};
+
+const DEFAULT_ORDER_MAP = createOrderMap(DEFAULT_CATEGORY_ORDER);
+
+const getCategoryKey = (cat) =>
+  String(cat?.name || cat?._id || "").toLowerCase();
+
+const sortCategoriesByOrder = (
+  categories = [],
+  orderMap = DEFAULT_ORDER_MAP
+) => {
+  if (!categories?.length || !orderMap?.size) {
+    return [...(categories || [])];
+  }
+
+  return [...categories].sort((a, b) => {
+    const idxA = orderMap.get(getCategoryKey(a));
+    const idxB = orderMap.get(getCategoryKey(b));
+    const safeIdxA =
+      typeof idxA === "number" ? idxA : Number.MAX_SAFE_INTEGER;
+    const safeIdxB =
+      typeof idxB === "number" ? idxB : Number.MAX_SAFE_INTEGER;
+
+    if (safeIdxA === safeIdxB) return 0;
+    return safeIdxA - safeIdxB;
+  });
+};
+
 /* -------------------- JobRow -------------------- */
 // Memoized JobRow - prevents re-renders when parent updates
 const JobRow = memo(function JobRow({ job }) {
@@ -328,31 +374,37 @@ function useDebouncedLocalStorage(key, value, delay = 500) {
 }
 
 function SectionWithSortableGrid({ section }) {
-  const [categories, setCategories] = useState(section.categories || []);
+  const [categories, setCategories] = useState(() =>
+    sortCategoriesByOrder(section.categories || [], DEFAULT_ORDER_MAP)
+  );
   const [activeId, setActiveId] = useState(null);
 
   // Load saved order once on mount
   useEffect(() => {
-    const savedOrder = localStorage.getItem(
-      `jobsaddah-cat-order-${section._id}`
-    );
+    const storageKey = `jobsaddah-cat-order-${section._id}`;
+    const savedOrder = localStorage.getItem(storageKey);
     let frame;
 
-    if (savedOrder && section.categories) {
+    const applyOrder = (orderMap) => {
+      if (!section.categories?.length) return;
+      frame = requestAnimationFrame(() => {
+        setCategories(sortCategoriesByOrder(section.categories, orderMap));
+      });
+    };
+
+    if (savedOrder) {
       try {
         const orderIds = JSON.parse(savedOrder);
-        const sorted = [...section.categories].sort((a, b) => {
-          const indexA = orderIds.indexOf(a.name || a._id);
-          const indexB = orderIds.indexOf(b.name || b._id);
-          if (indexA === -1) return 1;
-          if (indexB === -1) return -1;
-          return indexA - indexB;
-        });
-        frame = requestAnimationFrame(() => setCategories(sorted));
+        applyOrder(createOrderMap(orderIds));
+        return () => {
+          if (frame) cancelAnimationFrame(frame);
+        };
       } catch (err) {
         console.error("Failed to parse saved order:", err);
       }
     }
+
+    applyOrder(DEFAULT_ORDER_MAP);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
