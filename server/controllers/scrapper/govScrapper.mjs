@@ -9,10 +9,6 @@ import Site from "../../models/govJob/scrapperSite.mjs";
 import getActiveAIConfig from "../../utils/aiKey.mjs";
 import buildPrompt from "./prompt.mjs";
 
-/* =====================================================
-   BASIC UTILS
-===================================================== */
-
 const cleanText = (t) =>
   (t || "").replace(/\s+/g, " ").replace(/,/g, "").trim();
 
@@ -28,18 +24,10 @@ const INVALID_VALUES = [
   "n/a",
 ];
 
-/* =====================================================
-   STABLE HASH (ONLY MEANINGFUL CONTENT)
-===================================================== */
-
 const generateStableHash = ($) => {
   const text = cleanText($("body").find("table, p, li").text());
   return crypto.createHash("md5").update(text).digest("hex");
 };
-
-/* =====================================================
-   AI PROMPT
-===================================================== */
 
 const minifyDataForAI = (scrapedData) => ({
   url: scrapedData.url,
@@ -62,10 +50,6 @@ const minifyDataForAI = (scrapedData) => ({
   links: scrapedData.links.map((l) => ({ text: l.text, href: l.href })),
 });
 
-/* =====================================================
-   AI (ONLY FOR NEW POST)
-===================================================== */
-
 const formatWithAI = async (scrapedData) => {
   const { apiKey, modelName } = await getActiveAIConfig();
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -78,10 +62,6 @@ const formatWithAI = async (scrapedData) => {
   const res = await model.generateContent(prompt);
   return JSON.parse(res.response.text());
 };
-
-/* =====================================================
-   HTML SCRAPER
-===================================================== */
 
 const scrapeHTML = ($, jobUrl) => {
   const data = {
@@ -144,24 +124,13 @@ const scrapeHTML = ($, jobUrl) => {
   return data;
 };
 
-/* =====================================================
-   AI-FREE UPDATE DETECTION
-===================================================== */
-
 const UPDATE_SIGNALS = [
   { key: "examDate", regex: /exam\s*date\s*[:\-]?\s*(.+)/i },
-  {
-    key: "resultDate",
-    regex: /result\s*(date|declared|released)\s*[:\-]?\s*(.+)/i,
-  },
-  {
-    key: "admitCardDate",
-    regex: /admit\s*card\s*(date|released)\s*[:\-]?\s*(.+)/i,
-  },
-  {
-    key: "answerKeyReleaseDate",
-    regex: /answer\s*key\s*(date|released)\s*[:\-]?\s*(.+)/i,
-  },
+  { key: "resultDate", regex: /result\s*(date|declared|released)\s*[:\-]?\s*(.+)/i },
+  { key: "admitCardDate", regex: /admit\s*card\s*(date|released)\s*[:\-]?\s*(.+)/i },
+  { key: "answerKeyReleaseDate", regex: /answer\s*key\s*(date|released)\s*[:\-]?\s*(.+)/i },
+  { key: "correctionDate", regex: /correction\s*(date|window)\s*[:\-]?\s*(.+)/i },
+  { key: "applicationLastDate", regex: /(last|closing)\s*date\s*[:\-]?\s*(.+)/i },
 ];
 
 const detectUpdatesFromHTML = ($, post) => {
@@ -186,16 +155,11 @@ const detectUpdatesFromHTML = ($, post) => {
   return updates;
 };
 
-/* =====================================================
-   MAIN CONTROLLER (🚀 ULTRA FAST 🚀)
-===================================================== */
-
 const scrapper = async (req, res) => {
   try {
     let jobUrl = req.body.url;
     if (!jobUrl) return res.status(400).json({ error: "URL Required" });
 
-    // Handle relative URLs
     if (jobUrl.startsWith("/")) {
       const site = await Site.findOne().sort({ createdAt: -1 }).lean();
       jobUrl = site.url.replace(/\/$/, "") + jobUrl;
@@ -204,8 +168,6 @@ const scrapper = async (req, res) => {
     const u = new URL(jobUrl);
     const cleanUrl = u.origin + u.pathname;
 
-    // 🚀 PRIORITY 1: INSTANT DB CHECK (MINIMAL PROJECTION)
-    // Only fetch _id and pageHash for lightning-fast lookup
     const existingCheck = await Post.findOne(
       { $or: [{ url: cleanUrl }, { sourceUrl: jobUrl }] },
       { _id: 1, pageHash: 1 }
@@ -213,9 +175,7 @@ const scrapper = async (req, res) => {
       .lean()
       .select("_id pageHash");
 
-    // 🚀 IF EXISTS: FETCH IMMEDIATELY AND RETURN
     if (existingCheck) {
-      // Fetch full document in parallel with page fetch
       const [fullPost, response] = await Promise.all([
         Post.findById(existingCheck._id).lean(),
         axios.get(jobUrl, {
@@ -224,28 +184,23 @@ const scrapper = async (req, res) => {
         }),
       ]);
 
-      // ✅ INSTANT RETURN - User gets data immediately
       res.json({
         success: true,
         action: "EXISTING_DATA",
         data: fullPost,
       });
 
-      // 🔄 BACKGROUND: Check for updates asynchronously (non-blocking)
       setImmediate(async () => {
         try {
           const $ = cheerio.load(response.data);
           const pageHash = generateStableHash($);
 
-          // If hash matches, no updates needed
           if (existingCheck.pageHash === pageHash) {
             return;
           }
 
-          // Detect updates
           const updates = detectUpdatesFromHTML($, fullPost);
 
-          // If no meaningful updates, just update hash
           if (!Object.keys(updates).length) {
             await Post.updateOne(
               { _id: existingCheck._id },
@@ -254,7 +209,6 @@ const scrapper = async (req, res) => {
             return;
           }
 
-          // Apply updates
           const updateObj = {};
           for (const [key, value] of Object.entries(updates)) {
             updateObj[`recruitment.importantDates.${key}`] = value;
@@ -263,17 +217,14 @@ const scrapper = async (req, res) => {
           updateObj.updatedAt = new Date();
 
           await Post.updateOne({ _id: existingCheck._id }, { $set: updateObj });
-
-          console.log(`✅ Background update completed for: ${cleanUrl}`);
         } catch (bgError) {
-          console.error("Background update failed:", bgError);
+          console.error("Background update failed:", bgError.message);
         }
       });
 
-      return; // Exit after sending response
+      return;
     }
 
-    // 🆕 NEW POST: Full scraping + AI processing
     const response = await axios.get(jobUrl, {
       headers: { "User-Agent": "Mozilla/5.0" },
       timeout: 20000,
@@ -296,8 +247,11 @@ const scrapper = async (req, res) => {
       data: saved,
     });
   } catch (e) {
-    console.error("Scrapper Error:", e);
-    res.status(500).json({ error: e.message });
+    console.error("Scrapper Error:", e.message);
+    res.status(500).json({
+      success: false,
+      error: e.message,
+    });
   }
 };
 

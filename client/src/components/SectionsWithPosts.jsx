@@ -469,6 +469,7 @@ function SectionWithSortableGrid({ section }) {
   return (
     <div className="mb-12">
       <DndContext
+        id={section._id}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
