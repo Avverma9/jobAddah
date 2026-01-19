@@ -15,31 +15,15 @@ export const decodeBase64Url = (str) => {
 
 
 
-import CryptoJS from "crypto-js";
+import api from "./api";
 
-// SAME SECRET JO BACKEND .env me use kar rahe ho
-const SECRET =  "12345678901234567890123456789012";; 
-
-export function decryptResponse({ iv, data }) {
+export async function decryptResponse({ iv, data }) {
   try {
-    const key = CryptoJS.SHA256(SECRET);  
-    const ivWordArray = CryptoJS.enc.Hex.parse(iv);
-
-    const decrypted = CryptoJS.AES.decrypt(
-      { ciphertext: CryptoJS.enc.Hex.parse(data) },
-      key,
-      {
-        iv: ivWordArray,
-        mode: CryptoJS.mode.CTR,
-        padding: CryptoJS.pad.NoPadding,
-      }
-    );
-
-    const jsonString = decrypted.toString(CryptoJS.enc.Utf8);
-
-    return JSON.parse(jsonString);
+    // Delegate decryption to backend which keeps the SECRET in server-side env.
+    const res = await api.post("/decrypt", { iv, data });
+    return res.data;
   } catch (error) {
-    console.error("❌ Decryption failed:", error);
+    console.error("❌ Decryption via backend failed:", error);
     return null;
   }
 }
