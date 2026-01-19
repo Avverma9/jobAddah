@@ -1,4 +1,4 @@
-import JobDetailWrapper from "@/components/job/JobDetailWrapper";
+import JobDetailServer from "@/components/job/JobDetailServer";
 import { loadJobDetail } from "@/lib/job-detail-loader";
 import { buildCanonicalPath, pathFromSlugSegments } from "@/lib/job-url";
 import { notFound } from "next/navigation";
@@ -58,12 +58,8 @@ export default async function JobSlugPage({ params }) {
     notFound();
   }
 
+  const plainData = job.data ? JSON.parse(JSON.stringify(job.data)) : null;
   return (
-    <JobDetailWrapper
-      initialData={job.data}
-      canonicalPath={job.canonicalPath}
-      sourcePath={job.sourcePath}
-      url={job.sourcePath}
-    />
+    <JobDetailServer data={plainData} canonicalPath={job.canonicalPath} sourcePath={job.sourcePath} />
   );
 }

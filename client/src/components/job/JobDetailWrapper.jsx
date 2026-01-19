@@ -31,7 +31,9 @@ export default function JobDetailWrapper({
   url,
   id,
 }) {
-  const [data, setData] = useState(initialData ?? null);
+  const [data, setData] = useState(
+    initialData ? extractRecruitmentData(initialData) : null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(30);

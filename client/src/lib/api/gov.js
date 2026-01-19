@@ -77,32 +77,36 @@ export const getGovPostDetails = async (request) => {
       );
     }
 
-    // 1) First attempt
-    let data = await findPostDocument({ url, id });
-    if (data) return NextResponse.json({ success: true, data }, { status: 200 });
-
-    // 2) Trigger scrape (don’t block on scraper doing everything)
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url, id }),
-      cache: "no-store",
-    }); // fetch usage [web:7]
-
-    // 3) Poll DB for completion
-    const timeoutMs = 25_000; // keep small to avoid timeouts
-    const intervalMs = 1_000;
-    const start = Date.now();
-
-    while (Date.now() - start < timeoutMs) {
-      await sleep(intervalMs);
-      data = await findPostDocument({ url, id });
-      if (data) {
-        return NextResponse.json({ success: true, data }, { status: 200 });
+    // Call scraper endpoint which now returns the post details directly.
+    const scrapeResp = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url, id }),
+        cache: "no-store",
       }
+    );
+
+    let scrapeJson = null;
+    try {
+      scrapeJson = await scrapeResp.json();
+    } catch (e) {
+      scrapeJson = null;
     }
 
-    // 4) Still not ready → tell client to retry later
+    // If scraper returned data directly, return it immediately
+    if (scrapeJson && scrapeJson.success && scrapeJson.data) {
+      return NextResponse.json({ success: true, data: scrapeJson.data }, { status: 200 });
+    }
+
+    // If scraper responded but didn't have data, forward its response/status
+    if (scrapeJson) {
+      const status = scrapeJson.status === "PROCESSING" ? 202 : 200;
+      return NextResponse.json(scrapeJson, { status });
+    }
+
+    // If scraper failed or returned no JSON, return generic processing response
     return NextResponse.json(
       { success: false, status: "PROCESSING", error: "Scraping started, try again shortly." },
       { status: 202 }

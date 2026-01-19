@@ -1,19 +1,13 @@
-"use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import SEO from "@/lib/SEO";
 import SectionsWithPosts from "@/components/SectionsWithPosts";
 import MobileJobListWrapper from "@/components/mobile/MobileJobListWrapper";
 import ReminderComponent from "@/components/ReminderComponent";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronUp,
-  Flame,
-  Radio,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, Flame, Radio } from "lucide-react";
 import Tools from "@/components/layout/Tools";
 import { resolveJobDetailHref } from "@/lib/job-url";
+import { getFavPosts, getSectionsWithPosts } from "@/lib/api/gov";
 
 // Scrollbar hiding utility
 const scrollbarHideStyles = `
@@ -120,34 +114,30 @@ function getOrganization(post) {
   );
 }
 
-export default function TrendingJobsPage({ limit, showToolsInPreview = false } = {}) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export default async function TrendingJobsPage({ limit, showToolsInPreview = false } = {}) {
+  // Server-side fetch favorite posts and sections to render initial HTML with content
+  let items = [];
+  let error = null;
+  let loading = false;
 
-  // State to handle expansion on desktop
-  const [isExpanded, setIsExpanded] = useState(false);
+  try {
+    const favResp = await getFavPosts();
+    const favJson = favResp && typeof favResp.json === 'function' ? await favResp.json() : null;
+    if (favJson && favJson.success) items = favJson.data || [];
+    else error = favJson?.message || "Failed to load trending jobs";
+  } catch (err) {
+    error = err?.message || "Fetch error";
+  }
 
-  useEffect(() => {
-    let mounted = true;
-    fetch("/api/gov/favs")
-      .then((r) => r.json())
-      .then((json) => {
-        if (!mounted) return;
-        if (json && json.success) setItems(json.data || []);
-        else setError(json?.message || "Failed to load trending jobs");
-      })
-      .catch((err) => {
-        if (mounted) setError(err.message || "Fetch error");
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Sections for the desktop layout
+  let sections = [];
+  try {
+    const secResp = await getSectionsWithPosts();
+    const secJson = secResp && typeof secResp.json === 'function' ? await secResp.json() : null;
+    if (secJson && secJson.success) sections = secJson.data || [];
+  } catch (err) {
+    // swallow - sections are optional
+  }
 
   const TrendingJobCard = ({ post }) => {
     const title = post?.recruitment?.title || post.title || "Untitled";
@@ -280,34 +270,12 @@ export default function TrendingJobsPage({ limit, showToolsInPreview = false } =
                 <div className="w-1 shrink-0" />
               </div>
 
-              {/* Desktop: Grid - 4 Columns for better readability */}
+              {/* Desktop: Grid - 4 Columns for better readability (server-rendered, limited preview) */}
               <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {/* Show limited items in preview, otherwise normal behavior (8 default) */}
-                {(isPreview
-                  ? items.slice(0, limit)
-                  : (isExpanded ? items : items.slice(0, 8))
-                ).map((post) => (
+                {(isPreview ? items.slice(0, limit) : items.slice(0, 8)).map((post) => (
                   <TrendingJobCard key={post._id} post={post} />
                 ))}
               </div>
-
-              {/* View All Button */}
-              {/* Hide View All when used as a preview */}
-              {!isPreview && items.length > 8 && (
-                <div className="hidden sm:flex justify-center mt-5">
-                  <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-indigo-600 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 rounded-full transition-all active:scale-95 group shadow-sm"
-                  >
-                    {isExpanded ? "Show Less" : "View All Trending"}
-                    {isExpanded ? (
-                      <ChevronUp className="w-3 h-3 group-hover:-translate-y-0.5 transition-transform" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3 group-hover:translate-y-0.5 transition-transform" />
-                    )}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -321,7 +289,7 @@ export default function TrendingJobsPage({ limit, showToolsInPreview = false } =
           <MobileJobListWrapper />
         </div>
         <div className="hidden sm:block">
-          <SectionsWithPosts />
+          <SectionsWithPosts sections={sections} />
         </div>
       </div>
     </div>

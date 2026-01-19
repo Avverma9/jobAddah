@@ -1,31 +1,27 @@
-import {
-  AlertCircle,
-  Briefcase,
-  Calendar,
-  CheckCircle,
-  ChevronRight,
-  Info,
-  Link as LinkIcon
-} from "lucide-react";
 import { toTitleCase } from "@/lib/text";
 
-// Small helper to extract readable text from unknown shapes
-const extractText = (data) => {
+/* ============================================================
+   BASIC UTILITIES
+============================================================ */
+export const extractText = (data) => {
   if (data == null) return "";
   if (typeof data === "string") return data;
-  if (typeof data === "number" || typeof data === "boolean")
-    return String(data);
+  if (typeof data === "number" || typeof data === "boolean") return String(data);
+
   if (Array.isArray(data))
     return data.map(extractText).filter(Boolean).join(", ");
+
   if (typeof data === "object") {
-    // common keys in our source data
-    if (data.label) return data.label;
     if (data.text) return data.text;
-    if (data.value) return data.value;
+    if (data.label) return data.label;
     if (data.name) return data.name;
+    if (data.value) return data.value;
     if (data.criteria) return data.criteria;
-    // fallback: try to join primitive property values
-    const primitives = Object.values(data)
+    if (data.link) return data.link;
+    if (data.url) return data.url;
+    if (data.href) return data.href;
+
+    const flat = Object.values(data)
       .filter(
         (v) =>
           typeof v === "string" ||
@@ -33,1369 +29,812 @@ const extractText = (data) => {
           typeof v === "boolean"
       )
       .map(String);
-    if (primitives.length) return primitives.join(", ");
-    // last resort: stringify
+
+    if (flat.length) return flat.join(", ");
+
     try {
       return JSON.stringify(data);
-    } catch (e) {
+    } catch {
       return String(data);
     }
   }
+
   return String(data);
 };
 
-// ============================================================================
-// 1. DATA EXTRACTION LOGIC (The Core)
-// ============================================================================
+export const isPlaceholderValue = (val) => {
+  const s = String(val).toLowerCase().trim();
+  return (
+    !s ||
+    s === "-" ||
+    s === "n/a" ||
+    s === "na" ||
+    s === "null" ||
+    s === "0" ||
+    s.includes("notify later") ||
+    s.includes("will be updated") ||
+    s.includes("notified soon") ||
+    s.includes("available soon") ||
+    s.includes("before exam")
+  );
+};
 
-export const extractRecruitmentData = (data) => {
-  const rec = data.recruitment || data;
-
-  const title = rec.title || data.title || "Recruitment Notification";
+/* ============================================================
+   MAIN NORMALIZER
+============================================================ */
+export const extractRecruitmentData = (input) => {
+  const payload = input?.data || input || {};
+  const rec = payload.recruitment || payload;
 
   const org = rec.organization || {};
-  const organization = org.name || "";
-  const website = Array.isArray(org.website)
-    ? org.website[0]
-    : org.website || org.officialWebsite || org.url || "";
+  const additional = rec.additionalDetails || rec.additionalInfo || {};
 
   return {
-    title,
-    organization,
-    website,
-    dates: extractDates(rec.importantDates || rec.dates || {}),
-    fees: extractFees(rec.applicationFee || rec.fees || {}),
-    age: extractAge(rec.ageLimit || rec.age || {}),
-    vacancy: extractVacancy(rec.vacancyDetails || rec.vacancy || {}),
+    id: payload._id || null,
+    fav: Boolean(payload.fav),
+
+    title: rec.title || "Recruitment Notification",
+
+    advertisementNumber: 
+      rec.advertisementNumber ||
+      additional.advertisementNumber || 
+      additional.advertisementNo || 
+      null,
+
+    organization:
+      org.name ||
+      org.shortName ||
+      (typeof rec.organization === "string"
+        ? rec.organization
+        : "Government Organization"),
+
+    organizationType: org.type || null,
+
+    website:
+      org.officialWebsite ||
+      org.website ||
+      payload.sourceUrl ||
+      payload.url ||
+      "",
+
+    sourceUrl: rec.sourceUrl || payload.sourceUrl || payload.url || null,
+
+    shortDescription:
+      rec.shortDescription ||
+      rec.eligibility?.educationalQualification ||
+      rec.eligibility?.educationQualification ||
+      rec.eligibility?.generalRequirement ||
+      rec.eligibility?.education ||
+      "",
+
+    status: rec.status || "Active",
+
+    importantDates: rec.importantDates || {},
+    dates: extractDates(rec.importantDates || {}),
+
+    vacancy: extractVacancy(rec.vacancyDetails || {}),
+    fees: extractFees(rec.applicationFee || {}),
+    age: extractAge(rec.ageLimit || {}),
     eligibility: extractEligibility(rec.eligibility || {}),
-    selection: rec.selectionProcess || rec.selection || [],
-    documentation: rec.documentation || [],
-    links: extractLinks(rec.importantLinks || rec.links || {}),
-    districtData: normalizeDistricts(rec.districtWiseData || rec.districtData || []),
+    physicalStandards: extractPhysicalStandards(rec.physicalStandards || {}),
+    physicalTest: extractPhysicalTest(rec.physicalEfficiencyTest || {}),
+    selection: Array.isArray(rec.selectionProcess)
+      ? rec.selectionProcess
+      : [],
+
+    links: extractLinks(rec.importantLinks || {}),
+    documentation: normalizeDocumentation(rec.documentation || []),
+    districtData: normalizeDistricts(rec.vacancyDetails?.districtWise || rec.districtWiseData || []),
+
+    additionalDetails: additional,
+
+    noteToCandidates: 
+      additional.noteToCandidates || 
+      additional.applicantAdvisory || 
+      null,
+    confirmationAdvice: additional.confirmationAdvice || null,
+    howToApply: 
+      additional.howToApplyInstructions || 
+      additional.applicationInstructions || 
+      additional.applicationProcessNote || 
+      null,
+    relatedPosts: additional.relatedPosts || [],
+    externalLinks: 
+      additional.usefulExternalLinks || 
+      additional.alternativeDetailsSource || 
+      null,
+
+    createdAt: payload.createdAt || null,
+    updatedAt: payload.updatedAt || null,
+
+    _raw: payload,
   };
 };
 
-// Normalize district list items to a consistent shape used by the UI
-const normalizeDistricts = (arr) => {
-  if (!arr) return [];
-  if (!Array.isArray(arr)) return [];
-  return arr.map((it) => {
-    if (!it || typeof it !== "object") return {};
-    // many sources use `district` or `districtName`
-    const districtName = it.districtName || it.district || it.name || "";
-    const posts =
-      it.posts || it.totalPosts || it.postsCount || it.count || it.numberOfPosts || "";
-    const lastDate = it.lastDate || it.last_date || it.endDate || it.closingDate || "";
-    const notificationLink =
-      it.notificationLink || it.notification || it.link || it.url || it.href || "";
-    return {
-      districtName,
-      posts,
-      lastDate,
-      notificationLink,
-      // keep raw for debugging
-      _raw: it,
-    };
-  });
-};
-
-// --- DATES EXTRACTION ---
+/* ============================================================
+   IMPORTANT DATES
+============================================================ */
 export const extractDates = (dates) => {
   if (!dates || typeof dates !== "object") return [];
 
-  const result = [];
-  const dateMapping = [
-    {
-      keys: [
-        "notificationDate",
-        "Notification Date",
-        "notificationReleaseDate",
-        "shortNoticeDate",
-      ],
-      label: "Notification Date",
-    },
-    {
-      keys: [
-        "applicationStartDate",
-        "applicationStart",
-        "onlineApplicationStart",
-        "onlineApplyStartDate",
-        "onlineApplyStart",
-        "startDate",
-        "applyOnlineStartDate",
-        "applyOnlineStart",
-        "applyStartDate",
-        "Online Apply Start Date",
-        "applicationBeginDate",
-        "Apply_Start_Date",
-        "apply_start_date",
-        "startingDate",
-        "startingDate2",
-        "startingDate3",
-      ],
-      label: "Application Start",
-    },
-    {
-      keys: [
-        "applicationLastDate",
-        "applicationEndDate",
-        "lastDateToApply",
-        "lastDateForApply",
-        "onlineApplyLastDate",
-        "onlineApplicationEnd",
-        "lastDate",
-        "applyOnlineLastDate",
-        "applyOnlineLast",
-        "applyLastDate",
-        "Online Apply Last Date",
-        "applicationEnd",
-        "apply_last_date",
-        "Apply_Last_Date",
-        "lastDateOfRegistration",
-        "lastDateToApplyOnline",
-        "lastDate2",
-        "lastDate3",
-        "onlineApplicationLastDate",
-      ],
-      label: "Application Deadline",
-    },
-    {
-      keys: [
-        "feePaymentLastDate",
-        "lastDateForFeePayment",
-        "payExamFeeLastDate",
-        "feeLastDate",
-        "feePaymentEnd",
-        "feePaymentLast",
-        "Last Date For Fee Payment",
-        "lastDateOfFeePayment",
-        "Fee_Payment_Last_Date",
-        "fee_payment_last_date",
-        "feePaymentLastDate2",
-        "feePaymentLastDate3",
-        "payExamFeesLastDate",
-      ],
-      label: "Fee Payment Deadline",
-    },
-    {
-      keys: [
-        "correctionLastDate",
-        "correctionDate",
-        "correctionFormDates",
-        "formCorrectionDate",
-        "editModifyForm",
-        "correctionModifiedFormWindow",
-        "Correction_Date",
-        "onlineCorrection",
-        "onlineCorrection2",
-        "onlineCorrection3",
-        "Online Correction Form Link",
-      ],
-      label: "Correction Window",
-    },
-    {
-      keys: [
-        "formCompleteLastDate",
-        "formSubmissionLastDate",
-        "finalSubmitLast",
-        "printFormLastDate",
-      ],
-      label: "Form Complete/Print Last Date",
-    },
-    {
-      keys: [
-        "examDate",
-        "preExamDate",
-        "writtenExamDate",
-        "cbtDate",
-        "tierIExamStartDate",
-        "Exam Date",
-        "froPreExamDate",
-        "acfPreExamDate",
-        "swayamExamDate",
-        "examDates",
-        "Exam_Date",
-        "preExamDate",
-        "mainsExamDate",
-        "CHTE Paper-II Exam Date",
-      ],
-      label: "Exam Date",
-    },
-    {
-      keys: [
-        "admitCardDate",
-        "admitCardReleaseDate",
-        "admitCard",
-        "admitCardAvailable",
-        "admitCardStatus",
-        "Admit Card",
-        "froPreAdmitCardDate",
-        "acfPreAdmitCardDate",
-        "admitCardAvailableDate",
-        "Admit_Card_Date",
-        "Paper-II Admit Card",
-        "cyclingTestAdmitCard",
-        "Dummy Admit Card",
-      ],
-      label: "Admit Card",
-    },
-    {
-      keys: [
-        "examCityDetails",
-        "tierIExamCityDetails",
-        "examCityAvailableDate",
-        "examCityDetailsDate",
-        "Paper-II Exam City Details",
-      ],
-      label: "Exam City Details",
-    },
-    {
-      keys: [
-        "resultDate",
-        "resultDeclaredDate",
-        "resultReleaseDate",
-        "resultAnnouncement",
-        "Result Date",
-        "froPTResultDate",
-        "Result Declared Date",
-        "Result_Date",
-        "resultDeclared",
-      ],
-      label: "Result Date",
-    },
-    {
-      keys: ["Answer Key", "answerKeyReleaseDate", "answerKey"],
-      label: "Answer Key",
-    },
-    {
-      keys: ["Final Answer Key Release Date", "finalAnswerKey"],
-      label: "Final Answer Key",
-    },
-    { keys: ["Counselling Start On"], label: "Counselling Start" },
-    { keys: ["Last Date for Counselling"], label: "Counselling End" },
-    {
-      keys: ["Dummy Admit Card Correction Date"],
-      label: "Dummy Admit Card Correction",
-    },
-    {
-      keys: ["meritList", "merit_list_date", "meritListDate"],
-      label: "Merit List Date",
-    },
-    {
-      keys: ["applicationStatus", "Application_Status_Date"],
-      label: "Application Status",
-    },
-    {
-      keys: ["photoSignatureReuploadWindow", "reUploadPhotoSign"],
-      label: "Photo/Sign Re-upload",
-    },
-    { keys: ["slotBookingDate"], label: "Slot Booking" },
-    { keys: ["documentVerificationDate"], label: "Document Verification" },
-    { keys: ["cyclingTestDate"], label: "Cycling Test Date" },
+  const map = [
+    ["notificationDate", "Notification Date"],
+    ["postDate", "Post Date"],
+    ["applicationStartDate", "Application Start"],
+    ["applicationLastDate", "Application Deadline"],
+    ["feePaymentLastDate", "Fee Payment Deadline"],
+    ["correctionDate", "Correction Date"],
+    ["preExamDate", "Pre Exam Date"],
+    ["mainsExamDate", "Mains Exam Date"],
+    ["examDate", "Exam Date"],
+    ["admitCardDate", "Admit Card"],
+    ["resultDate", "Result Date"],
+    ["answerKeyReleaseDate", "Answer Key Release"],
+    ["finalAnswerKeyDate", "Final Answer Key"],
+    ["meritListDate", "Merit List Date"],
+    ["documentVerificationDate", "Document Verification"],
+    ["counsellingDate", "Counselling Date"],
   ];
 
-  dateMapping.forEach(({ keys, label }) => {
-    for (const key of keys) {
-      if (dates[key] && String(dates[key]).trim()) {
-        result.push(`${label}: ${dates[key]}`);
-      }
+  const result = [];
+
+  map.forEach(([key, label]) => {
+    const v = dates[key];
+    if (v && !isPlaceholderValue(v)) {
+      result.push(`${label}: ${v}`);
     }
   });
 
   return result;
 };
 
-// --- FEES EXTRACTION ---
+/* ============================================================
+   FEES (WITH PAYMENT MODE)
+============================================================ */
 export const extractFees = (fees) => {
   if (!fees || typeof fees !== "object") return [];
 
   const result = [];
-  const handledKeys = new Set();
+  const paymentModes = 
+    fees.paymentMode || 
+    fees.paymentModes || 
+    fees.paymentModeOnline;
 
-  const isDummyValue = (v) => {
-    if (v == null) return true;
-    if (typeof v !== "string") return false;
-    const val = v.toLowerCase();
-    return (
-      val.includes("will be updated") ||
-      val.includes("available soon") ||
-      val.includes("notified soon") ||
-      val.includes("notify later")
-    );
-  };
-
-  const specialKeyMap = {
-    generalEWSBCEBCJharkhandDomicile: "Gen/EWS/BC/EBC (Jharkhand)",
-    scStJharkhandDomicile: "SC/ST (Jharkhand)",
-    allCategoryOtherState: "Other State Candidates",
-    generalEwsObcCreamyLayer: "Gen/EWS/OBC (Creamy)",
-    ewsObcNonCreamyLayer: "EWS/OBC (Non‑Creamy)",
-    ewsObcNonCreamy: "EWS/OBC (Non‑Creamy)",
-  };
-
-  const formatFeeKey = (key) => {
-    if (specialKeyMap[key]) return specialKeyMap[key];
-    return key
-      .replace(/_/g, " / ")
-      .replace(/([a-z])([A-Z])/g, "$1 / $2")
-      .replace(/general/gi, "General")
-      .replace(/obc/gi, "OBC")
-      .replace(/ews/gi, "EWS")
-      .replace(/sc/gi, "SC")
-      .replace(/st/gi, "ST")
-      .replace(/ph/gi, "PH")
-      .replace(/female/gi, "Female")
-      .replace(/pwd/gi, "PwD")
-      .trim();
-  };
-
-  if (fees.feeCategories && Array.isArray(fees.feeCategories)) {
-    fees.feeCategories.forEach((catItem) => {
-      if (catItem.category) {
-        result.push({ type: "header", text: catItem.category });
-      }
-      Object.entries(catItem).forEach(([key, value]) => {
-        if (key === "category") return;
-        if (isDummyValue(value)) return;
-        const formattedKey = formatFeeKey(key);
-        result.push({ type: "item", text: `${formattedKey}: ${value}` });
-      });
-    });
-    handledKeys.add("feeCategories");
-  }
-
-  const nestedKeys = [
-    { key: "withPPP_Aadhaar", label: "With PPP/Aadhaar:" },
-    { key: "withoutPPP_Aadhaar", label: "Without PPP/Aadhaar:" },
-    { key: "categoryFees", label: "Category Fees:" },
-    { key: "paper1", label: "Paper I Only:" },
-    { key: "bothPapers", label: "Both Paper I & II:" },
-    { key: "categories", label: "Application Fee:" },
-    { key: "feeDetails", label: "Fee Details:" },
-  ];
-
-  let hasNested = false;
-
-  nestedKeys.forEach(({ key, label }) => {
-    if (
-      fees[key] &&
-      typeof fees[key] === "object" &&
-      !Array.isArray(fees[key])
-    ) {
-      hasNested = true;
-      handledKeys.add(key);
-      result.push({ type: "header", text: label });
-      Object.entries(fees[key]).forEach(([subKey, subValue]) => {
-        if (subValue == null || isDummyValue(subValue)) return;
-        const formattedKey = formatFeeKey(subKey);
-        result.push({ type: "item", text: `${formattedKey}: ${subValue}` });
-      });
-    }
-  });
-
-  Object.entries(fees).forEach(([key, val]) => {
-    if (handledKeys.has(key)) return;
-    if (!val || typeof val !== "object" || Array.isArray(val)) return;
-    if (/paymentmode/i.test(key)) return;
-    hasNested = true;
-    handledKeys.add(key);
-    result.push({ type: "header", text: `${formatFeeKey(key)}:` });
-    Object.entries(val).forEach(([subKey, subVal]) => {
-      if (subVal == null || isDummyValue(subVal)) return;
-      const formattedKey = formatFeeKey(subKey);
-      result.push({ type: "item", text: `${formattedKey}: ${subVal}` });
-    });
-  });
-
-  if (hasNested) {
-    const paymentKeys = [
-      "paymentMode",
-      "paymentModes",
-      "paymentModeOnline",
-      "paymentModeOnlineMethods",
-      "PaymentModeOnlineMethods",
-      "PaymentModeOnline",
-      "Payment_Mode_Online_Methods",
-      "Payment Mode",
-      "Payment Mode (Online)",
-    ];
-    const modesSet = new Set();
-    paymentKeys.forEach((k) => {
-      const v = fees[k];
-      if (!v) return;
-      if (Array.isArray(v)) v.forEach((m) => modesSet.add(m));
-      else modesSet.add(v);
-    });
-    if (modesSet.size > 0) {
-      const modes = Array.from(modesSet).join(", ");
-      result.push({ type: "payment", text: `Payment Mode: ${modes}` });
-    }
-    return result;
-  }
-
-  const flatSkipKeys = new Set([
-    "feeCategories",
+  const excludeKeys = [
     "paymentMode",
-    "paymentModes",
+    "paymentModes", 
     "paymentModeOnline",
-    "paymentModeOnlineMethods",
-    "PaymentModeOnlineMethods",
-    "PaymentModeOnline",
-    "Payment_Mode_Online_Methods",
-    "Payment Mode",
-    "Payment Mode (Online)",
-  ]);
+    "currency",
+    "exemptions"
+  ];
 
   Object.entries(fees).forEach(([key, value]) => {
-    if (flatSkipKeys.has(key)) return;
-    if (value == null) return;
-    if (typeof value === "object") return;
-    if (isDummyValue(value)) return;
-    result.push({ type: "normal", text: `${formatFeeKey(key)}: ${value}` });
+    if (excludeKeys.includes(key)) return;
+    if (value == null || value === 0 || isPlaceholderValue(value)) return;
+
+    const label = toTitleCase(
+      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+    );
+
+    // Handle currency formatting
+    const formattedValue = typeof value === "number" && fees.currency
+      ? `${value} ${fees.currency}`
+      : value;
+
+    result.push({
+      type: "normal",
+      text: `${label}: ${formattedValue}`,
+    });
   });
 
-  const refundKeys = [
-    "refundDetails",
-    "feeRefund",
-    "refundNote",
-    "refundAmountCbtGeneralOBC",
-    "refundAmountCbtScStEbcFemaleTransgender",
-  ];
-  refundKeys.forEach((key) => {
-    if (fees[key] && !isDummyValue(fees[key])) {
-      result.push({ type: "info", text: `Refund: ${fees[key]}` });
-    }
-  });
+  // Add exemptions if present
+  if (fees.exemptions && !isPlaceholderValue(fees.exemptions)) {
+    result.push({
+      type: "exemption",
+      text: `Exemptions: ${fees.exemptions}`,
+    });
+  }
 
-  const paymentKeys = [
-    "paymentMode",
-    "paymentModes",
-    "paymentModeOnline",
-    "paymentModeOnlineMethods",
-    "PaymentModeOnlineMethods",
-    "PaymentModeOnline",
-    "Payment_Mode_Online_Methods",
-    "Payment Mode",
-    "Payment Mode (Online)",
-  ];
-  const modesSet = new Set();
-  paymentKeys.forEach((k) => {
-    const v = fees[k];
-    if (!v) return;
-    if (Array.isArray(v)) v.forEach((m) => modesSet.add(m));
-    else modesSet.add(v);
-  });
-  if (modesSet.size > 0) {
-    const modes = Array.from(modesSet).join(", ");
-    result.push({ type: "payment", text: `Payment Mode: ${modes}` });
+  // Add payment modes
+  if (Array.isArray(paymentModes) && paymentModes.length) {
+    result.push({
+      type: "payment",
+      text: `Payment Mode: ${paymentModes.join(", ")}`,
+    });
+  } else if (typeof paymentModes === "string" && paymentModes) {
+    result.push({
+      type: "payment",
+      text: `Payment Mode: ${paymentModes}`,
+    });
   }
 
   return result;
 };
 
-// --- AGE EXTRACTION ---
+/* ============================================================
+   AGE LIMIT
+============================================================ */
 export const extractAge = (age) => {
-  if (!age || typeof age !== "object") return { text: [], relaxation: "" };
+  if (!age || typeof age !== "object")
+    return { text: [], relaxation: "", categoryWise: [] };
 
-  const result = [];
+  const text = [];
+  const categoryWise = [];
 
-  // Minimum Age
-  const minKeys = [
-    "minimumAge",
-    "minAge",
-    "minimum",
-    "Minimum Age",
-    "Minimum_Age",
-  ];
-  for (const key of minKeys) {
-    if (age[key]) {
-      result.push(`Minimum Age: ${age[key]}`);
-      break;
-    }
+  // Minimum age
+  if (age.minimumAge || age.minimum) {
+    const minAge = age.minimumAge || age.minimum;
+    if (!isPlaceholderValue(minAge))
+      text.push(`Minimum Age: ${minAge}`);
   }
 
-  // Maximum Age (can be string or nested object)
-  const maxKeys = [
-    "maximumAge",
-    "maxAge",
-    "maximum",
-    "Maximum Age",
-    "Maximum_Age",
-  ];
-  for (const key of maxKeys) {
-    if (age[key]) {
-      if (typeof age[key] === "object") {
-        Object.entries(age[key]).forEach(([k, v]) => {
-          const label = k
-            .replace(/([A-Z])/g, " $1")
-            .replace(/_/g, " ")
-            .trim();
-          result.push(`Max Age (${label}): ${v}`);
+  // Maximum age
+  if (age.maximumAge || age.maximum) {
+    const maxAge = age.maximumAge || age.maximum;
+    if (!isPlaceholderValue(maxAge))
+      text.push(`Maximum Age: ${maxAge}`);
+  }
+
+  // Age as on date
+  const ageAsOnDate =
+    age.ageLimitAsOnDate ||
+    age.ageCalculationDate ||
+    age.ageCutoffDate ||
+    age.asOnDate ||
+    age.asOn ||
+    age.ageAsOnDate;
+
+  if (ageAsOnDate && !isPlaceholderValue(ageAsOnDate))
+    text.push(`Age As On: ${ageAsOnDate}`);
+
+  // Handle specific age fields
+  if (age.maximumAgeURMale)
+    text.push(`UR Male: ${age.maximumAgeURMale}`);
+  if (age.maximumAgeURFemale)
+    text.push(`UR Female: ${age.maximumAgeURFemale}`);
+  if (age.maximumAgeBCEBCMaleFemale)
+    text.push(`BC/EBC: ${age.maximumAgeBCEBCMaleFemale}`);
+  if (age.maximumAgeSCSTMaleFemale)
+    text.push(`SC/ST: ${age.maximumAgeSCSTMaleFemale}`);
+
+  // Extract age relaxation
+  let relaxationText = "";
+  if (age.ageRelaxation) {
+    if (typeof age.ageRelaxation === "string") {
+      relaxationText = age.ageRelaxation;
+    } else if (typeof age.ageRelaxation === "object") {
+      const relaxations = [];
+      Object.entries(age.ageRelaxation).forEach(([key, value]) => {
+        if (key === "other" && typeof value === "object") {
+          Object.entries(value).forEach(([k, v]) => {
+            if (v && !isPlaceholderValue(v) && v !== 0) {
+              const label = toTitleCase(
+                k.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+              );
+              relaxations.push(`${label}: ${v}`);
+            }
+          });
+        } else if (value && !isPlaceholderValue(value) && value !== 0) {
+          const label = toTitleCase(
+            key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+          );
+          relaxations.push(`${label}: ${value} years`);
+        }
+      });
+      if (relaxations.length) relaxationText = relaxations.join(", ");
+    }
+  } else {
+    relaxationText =
+      age.ageRelaxationDetails ||
+      age.relaxationDetails ||
+      age.relaxation ||
+      "";
+  }
+
+  // Extract category-wise age limits
+  if (age.categoryWise && typeof age.categoryWise === "object") {
+    Object.entries(age.categoryWise).forEach(([category, values]) => {
+      if (typeof values === "object" && values !== null) {
+        Object.entries(values).forEach(([gender, ageLimit]) => {
+          if (ageLimit && !isPlaceholderValue(ageLimit) && ageLimit !== 0) {
+            categoryWise.push({
+              category: category.toUpperCase(),
+              gender: toTitleCase(gender),
+              age: ageLimit,
+            });
+          }
         });
-      } else {
-        result.push(`Maximum Age: ${age[key]}`);
       }
-      break;
-    }
+    });
   }
 
-  // As On Date
-  const asOnKeys = [
-    "asOnDate",
-    "ageAsOn",
-    "asOn",
-    "ageCalculationDate",
-    "As On Date",
-  ];
-  for (const key of asOnKeys) {
-    if (age[key]) {
-      result.push(`Age as on: ${age[key]}`);
-      break;
-    }
-  }
-
-  // Specific Post Age Limits (Iterate remaining keys)
-  const excludeKeys = [
-    ...minKeys,
-    ...maxKeys,
-    ...asOnKeys,
-    "ageRelaxation",
-    "ageRelaxationDetails",
-    "relaxation",
-    "relaxationDetails",
-    "notes",
-    "Age Relaxation",
-    "Age_Relaxation",
-  ];
-
-  Object.keys(age).forEach((key) => {
-    if (!excludeKeys.includes(key)) {
-      // Format key: "maximumAgeURMale" -> "Maximum Age UR Male"
-      const label = key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/_/g, " ")
-        .replace(/^maximumAge/i, "Max Age")
-        .replace(/^maxAge/i, "Max Age")
-        .trim();
-
-      if (typeof age[key] === "string" || typeof age[key] === "number") {
-        result.push(`${label}: ${age[key]}`);
-      }
-    }
-  });
-
-  const relaxation =
-    age.ageRelaxation ||
-    age.ageRelaxationDetails ||
-    age.relaxation ||
-    age.relaxationDetails ||
-    age["Age Relaxation"] ||
-    age.Age_Relaxation ||
-    "";
-
-  return { text: result, relaxation };
+  return {
+    text,
+    relaxation: relaxationText,
+    categoryWise,
+  };
 };
 
-// --- VACANCY EXTRACTION ---
+/* ============================================================
+   VACANCY DETAILS
+============================================================ */
 export const extractVacancy = (vacancy) => {
   if (!vacancy || typeof vacancy !== "object") {
-    return { total: "See Notification", positions: [] };
-  }
-
-  const total =
-    vacancy.totalPosts ||
-    vacancy.total ||
-    vacancy.totalVacancy ||
-    vacancy.posts ||
-    vacancy.totalPost ||
-    vacancy.totalSeat ||
-    vacancy.totalSeats ||
-    vacancy.intake ||
-    "See Notification";
-
-  let positions =
-    vacancy.positions ||
-    vacancy.postDetails ||
-    vacancy.details ||
-    vacancy.vacancies ||
-    vacancy.postWiseDetails ||
-    vacancy.trade_name ||
-    [];
-
-  // NEW: if positions is a single string, wrap it
-  if (typeof positions === "string") {
-    positions = [positions];
-  }
-
-  if (!Array.isArray(positions)) {
-    positions = [];
-  }
-
-  const formatText = (text) => {
-    if (!text) return "-";
-    if (Array.isArray(text)) return text.join(", ");
-    return String(text);
-  };
-
-  const buildCategoryLikeString = (pos) => {
-    const cats = pos.categoryWise || pos.categories || pos.categorywise;
-
-    if (cats) {
-      if (Array.isArray(cats)) {
-        const parts = cats
-          .map((c) => {
-            const cat =
-              c.category || c.cat || c.name || c.type || c.group || c.label;
-            const val =
-              c.posts ||
-              c.post ||
-              c.count ||
-              c.total ||
-              c.numberOfPosts ||
-              c.noOfPost ||
-              c.noOfPosts;
-            if (!cat || val == null) return null;
-            return `${cat}: ${val}`;
-          })
-          .filter(Boolean);
-        if (parts.length) return parts.join(", ");
-      } else if (typeof cats === "object") {
-        const parts = Object.entries(cats)
-          .map(([k, v]) => `${k}: ${v}`)
-          .filter(Boolean);
-        if (parts.length) return parts.join(", ");
-      } else {
-        return String(cats);
-      }
-    }
-
-    const flatCatEntries = Object.entries(pos).filter(([k, v]) => {
-      if (typeof v !== "number") return false;
-      const key = k.toLowerCase();
-      if (key === "male" || key === "female") return false;
-      return /^(gen|general|obc|ews|sc|st|ebc|bc|ur|other|others|pwd|ph|third|category)/.test(
-        key
-      );
-    });
-
-    if (flatCatEntries.length) {
-      return flatCatEntries.map(([k, v]) => `${k}: ${v}`).join(", ");
-    }
-
-    return null;
-  };
-
-  const normalizedPositions = positions.map((rawPos) => {
-    // Handle plain string position like:
-    // "UP Police Radio Cadre Assistant Operator (Total 44 posts: General 20, OBC 11, EWS 4, SC 9, ST 0)"
-    if (typeof rawPos === "string") {
-      const str = rawPos.trim();
-
-      // Name before first "(" if present, else whole string
-      let name = str;
-      let details = "";
-      const parenIndex = str.indexOf("(");
-      if (parenIndex !== -1) {
-        name = str.slice(0, parenIndex).trim();
-        details = str.slice(parenIndex + 1, str.lastIndexOf(")")).trim();
-      }
-
-      // Try to extract simple category counts from details
-      // e.g. "Total 44 posts: General 20, OBC 11, EWS 4, SC 9, ST 0"
-      let catSummary = "";
-      if (details) {
-        const afterColon = details.split(":").slice(1).join(":").trim();
-        catSummary = afterColon || details;
-      }
-
-      return {
-        name: formatText(name || "Various Post"),
-        count: formatText(catSummary || "See Notification"),
-        group: "-",
-        eligibility: "-",
-      };
-    }
-
-    const pos = rawPos || {};
-
-    const name =
-      pos.postName ||
-      pos.name ||
-      pos.tradeName ||
-      pos.positionName ||
-      pos.postTitle ||
-      pos.title ||
-      pos.courseName ||
-      pos.programName ||
-      pos.program ||
-      pos.trade_name ||
-      "Various Post";
-
-    let count =
-      pos.total ||
-      pos.posts ||
-      pos.numberOfPosts ||
-      pos.noOfPost ||
-      pos.noOfPosts ||
-      pos.count ||
-      pos.totalPosts ||
-      pos.number_of_posts ||
-      pos.seats ||
-      pos.totalSeats ||
-      pos.intake ||
-      pos.details ||
-      null;
-
-    let genderStr = null;
-    if (pos.male != null || pos.female != null) {
-      const parts = [];
-      if (pos.male != null) parts.push(`Male: ${pos.male}`);
-      if (pos.female != null) parts.push(`Female: ${pos.female}`);
-      genderStr = parts.join(", ");
-    }
-
-    const catStr = buildCategoryLikeString(pos);
-
-    if (!count && genderStr) {
-      count = genderStr;
-    } else if (count && genderStr) {
-      count = `${count} (${genderStr})`;
-    }
-
-    if (!count && catStr) {
-      count = catStr;
-    } else if (count && catStr) {
-      count = `${count} (${catStr})`;
-    }
-
-    if (count == null) count = "-";
-
-    const group =
-      pos.group ||
-      pos.category ||
-      pos.type ||
-      pos.level ||
-      pos.courseType ||
-      pos.stream ||
-      "-";
-
-    const eligibility =
-      pos.eligibility ||
-      pos.eligibilityCriteria ||
-      pos.qualification ||
-      pos.education ||
-      pos.educationalQualification ||
-      pos.eligibilityDetails ||
-      pos.criteria ||
-      pos.details ||
-      "-";
-
-    return {
-      name: formatText(name),
-      count: formatText(count),
-      group: formatText(group),
-      eligibility: formatText(eligibility),
+    return { 
+      total: "See Notification", 
+      positions: [],
+      categoryWise: null,
     };
-  });
+  }
 
-  return { total, positions: normalizedPositions };
+  let positions = [];
+
+  if (Array.isArray(vacancy.positions)) {
+    positions = vacancy.positions.map((p) => {
+      // Handle string positions
+      if (typeof p === "string") {
+        return {
+          name: p,
+          count: "-",
+          qualification: "-",
+          ageLimit: "",
+        };
+      }
+
+      // Handle object positions
+      return {
+        name: p.name || p.postName || p.position || "Post",
+        count: 
+          p.totalPosts || 
+          p.posts || 
+          p.numberOfPosts ||
+          p.count || 
+          p.total || 
+          "-",
+        qualification: 
+          p.eligibility || 
+          p.qualification || 
+          p.educationalQualification || 
+          "-",
+        ageLimit: p.ageLimit || "",
+        category: p.category || "",
+        areaType: p.areaType || "",
+        discipline: p.discipline || "",
+        general: p.general || "",
+        obc: p.obc || "",
+        sc: p.sc || "",
+        st: p.st || "",
+        ews: p.ews || "",
+        pwd: p.pwd || p.ph || "",
+      };
+    });
+  }
+
+  // Extract category-wise breakdown
+  let categoryWise = null;
+  if (vacancy.categoryWise && typeof vacancy.categoryWise === "object") {
+    categoryWise = {};
+    Object.entries(vacancy.categoryWise).forEach(([key, value]) => {
+      if (value && !isPlaceholderValue(value) && value !== 0) {
+        categoryWise[key] = value;
+      }
+    });
+    if (Object.keys(categoryWise).length === 0) categoryWise = null;
+  }
+
+  return {
+    total:
+      vacancy.totalPosts ||
+      vacancy.total ||
+      "See Notification",
+    positions,
+    categoryWise,
+  };
 };
 
-// --- ELIGIBILITY EXTRACTION ---
+/* ============================================================
+   ELIGIBILITY
+============================================================ */
 export const extractEligibility = (elig) => {
   if (!elig) return [];
-  if (typeof elig === "string") return [{ type: "text", text: elig }];
 
-  // If it's an array, process each item
+  if (typeof elig === "string")
+    return [{ type: "text", text: elig }];
+
   if (Array.isArray(elig)) {
     return elig.map((item) => {
-      if (typeof item === "string") return { type: "listItem", text: item };
-      // Handle object with name/criteria format
-      if (typeof item === "object" && item !== null) {
-        if (item.name && item.criteria) {
-          return { type: "item", label: item.name, text: item.criteria };
-        }
-        if (item.name || item.text || item.value) {
-          return {
-            type: "listItem",
-            text: item.name || item.text || item.value,
-          };
-        }
-        // Fallback: extract readable text from the object
-        return { type: "listItem", text: extractText(item) };
-      }
-      return { type: "listItem", text: String(item) };
+      if (typeof item === "string")
+        return { type: "text", text: item };
+
+      const position = item.position || item.name || "";
+      const parts = [];
+
+      if (item.educationalQualification)
+        parts.push(`Education: ${item.educationalQualification}`);
+      if (item.typingSkills)
+        parts.push(`Typing: ${item.typingSkills}`);
+      if (item.stenographySkills)
+        parts.push(`Stenography: ${item.stenographySkills}`);
+      if (item.otherRequirements)
+        parts.push(`Other: ${item.otherRequirements}`);
+
+      return {
+        type: "position",
+        position,
+        text: parts.join(" | "),
+      };
     });
   }
 
-  // Simple description keys
-  const descKeys = [
-    "description",
-    "educationQualification",
-    "educationalQualification",
-    "Education Qualification",
-    "qualification",
-    "education",
-    "Criteria",
-  ];
-  for (const key of descKeys) {
-    if (elig[key] && typeof elig[key] === "string") {
-      return [{ type: "text", text: elig[key] }];
-    }
-    if (elig[key] && Array.isArray(elig[key])) {
-      return elig[key].map((item) => {
-        if (typeof item === "string") return { type: "listItem", text: item };
-        if (typeof item === "object" && item !== null) {
-          if (item.name && item.criteria) {
-            return { type: "item", label: item.name, text: item.criteria };
-          }
-          return {
-            type: "listItem",
-            text: item.name || item.text || extractText(item),
-          };
-        }
-        return { type: "listItem", text: String(item) };
+  // Handle object eligibility
+  const result = [];
+
+  const eduQualification =
+    elig.educationalQualification ||
+    elig.educationQualification ||
+    elig.generalRequirement ||
+    elig.qualification;
+
+  if (eduQualification) {
+    result.push({
+      type: "text",
+      text: eduQualification,
+    });
+  }
+
+  if (elig.education) {
+    if (Array.isArray(elig.education)) {
+      elig.education.forEach((edu) => {
+        result.push({ type: "text", text: edu });
       });
+    } else {
+      result.push({ type: "text", text: elig.education });
     }
   }
 
-  const result = [];
+  // Special requirements
+  if (elig.specialRequirements && Array.isArray(elig.specialRequirements)) {
+    elig.specialRequirements.forEach((req) => {
+      result.push({ type: "special", text: req });
+    });
+  }
+
+  // Stream required
+  if (elig.streamRequired && !isPlaceholderValue(elig.streamRequired)) {
+    result.push({ type: "text", text: `Stream: ${elig.streamRequired}` });
+  }
+
+  // Minimum percentage
+  if (elig.minimumPercentage && elig.minimumPercentage !== 0) {
+    result.push({ 
+      type: "text", 
+      text: `Minimum Percentage: ${elig.minimumPercentage}%` 
+    });
+  }
+
+  // Experience required
+  if (elig.experienceRequired && !isPlaceholderValue(elig.experienceRequired)) {
+    result.push({ type: "text", text: `Experience: ${elig.experienceRequired}` });
+  } else if (elig.experience) {
+    result.push({ type: "text", text: `Experience: ${elig.experience}` });
+  }
+
+  if (elig.skills) {
+    result.push({ type: "text", text: `Skills: ${elig.skills}` });
+  }
+
+  // Handle other fields
+  const processedKeys = [
+    "educationalQualification",
+    "educationQualification",
+    "generalRequirement",
+    "qualification",
+    "education",
+    "experience",
+    "experienceRequired",
+    "skills",
+    "specialRequirements",
+    "streamRequired",
+    "minimumPercentage",
+  ];
 
   Object.entries(elig).forEach(([key, value]) => {
-    if (!value) return;
+    if (processedKeys.includes(key)) return;
+    if (!value || isPlaceholderValue(value)) return;
 
-    // Skip generic keys handled above or metadata
-    if (
-      [
-        "detailsLink",
-        "otherDetails",
-        "otherQualifications",
-        "other",
-        "gender",
-        "residency",
-        "notes",
-        "Exam Name",
-      ].includes(key)
-    ) {
-      if (value && typeof value === "string") {
-        result.push({ type: "info", text: value });
-      } else if (Array.isArray(value)) {
-        value.forEach((v) => {
-          if (typeof v === "string") result.push({ type: "info", text: v });
-          else if (typeof v === "object" && v !== null)
-            result.push({
-              type: "info",
-              text: v.name || v.text || extractText(v),
-            });
-        });
-      }
-      return;
-    }
+    const label = toTitleCase(
+      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+    );
 
-    // Format the key (e.g., "paper1" -> "Paper 1", "railwayPLWWelder" -> "Railway PLW Welder")
-    const label = key
-      .replace(/([A-Z])/g, " $1")
-      .replace(/_/g, " ")
-      .replace(/([0-9]+)/g, " $1 ") // Space around numbers
-      .trim();
-
-    if (Array.isArray(value)) {
-      result.push({ type: "header", label: label });
-      value.forEach((item) => {
-        if (typeof item === "string") {
-          result.push({ type: "listItem", text: item });
-        } else if (typeof item === "object" && item !== null) {
-          // Handle {name, criteria} format
-          if (item.name && item.criteria) {
-            result.push({
-              type: "item",
-              label: item.name,
-              text: item.criteria,
-            });
-          } else {
-            result.push({
-              type: "listItem",
-              text: item.name || item.text || item.value || extractText(item),
-            });
-          }
-        } else {
-          result.push({ type: "listItem", text: String(item) });
-        }
-      });
-    } else if (typeof value === "string") {
-      result.push({ type: "item", label: label, text: value });
-    } else if (typeof value === "object" && value !== null) {
-      // Handle nested object
-      if (value.name && value.criteria) {
-        result.push({ type: "item", label: value.name, text: value.criteria });
-      } else {
-        result.push({
-          type: "item",
-          label: label,
-          text: value.name || value.text || extractText(value),
-        });
-      }
+    if (typeof value === "string") {
+      result.push({ type: "item", label, text: value });
     }
   });
 
-  return result.length > 0
-    ? result
-    : [{ type: "text", text: "Check official notification for full details." }];
+  return result;
 };
 
+/* ============================================================
+   PHYSICAL STANDARDS
+============================================================ */
+export const extractPhysicalStandards = (physical) => {
+  if (!physical || typeof physical !== "object") return null;
+
+  const result = {
+    male: {},
+    female: {},
+  };
+
+  ["male", "female"].forEach((gender) => {
+    if (physical[gender] && typeof physical[gender] === "object") {
+      Object.entries(physical[gender]).forEach(([key, value]) => {
+        if (value && !isPlaceholderValue(value)) {
+          result[gender][key] = value;
+        }
+      });
+    }
+  });
+
+  // Return null if both male and female are empty
+  if (
+    Object.keys(result.male).length === 0 &&
+    Object.keys(result.female).length === 0
+  ) {
+    return null;
+  }
+
+  return result;
+};
+
+/* ============================================================
+   PHYSICAL EFFICIENCY TEST
+============================================================ */
+export const extractPhysicalTest = (test) => {
+  if (!test || typeof test !== "object") return null;
+
+  const result = {
+    male: {},
+    female: {},
+  };
+
+  ["male", "female"].forEach((gender) => {
+    if (test[gender] && typeof test[gender] === "object") {
+      Object.entries(test[gender]).forEach(([key, value]) => {
+        if (value && !isPlaceholderValue(value)) {
+          result[gender][key] = value;
+        }
+      });
+    }
+  });
+
+  // Return null if both male and female are empty
+  if (
+    Object.keys(result.male).length === 0 &&
+    Object.keys(result.female).length === 0
+  ) {
+    return null;
+  }
+
+  return result;
+};
+
+/* ============================================================
+   IMPORTANT LINKS (WITH ACTIVATION DATE SUPPORT)
+============================================================ */
 export const extractLinks = (links) => {
   if (!links || typeof links !== "object") return [];
 
+  const seen = new Set();
   const result = [];
-
-  const isPlaceholder = (str) => {
-    const s = String(str).trim().toLowerCase();
-    if (!s) return true;
-    return (
-      s === "#" ||
-      s === "-" ||
-      s.includes("link activate soon") ||
-      s.includes("coming soon") ||
-      s.includes("update soon") ||
-      s.includes("available soon") ||
-      s.includes("notify later")
-    );
-  };
-
-  const isLikelyUrl = (str) => {
-    if (!str) return false;
-    const s = String(str).trim();
-    if (!s || isPlaceholder(s)) return false;
-    if (/^(https?:\/\/|www\.)/i.test(s)) return true;
-    if (/^https?[a-z0-9]/i.test(s) && s.includes(".")) return true;
-    if (s.includes("/") && !s.includes(" ")) return true;
-    if (s.includes(".pdf")) return true;
-    return false;
-  };
-
-  const formatLabel = (key) => {
-    let label = key
-      .replace(/([A-Z])/g, " $1")
-      .replace(/_/g, " ")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/url|link|href|text/gi, "")
-      .trim();
-    if (!label) label = "Link";
-    return label.replace(/\s+/g, " ").trim();
-  };
-
-  const normalizeClickHereLabel = (baseLabel, textLabel) => {
-    if (!textLabel) return baseLabel;
-    const s = String(textLabel).trim();
-    if (/^click here/i.test(s)) return baseLabel;
-    return s;
-  };
-
-  const pushStringUrl = (label, value) => {
-    const parts = String(value).trim().split(/\s+/);
-    const urls = parts.filter(isLikelyUrl);
-    urls.forEach((u, idx) => {
-      result.push({
-        label: urls.length > 1 ? `${label} (${idx + 1})` : label,
-        url: u,
-      });
-    });
-  };
 
   Object.entries(links).forEach(([key, value]) => {
     if (!value) return;
 
-    const baseLabel = formatLabel(key);
+    let url = null;
+    let label = toTitleCase(
+      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+    );
+    let activationDate = null;
+    let customText = null;
 
-    // 1) Value is plain string
-    if (typeof value === "string") {
-      if (isLikelyUrl(value)) {
-        pushStringUrl(baseLabel, value);
-        return;
-      }
-      // treat common placeholders like "Click Here" or other non-URL markers
-      // as an intentionally present link — render it with a safe fallback URL
-      const s = String(value).trim();
-      if (isPlaceholder(s) || /click here|view here|clickhere/i.test(s)) {
-        result.push({ label: baseLabel, url: "#" });
-      }
-      return;
-    }
-
-    // 2) Value is Object with url/href (e.g. {text, url} / {text, href})
-    if (!Array.isArray(value) && (value.url || value.href)) {
-      const rawUrl = value.url || value.href;
-      if (!isLikelyUrl(rawUrl)) return;
-      const linkLabel = normalizeClickHereLabel(
-        baseLabel,
-        value.name || value.text
-      );
-      result.push({ label: linkLabel, url: rawUrl });
-      return;
-    }
-
-    // 3) Value is Array (UPSSSC PET style / district lists)
-    if (Array.isArray(value)) {
-      value.forEach((item, idx) => {
-        if (!item) return;
-
-        if (typeof item === "string") {
-          if (isLikelyUrl(item)) {
-            const lbl = `${baseLabel} (${idx + 1})`;
-            pushStringUrl(lbl, item);
-          }
-          return;
-        }
-
-        const itemUrl =
-          item.url || item.href || item.notificationLink || item.link;
-        if (!isLikelyUrl(itemUrl)) return;
-
-        const itemLabelRaw =
-          item.name || item.text || item.districtName || `Link ${idx + 1}`;
-        const itemLabel = normalizeClickHereLabel(baseLabel, itemLabelRaw);
-        result.push({ label: `${baseLabel} (${itemLabel})`, url: itemUrl });
-      });
-      return;
-    }
-
-    // 4) Nested object: { eng: 'url', hindi: 'url' } OR { key: {text,url} }
-    if (typeof value === "object") {
-      Object.entries(value).forEach(([k, v]) => {
-        const subKeyLabel = formatLabel(k);
-
-        if (typeof v === "string") {
-          if (!isLikelyUrl(v)) return;
-          const lbl = `${baseLabel} - ${subKeyLabel}`;
-          pushStringUrl(lbl, v);
-        } else if (v && typeof v === "object") {
-          const u = v.url || v.href;
-          if (!isLikelyUrl(u)) return;
-          const textLbl = normalizeClickHereLabel(
-            subKeyLabel || baseLabel,
-            v.name || v.text
+    // Handle nested "other" object
+    if (key === "other" && typeof value === "object") {
+      Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+        if (typeof nestedValue === "string" && nestedValue.startsWith("http")) {
+          const nestedLabel = toTitleCase(
+            nestedKey.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
           );
-          const lbl = `${baseLabel} - ${textLbl}`;
-          result.push({ label: lbl, url: u });
+          
+          if (!seen.has(nestedValue)) {
+            seen.add(nestedValue);
+            result.push({
+              label: nestedLabel,
+              url: nestedValue,
+              activationDate: null,
+              isActive: true,
+              isPending: false,
+            });
+          }
         }
       });
+      return;
     }
+
+    // Handle string URLs
+    if (typeof value === "string") {
+      url = value;
+    }
+    // Handle object with url/link/href
+    else if (typeof value === "object") {
+      url = value.url || value.link || value.href;
+      activationDate = value.activationDate || null;
+      customText = value.text || value.label || null;
+      
+      if (customText) label = customText;
+    }
+
+    // Skip if no URL or URL is placeholder
+    if (!url || isPlaceholderValue(url)) {
+      // If there's activation date but no URL, still add with pending status
+      if (activationDate) {
+        result.push({
+          label,
+          url: null,
+          activationDate,
+          isActive: false,
+          isPending: true,
+        });
+      }
+      return;
+    }
+
+    // Skip duplicate URLs
+    if (seen.has(url)) return;
+    
+    // Skip placeholder domains
+    if (url.includes("jobsaddah.com") && 
+        !["whatsappChannel", "telegramChannel", "joinWhatsAppChannel", "joinTelegramChannel"].includes(key)) {
+      return;
+    }
+    
+    seen.add(url);
+
+    result.push({
+      label,
+      url,
+      activationDate,
+      isActive: true,
+      isPending: false,
+    });
   });
 
   return result;
 };
 
-// ============================================================================
-// 2. REACT COMPONENTS (UI)
-// ============================================================================
-
-export const VacancyTable = ({ positions }) => {
-  if (!positions || positions.length === 0) return null;
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-        <Briefcase size={18} className="text-blue-600" />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left bg-white">
-          <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Post Name</th>
-              <th className="px-4 py-3 font-semibold text-center">Group/Cat</th>
-              <th className="px-4 py-3 font-semibold text-center">Total</th>
-              <th className="px-4 py-3 font-semibold">Eligibility</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {positions.map((pos, idx) => (
-              <tr key={idx} className="hover:bg-slate-50/50">
-                <td className="px-4 py-3 font-medium text-slate-800">
-                  {pos.name}
-                </td>
-                <td className="px-4 py-3 text-center text-slate-600">
-                  {pos.group}
-                </td>
-                <td className="px-4 py-3 text-center font-bold text-blue-600 max-w-[150px] break-words">
-                  {pos.count}
-                </td>
-                <td className="px-4 py-3 text-slate-600 max-w-xs">
-                  {pos.eligibility}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+/* ============================================================
+   LINK HELPER: CHECK IF LINK IS CLICKABLE
+============================================================ */
+export const isLinkClickable = (link) => {
+  if (!link) return false;
+  if (!link.url || isPlaceholderValue(link.url)) return false;
+  return link.isActive === true;
 };
 
-export const ImportantDates = ({ dates }) => {
-  if (!dates.length) return null;
-  return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-      <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-        <Calendar size={18} className="text-blue-600" /> Important Dates
-      </h3>
-      <ul className="space-y-2 text-sm">
-        {dates.map((date, idx) => {
-          const [label, value] = date.split(": ");
-          return (
-            <li
-              key={idx}
-              className="flex justify-between items-start border-b border-dashed border-slate-100 pb-1 last:border-0"
-            >
-              <span className="text-slate-500">{label}</span>
-              <span className="font-medium text-slate-800 text-right">
-                {value}
-              </span>
-            </li>
-          );
-        })}
+/* ============================================================
+   LINK HELPER: GET LINK STATUS MESSAGE
+============================================================ */
+export const getLinkStatusMessage = (link) => {
+  if (!link) return null;
+  
+  if (link.isPending && link.activationDate) {
+    return `Available from ${link.activationDate}`;
+  }
+  
+  if (!link.url && link.activationDate) {
+    return `Will be active from ${link.activationDate}`;
+  }
+  
+  return null;
+};
+
+/* ============================================================
+   DOCUMENTATION NORMALIZATION
+============================================================ */
+const normalizeDocumentation = (docs) => {
+  if (!Array.isArray(docs)) return [];
+
+  return docs.map((doc) => {
+    if (typeof doc === "string") {
+      return { type: doc, url: null, name: doc };
+    }
+
+    return {
+      type: doc.type || doc.name || "Document",
+      url: doc.url || doc.link || null,
+      name: doc.name || doc.type || "Document",
+    };
+  });
+};
+
+/* ============================================================
+   DISTRICT WISE DATA
+============================================================ */
+const normalizeDistricts = (arr) => {
+  if (!Array.isArray(arr) || arr.length === 0) return [];
+
+  return arr.map((d) => ({
+    districtName: d.districtName || d.name || d.district || "",
+    posts: d.posts || d.totalPosts || d.count || "",
+    lastDate: d.lastDate || d.closingDate || "",
+    notificationLink: d.notificationLink || d.link || "",
+    _raw: d,
+  }));
+};
+
+/* ============================================================
+   UI HELPER: ADDITIONAL DETAILS RENDERER
+============================================================ */
+export const renderAdditionalValue = (value) => {
+  if (value == null) return null;
+
+  if (Array.isArray(value)) {
+    return (
+      <ul className="list-disc pl-5 space-y-1 text-sm">
+        {value.map((v, i) => (
+          <li key={i}>{extractText(v)}</li>
+        ))}
       </ul>
-    </div>
-  );
-};
+    );
+  }
 
-export const ApplicationFees = ({ fees }) => {
-  if (!fees.length) return null;
-  return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-      <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-        <div className="w-4 h-4 rounded-full border-2 border-green-500 flex items-center justify-center text-[10px] font-bold text-green-600">
-          ₹
-        </div>
-        Application Fee
-      </h3>
-      <ul className="space-y-1.5 text-sm">
-        {fees.map((item, idx) => {
-          if (item.type === "header")
-            return (
-              <li
-                key={idx}
-                className="font-semibold text-slate-800 mt-2 border-b border-slate-100 pb-1"
-              >
-                {item.text}
-              </li>
-            );
-          if (item.type === "payment")
-            return (
-              <li
-                key={idx}
-                className="text-xs text-slate-400 mt-2 italic bg-slate-50 p-2 rounded"
-              >
-                {item.text}
-              </li>
-            );
-          if (item.type === "info")
-            return (
-              <li key={idx} className="text-xs text-orange-600 mt-1 flex gap-1">
-                <Info size={12} />
-                {item.text}
-              </li>
-            );
-          return (
-            <li key={idx} className="flex justify-between items-center">
-              <span className="text-slate-600">{item.text.split(":")[0]}</span>
-              <span className="font-bold text-slate-800">
-                {item.text.split(":")[1]}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-};
-
-export const EligibilityCard = ({ eligibility }) => {
-  if (!eligibility || eligibility.length === 0) return null;
-  return (
-    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-      <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-        <CheckCircle size={18} className="text-blue-600" /> Eligibility
-      </h3>
-      <div className="space-y-3">
-        {eligibility.map((item, idx) => (
-          <div key={idx}>
-            {item.type === "header" && (
-              <h4 className="font-semibold text-sm text-blue-800 mb-1">
-                {item.label}
-              </h4>
-            )}
-            {item.type === "item" && (
-              <div className="text-sm">
-                <span className="font-medium text-slate-700">
-                  {item.label}:{" "}
-                </span>
-                <span className="text-slate-600">{item.text}</span>
-              </div>
-            )}
-            {item.type === "listItem" && (
-              <div className="flex items-start gap-2 text-sm text-slate-600 ml-2">
-                <span className="mt-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full shrink-0" />
-                <span>{item.text}</span>
-              </div>
-            )}
-            {item.type === "text" && (
-              <p className="text-sm text-slate-600">{item.text}</p>
-            )}
-            {item.type === "info" && (
-              <p className="text-xs text-slate-400 italic mt-1">{item.text}</p>
-            )}
+  if (typeof value === "object") {
+    return (
+      <div className="space-y-1 pl-2 text-sm">
+        {Object.entries(value).map(([k, v]) => (
+          <div key={k}>
+            <strong>
+              {toTitleCase(
+                k.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
+              )}
+              :
+            </strong>{" "}
+            {extractText(v)}
           </div>
         ))}
       </div>
-    </div>
-  );
+    );
+  }
+
+  return <span>{extractText(value)}</span>;
 };
 
-export const ImportantLinks = ({ links }) => {
-  if (!links.length) return null;
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <LinkIcon size={18} className="text-blue-600" /> Important Links
-        </h3>
-      </div>
-      <div className="divide-y divide-slate-100">
-        {links.map((link, idx) => (
-          <div
-            key={idx}
-            className="flex items-center justify-between p-3 hover:bg-slate-50 transition-colors"
-          >
-            <span className="text-sm font-medium text-slate-700 capitalize">
-              {toTitleCase(link.label || "")}
-            </span>
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-            >
-              View or Apply <ChevronRight size={12} />
-            </a>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+/* ============================================================
+   HELPER: FORMAT PHYSICAL STANDARDS FOR DISPLAY
+============================================================ */
+export const formatPhysicalStandards = (standards) => {
+  if (!standards) return null;
+
+  const result = [];
+
+  if (standards.male && Object.keys(standards.male).length > 0) {
+    result.push({
+      gender: "Male",
+      details: Object.entries(standards.male).map(([key, value]) => ({
+        label: toTitleCase(key),
+        value,
+      })),
+    });
+  }
+
+  if (standards.female && Object.keys(standards.female).length > 0) {
+    result.push({
+      gender: "Female",
+      details: Object.entries(standards.female).map(([key, value]) => ({
+        label: toTitleCase(key),
+        value,
+      })),
+    });
+  }
+
+  return result.length > 0 ? result : null;
 };
-
-// --- Loading & Error Skeletons ---
-// --- CUSTOM SKELETON COMPONENT (Matches New Design) ---
-export const LoadingSkeleton = () => (
-  <div className="animate-pulse">
-  {/* Ad removed */}
-    <div className="h-[90px] w-full bg-slate-200 rounded-lg mb-4 mx-auto max-w-[728px]" />
-
-    {/* Main Card Skeleton */}
-    <div className="bg-white shadow-lg shadow-slate-200/60 border border-slate-200 rounded-2xl overflow-hidden ring-1 ring-slate-100">
-      {/* Header Skeleton */}
-      <div className="p-6 md:p-8 text-center border-b border-slate-200">
-        <div className="h-8 w-3/4 bg-slate-200 rounded mx-auto mb-4" />
-        <div className="h-4 w-1/2 bg-slate-100 rounded mx-auto mb-6" />
-
-        <div className="flex flex-wrap justify-center gap-3 mb-6">
-          <div className="h-8 w-32 bg-blue-50 rounded-full" />
-          <div className="h-8 w-24 bg-emerald-50 rounded-full" />
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="h-20 bg-slate-100 rounded-xl" />
-          <div className="h-20 bg-slate-100 rounded-xl" />
-          <div className="h-20 bg-slate-100 rounded-xl hidden md:block" />
-          <div className="h-20 bg-slate-100 rounded-xl hidden md:block" />
-        </div>
-      </div>
-
-      {/* Grid: Dates & Fees Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200">
-        {/* Left Col */}
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 bg-blue-100 rounded-lg" />
-            <div className="h-6 w-40 bg-slate-200 rounded" />
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="flex justify-between border-b border-dashed border-slate-100 pb-2"
-              >
-                <div className="h-4 w-1/3 bg-slate-200 rounded" />
-                <div className="h-4 w-1/4 bg-slate-300 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Right Col */}
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 bg-emerald-100 rounded-lg" />
-            <div className="h-6 w-40 bg-slate-200 rounded" />
-          </div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex justify-between border-b border-dashed border-slate-100 pb-2"
-              >
-                <div className="h-4 w-1/3 bg-slate-200 rounded" />
-                <div className="h-4 w-1/4 bg-slate-300 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Age Limit Skeleton */}
-      <div className="p-6 border-b border-slate-200">
-        <div className="h-6 w-48 bg-slate-200 rounded mb-4" />
-        <div className="h-32 bg-orange-50 rounded-xl w-full" />
-      </div>
-
-      {/* Links Skeleton (Matches the List Style) */}
-      <div className="p-0">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-          <div className="h-5 w-5 bg-slate-300 rounded" />
-          <div className="h-6 w-40 bg-slate-200 rounded" />
-        </div>
-        <div className="divide-y divide-slate-100">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 gap-3"
-            >
-              <div className="h-5 w-1/2 sm:w-1/3 bg-slate-200 rounded" />
-              <div className="h-10 w-full sm:w-36 bg-blue-100 rounded-lg" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-export const ErrorScreen = ({ error, navigate }) => (
-  <div className="min-h-100 flex flex-col items-center justify-center p-8 text-center">
-    <div className="bg-red-50 p-4 rounded-full mb-4">
-      <AlertCircle size={40} className="text-red-500" />
-    </div>
-    <h2 className="text-xl font-bold text-slate-800 mb-2">
-      We are working on it
-    </h2>
-    <p className="text-slate-600 mb-6 max-w-md">
-      {error ||
-        "We couldn't load the recruitment details. Please try again later."}
-    </p>
-    <button
-      onClick={() => navigate(-1)}
-      className="px-6 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors font-medium text-sm"
-    >
-      Go Back
-    </button>
-  </div>
-);

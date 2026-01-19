@@ -52,10 +52,9 @@ const FLASH_MODELS = [
 
 // NOTE: Any API key present in client-side code is not truly secret.
 const GEMINI_PRESET_KEYS = [
-  { id: "key_1", label: "anv9576", env: "VITE_PRESET_API_KEY_1", hint: "Primary App Usage" },
-  { id: "key_2", label: "av95766", env: "VITE_PRESET_API_KEY_2", hint: "QA Environment" },
-  { id: "key_3", label: "codesweeper", env: "VITE_PRESET_API_KEY_3", hint: "Local Dev" },
-  { id: "key_4", label: "romrom", env: "VITE_PRESET_API_KEY_4", hint: "Backup" },
+  { id: "key_1", label: "anv9576", env: "VITE_PRESET_API_KEY_anv9576", hint: "Primary App Usage" },
+  { id: "key_2", label: "av95766", env: "VITE_PRESET_API_KEY_av95766", hint: "QA Environment" },
+  { id: "key_3", label: "romrommerom", env: "VITE_PRESET_API_KEY_romrommerom", hint: "Local Dev" },
 ];
 
 // --- PERPLEXITY CONSTANTS ---
@@ -65,9 +64,9 @@ const PERPLEXITY_MODELS = [
 ];
 
 const PERPLEXITY_PRESET_API_KEYS = [
-  { id: "anv9576", label: "Primary Search Key", env: "VITE_PERPLEXITY_API_KEY_1", hint: "Main Account" },
-  { id: "av95766", label: "Backup Search Key", env: "VITE_PERPLEXITY_API_KEY_3", hint: "Failover Account" },
-  { id: "romrom", label: "Local Dev Key", env: "VITE_PERPLEXITY_API_KEY_3", hint: "Local Development" },
+  { id: "anv9576", label: "Primary Search Key", env: "VITE_PERPLEXITY_API_KEY_anv9576", hint: "Main Account" },
+  { id: "av95766", label: "Backup Search Key", env: "VITE_PERPLEXITY_API_KEY_av95766", hint: "Failover Account" },
+  { id: "romrommerom", label: "Local Dev Key", env: "VITE_PERPLEXITY_API_KEY_romrommerom", hint: "Local Development" },
 ];
 
 const ToggleSwitch = ({ checked, onChange, disabled, ariaLabel }) => (

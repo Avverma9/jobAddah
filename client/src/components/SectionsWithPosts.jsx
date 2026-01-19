@@ -607,7 +607,7 @@ export default function SectionsWithPosts({ sections }) {
 
   return (
     <div className="space-y-8 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7x2 mx-auto px-4 sm:px-6">
         {localSections.map((section) => (
           <SectionWithSortableGrid key={section._id} section={section} />
         ))}

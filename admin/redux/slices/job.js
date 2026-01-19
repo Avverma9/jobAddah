@@ -60,13 +60,13 @@ export const markFav = createAsyncThunk("job/markFav", async ({ id, fav }) => {
 });
 
 export const getSections = createAsyncThunk("job/getSections", async () => {
-  const { data } = await api.get("/dashboard/get-sections");
+  const { data } = await api.get("/get-sections");
   // yahan sirf data.data return karo
   return Array.isArray(data?.data) ? data.data : [];
 });
 
 export const getPostlist = createAsyncThunk("job/getPostlist", async (url) => {
-  const { data } = await api.post(`/dashboard/get-postlist${url}`);
+  const { data } = await api.post(`/get-postlist${url}`);
   return data;
 });
 

@@ -192,6 +192,42 @@ const EligibilitySection = ({ eligibility }) => {
   );
 };
 
+const AdditionalDetailsSection = ({ details }) => {
+  if (
+    !details ||
+    typeof details !== "object" ||
+    Object.keys(details).length === 0
+  ) {
+    return null;
+  }
+
+  const detailItems = Object.entries(details).filter(
+    ([key]) => key !== "sourceUrl" && key !== "postDateOfScrapedData"
+  );
+
+  if (detailItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
+        <FileText size={18} className="text-gray-600" /> Additional Details
+      </h3>
+      <div className="space-y-2 text-xs text-gray-600">
+        {detailItems.map(([key, value]) => (
+          <div key={key}>
+            <span className="font-semibold text-gray-800">
+              {toTitleCase(key.replace(/([A-Z])/g, " $1").trim())}:
+            </span>{" "}
+            <span>{extractText(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // --- NEW: Selection Process Section ---
 const SelectionSection = ({ selection }) => {
   if (!selection || selection.length === 0) return null;
@@ -224,7 +260,7 @@ const DocumentationSection = ({ documentation }) => {
         {documentation.map((doc, idx) => (
           <li key={idx} className="flex items-start gap-2">
             <FileText size={14} className="text-gray-400 mt-0.5 shrink-0"/>
-            <span>{doc}</span>
+            <span>{extractText(doc)}</span>
           </li>
         ))}
       </ul>
@@ -463,6 +499,8 @@ export default function GovtPostMobile({ post }) {
 
         {/* 5. Eligibility */}
         <EligibilitySection eligibility={eligibility} />
+
+        <AdditionalDetailsSection details={post?.recruitment?.additionalDetails || post?.additionalDetails} />
 
         {/* 6. Selection Process (Added) */}
         <SelectionSection selection={selection} />
