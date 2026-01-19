@@ -2,19 +2,16 @@
   "name": "jobaddah-server",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "author": "Ankit Kumar Verma",
   "scripts": {
-    "start": "node index.js",
-    "start:cluster": "node cluster.js",
-    "dev": "nodemon index.js",
-    "setup-ads": "node setup-ad-system.js",
-    "test-ads": "node test-ad-api.js",
-    "test-enhanced": "node test-enhanced-ad-api.js",
-    "quick-start": "node quick-start.js"
+    "start": "node index.mjs",
+    "dev": "nodemon index.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.2",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0-rc.12",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -23,12 +20,13 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "module-alias": "^2.2.2",
-    "mongoose": "^8.20.0",
+    "mongoose": "^9.1.3",
     "node-cron": "^4.2.1",
-    "node-fetch": "^2.7.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.12",
     "nodemon": "^3.1.11",
     "string-similarity": "^4.0.4",
-    "undici": "^6.13.0"
+    "undici": "^7.18.2"
   },
   "_moduleAliases": {
     "@": "."
