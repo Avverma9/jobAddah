@@ -227,7 +227,7 @@ const initCategoryCron = () => {
   );
   console.log("Cron: category sync scheduled (hourly, Asia/Kolkata)");
 };
-
+// Exporting functions for external use
 export {
   initCategoryCron,
   syncCategoriesAndJobs,
