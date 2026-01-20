@@ -1,0 +1,21 @@
+{
+  "name": "JobsAddah",
+  "short_name": "JobsAddah",
+  "description": "Latest Sarkari recruitment updates, admit cards, results, and job alerts in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
