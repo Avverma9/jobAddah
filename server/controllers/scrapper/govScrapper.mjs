@@ -235,7 +235,7 @@ const scrapper = async (req, res) => {
     const scraped = scrapeHTML($, jobUrl);
     const aiData = await formatWithAI(scraped);
 
-    aiData.url = cleanUrl;
+    aiData.url = req?.body?.url;
     aiData.sourceUrl = jobUrl;
     aiData.pageHash = pageHash;
 
