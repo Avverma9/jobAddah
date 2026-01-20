@@ -1,8 +1,5 @@
 import { toTitleCase } from "@/lib/text";
 
-/* ============================================================
-   BASIC UTILITIES
-============================================================ */
 export const extractText = (data) => {
   if (data == null) return "";
   if (typeof data === "string") return data;
@@ -59,9 +56,33 @@ export const isPlaceholderValue = (val) => {
   );
 };
 
-/* ============================================================
-   MAIN NORMALIZER
-============================================================ */
+const formatFeeLabel = (key) => {
+  const labelMap = {
+    general: "General",
+    generalObc: "General/OBC",
+    general_obc: "General/OBC",
+    ewsObc: "EWS/OBC",
+    ews_obc: "EWS/OBC",
+    scSt: "SC/ST",
+    sc_st: "SC/ST",
+    scStEbc: "SC/ST/EBC",
+    sc_st_ebc: "SC/ST/EBC",
+    scStEbcFemale: "SC/ST/EBC/Female",
+    sc_st_ebc_female: "SC/ST/EBC/Female",
+    scStEbcFemaleTransgender: "SC/ST/EBC/Female/Transgender",
+    sc_st_ebc_female_transgender: "SC/ST/EBC/Female/Transgender",
+    female: "Female",
+    ph: "PH/PWD",
+    pwd: "PH/PWD",
+    correctionCharge: "Correction Charge",
+    correction_charge: "Correction Charge",
+    refund_amount: "Refund Amount",
+    refundAmount: "Refund Amount",
+  };
+
+  return labelMap[key] || toTitleCase(key.replace(/_/g, " ").replace(/([A-Z])/g, " $1"));
+};
+
 export const extractRecruitmentData = (input) => {
   const payload = input?.data || input || {};
   const rec = payload.recruitment || payload;
@@ -72,33 +93,26 @@ export const extractRecruitmentData = (input) => {
   return {
     id: payload._id || null,
     fav: Boolean(payload.fav),
-
     title: rec.title || "Recruitment Notification",
-
-    advertisementNumber: 
+    advertisementNumber:
       rec.advertisementNumber ||
-      additional.advertisementNumber || 
-      additional.advertisementNo || 
+      additional.advertisementNumber ||
+      additional.advertisementNo ||
       null,
-
     organization:
       org.name ||
       org.shortName ||
       (typeof rec.organization === "string"
         ? rec.organization
         : "Government Organization"),
-
     organizationType: org.type || null,
-
     website:
       org.officialWebsite ||
       org.website ||
       payload.sourceUrl ||
       payload.url ||
       "",
-
     sourceUrl: rec.sourceUrl || payload.sourceUrl || payload.url || null,
-
     shortDescription:
       rec.shortDescription ||
       rec.eligibility?.educationalQualification ||
@@ -106,58 +120,45 @@ export const extractRecruitmentData = (input) => {
       rec.eligibility?.generalRequirement ||
       rec.eligibility?.education ||
       "",
-
     status: rec.status || "Active",
-
     importantDates: rec.importantDates || {},
     dates: extractDates(rec.importantDates || {}),
-
     vacancy: extractVacancy(rec.vacancyDetails || {}),
     fees: extractFees(rec.applicationFee || {}),
     age: extractAge(rec.ageLimit || {}),
     eligibility: extractEligibility(rec.eligibility || {}),
     physicalStandards: extractPhysicalStandards(rec.physicalStandards || {}),
     physicalTest: extractPhysicalTest(rec.physicalEfficiencyTest || {}),
-    selection: Array.isArray(rec.selectionProcess)
-      ? rec.selectionProcess
-      : [],
-
+    selection: Array.isArray(rec.selectionProcess) ? rec.selectionProcess : [],
     links: extractLinks(rec.importantLinks || {}),
     documentation: normalizeDocumentation(rec.documentation || []),
-    districtData: normalizeDistricts(rec.vacancyDetails?.districtWise || rec.districtWiseData || []),
-
+    districtData: normalizeDistricts(
+      rec.vacancyDetails?.districtWise || rec.districtWiseData || []
+    ),
     additionalDetails: additional,
-
-    noteToCandidates: 
-      additional.noteToCandidates || 
-      additional.applicantAdvisory || 
-      null,
+    noteToCandidates:
+      additional.noteToCandidates || additional.applicantAdvisory || null,
     confirmationAdvice: additional.confirmationAdvice || null,
-    howToApply: 
-      additional.howToApplyInstructions || 
-      additional.applicationInstructions || 
-      additional.applicationProcessNote || 
+    howToApply:
+      additional.howToApplyInstructions ||
+      additional.applicationInstructions ||
+      additional.applicationProcessNote ||
       null,
     relatedPosts: additional.relatedPosts || [],
-    externalLinks: 
-      additional.usefulExternalLinks || 
-      additional.alternativeDetailsSource || 
+    externalLinks:
+      additional.usefulExternalLinks ||
+      additional.alternativeDetailsSource ||
       null,
-
     createdAt: payload.createdAt || null,
     updatedAt: payload.updatedAt || null,
-
     _raw: payload,
   };
 };
 
-/* ============================================================
-   IMPORTANT DATES
-============================================================ */
 export const extractDates = (dates) => {
   if (!dates || typeof dates !== "object") return [];
 
-  const map = [
+  const dateMap = [
     ["notificationDate", "Notification Date"],
     ["postDate", "Post Date"],
     ["applicationStartDate", "Application Start"],
@@ -176,50 +177,61 @@ export const extractDates = (dates) => {
     ["counsellingDate", "Counselling Date"],
   ];
 
+  const otherDateMap = {
+    petAdmitCardDate: "PET Admit Card",
+    mainsAdmitCardDate: "Mains Admit Card",
+    mainsResultDate: "Mains Result",
+    preResultDate: "Pre Result",
+    interviewLetterReleaseDate: "Interview Letter",
+    scoreCardReleaseDate: "Score Card Release",
+    finalResultCutoff: "Final Result & Cutoff",
+  };
+
   const result = [];
 
-  map.forEach(([key, label]) => {
+  dateMap.forEach(([key, label]) => {
     const v = dates[key];
     if (v && !isPlaceholderValue(v)) {
       result.push(`${label}: ${v}`);
     }
   });
 
+  if (dates.other && typeof dates.other === "object") {
+    Object.entries(dates.other).forEach(([key, value]) => {
+      if (value && !isPlaceholderValue(value)) {
+        const label = otherDateMap[key] || toTitleCase(key.replace(/([A-Z])/g, " $1"));
+        result.push(`${label}: ${value}`);
+      }
+    });
+  }
+
   return result;
 };
 
-/* ============================================================
-   FEES (WITH PAYMENT MODE)
-============================================================ */
 export const extractFees = (fees) => {
   if (!fees || typeof fees !== "object") return [];
 
   const result = [];
-  const paymentModes = 
-    fees.paymentMode || 
-    fees.paymentModes || 
-    fees.paymentModeOnline;
+  const paymentModes =
+    fees.paymentMode || fees.paymentModes || fees.paymentModeOnline;
 
   const excludeKeys = [
     "paymentMode",
-    "paymentModes", 
+    "paymentModes",
     "paymentModeOnline",
     "currency",
-    "exemptions"
+    "exemptions",
   ];
 
   Object.entries(fees).forEach(([key, value]) => {
     if (excludeKeys.includes(key)) return;
     if (value == null || value === 0 || isPlaceholderValue(value)) return;
 
-    const label = toTitleCase(
-      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-    );
-
-    // Handle currency formatting
-    const formattedValue = typeof value === "number" && fees.currency
-      ? `${value} ${fees.currency}`
-      : value;
+    const label = formatFeeLabel(key);
+    const formattedValue =
+      typeof value === "number" && fees.currency
+        ? `₹ ${value}/-`
+        : value;
 
     result.push({
       type: "normal",
@@ -227,7 +239,6 @@ export const extractFees = (fees) => {
     });
   });
 
-  // Add exemptions if present
   if (fees.exemptions && !isPlaceholderValue(fees.exemptions)) {
     result.push({
       type: "exemption",
@@ -235,25 +246,21 @@ export const extractFees = (fees) => {
     });
   }
 
-  // Add payment modes
   if (Array.isArray(paymentModes) && paymentModes.length) {
     result.push({
       type: "payment",
-      text: `Payment Mode: ${paymentModes.join(", ")}`,
+      text: `Payment Methods: ${paymentModes.join(", ")}`,
     });
   } else if (typeof paymentModes === "string" && paymentModes) {
     result.push({
       type: "payment",
-      text: `Payment Mode: ${paymentModes}`,
+      text: `Payment Methods: ${paymentModes}`,
     });
   }
 
   return result;
 };
 
-/* ============================================================
-   AGE LIMIT
-============================================================ */
 export const extractAge = (age) => {
   if (!age || typeof age !== "object")
     return { text: [], relaxation: "", categoryWise: [] };
@@ -261,21 +268,16 @@ export const extractAge = (age) => {
   const text = [];
   const categoryWise = [];
 
-  // Minimum age
   if (age.minimumAge || age.minimum) {
     const minAge = age.minimumAge || age.minimum;
-    if (!isPlaceholderValue(minAge))
-      text.push(`Minimum Age: ${minAge}`);
+    if (!isPlaceholderValue(minAge)) text.push(`Minimum Age: ${minAge}`);
   }
 
-  // Maximum age
   if (age.maximumAge || age.maximum) {
     const maxAge = age.maximumAge || age.maximum;
-    if (!isPlaceholderValue(maxAge))
-      text.push(`Maximum Age: ${maxAge}`);
+    if (!isPlaceholderValue(maxAge)) text.push(`Maximum Age: ${maxAge}`);
   }
 
-  // Age as on date
   const ageAsOnDate =
     age.ageLimitAsOnDate ||
     age.ageCalculationDate ||
@@ -287,17 +289,13 @@ export const extractAge = (age) => {
   if (ageAsOnDate && !isPlaceholderValue(ageAsOnDate))
     text.push(`Age As On: ${ageAsOnDate}`);
 
-  // Handle specific age fields
-  if (age.maximumAgeURMale)
-    text.push(`UR Male: ${age.maximumAgeURMale}`);
-  if (age.maximumAgeURFemale)
-    text.push(`UR Female: ${age.maximumAgeURFemale}`);
+  if (age.maximumAgeURMale) text.push(`UR Male: ${age.maximumAgeURMale}`);
+  if (age.maximumAgeURFemale) text.push(`UR Female: ${age.maximumAgeURFemale}`);
   if (age.maximumAgeBCEBCMaleFemale)
     text.push(`BC/EBC: ${age.maximumAgeBCEBCMaleFemale}`);
   if (age.maximumAgeSCSTMaleFemale)
     text.push(`SC/ST: ${age.maximumAgeSCSTMaleFemale}`);
 
-  // Extract age relaxation
   let relaxationText = "";
   if (age.ageRelaxation) {
     if (typeof age.ageRelaxation === "string") {
@@ -305,33 +303,30 @@ export const extractAge = (age) => {
     } else if (typeof age.ageRelaxation === "object") {
       const relaxations = [];
       Object.entries(age.ageRelaxation).forEach(([key, value]) => {
-        if (key === "other" && typeof value === "object") {
-          Object.entries(value).forEach(([k, v]) => {
-            if (v && !isPlaceholderValue(v) && v !== 0) {
-              const label = toTitleCase(
-                k.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-              );
-              relaxations.push(`${label}: ${v}`);
-            }
-          });
+        if (key === "other") {
+          if (typeof value === "object" && value !== null) {
+            Object.entries(value).forEach(([k, v]) => {
+              if (v && !isPlaceholderValue(v) && v !== 0) {
+                const label = toTitleCase(k.replace(/([A-Z])/g, " $1"));
+                relaxations.push(`${label}: ${v}`);
+              }
+            });
+          } else if (typeof value === "string" && !isPlaceholderValue(value)) {
+            relaxations.push(value);
+          }
         } else if (value && !isPlaceholderValue(value) && value !== 0) {
-          const label = toTitleCase(
-            key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-          );
-          relaxations.push(`${label}: ${value} years`);
+          const label = toTitleCase(key.replace(/([A-Z])/g, " $1"));
+          const valueText = typeof value === "number" ? `${value} years` : value;
+          relaxations.push(`${label}: ${valueText}`);
         }
       });
       if (relaxations.length) relaxationText = relaxations.join(", ");
     }
   } else {
     relaxationText =
-      age.ageRelaxationDetails ||
-      age.relaxationDetails ||
-      age.relaxation ||
-      "";
+      age.ageRelaxationDetails || age.relaxationDetails || age.relaxation || "";
   }
 
-  // Extract category-wise age limits
   if (age.categoryWise && typeof age.categoryWise === "object") {
     Object.entries(age.categoryWise).forEach(([category, values]) => {
       if (typeof values === "object" && values !== null) {
@@ -355,13 +350,10 @@ export const extractAge = (age) => {
   };
 };
 
-/* ============================================================
-   VACANCY DETAILS
-============================================================ */
 export const extractVacancy = (vacancy) => {
   if (!vacancy || typeof vacancy !== "object") {
-    return { 
-      total: "See Notification", 
+    return {
+      total: "See Notification",
       positions: [],
       categoryWise: null,
     };
@@ -371,7 +363,6 @@ export const extractVacancy = (vacancy) => {
 
   if (Array.isArray(vacancy.positions)) {
     positions = vacancy.positions.map((p) => {
-      // Handle string positions
       if (typeof p === "string") {
         return {
           name: p,
@@ -381,21 +372,17 @@ export const extractVacancy = (vacancy) => {
         };
       }
 
-      // Handle object positions
       return {
         name: p.name || p.postName || p.position || "Post",
-        count: 
-          p.totalPosts || 
-          p.posts || 
+        count:
+          p.totalPosts ||
+          p.posts ||
           p.numberOfPosts ||
-          p.count || 
-          p.total || 
+          p.count ||
+          p.total ||
           "-",
-        qualification: 
-          p.eligibility || 
-          p.qualification || 
-          p.educationalQualification || 
-          "-",
+        qualification:
+          p.eligibility || p.qualification || p.educationalQualification || "-",
         ageLimit: p.ageLimit || "",
         category: p.category || "",
         areaType: p.areaType || "",
@@ -410,7 +397,6 @@ export const extractVacancy = (vacancy) => {
     });
   }
 
-  // Extract category-wise breakdown
   let categoryWise = null;
   if (vacancy.categoryWise && typeof vacancy.categoryWise === "object") {
     categoryWise = {};
@@ -423,40 +409,30 @@ export const extractVacancy = (vacancy) => {
   }
 
   return {
-    total:
-      vacancy.totalPosts ||
-      vacancy.total ||
-      "See Notification",
+    total: vacancy.totalPosts || vacancy.total || "See Notification",
     positions,
     categoryWise,
   };
 };
 
-/* ============================================================
-   ELIGIBILITY
-============================================================ */
 export const extractEligibility = (elig) => {
   if (!elig) return [];
 
-  if (typeof elig === "string")
-    return [{ type: "text", text: elig }];
+  if (typeof elig === "string") return [{ type: "text", text: elig }];
 
   if (Array.isArray(elig)) {
     return elig.map((item) => {
-      if (typeof item === "string")
-        return { type: "text", text: item };
+      if (typeof item === "string") return { type: "text", text: item };
 
       const position = item.position || item.name || "";
       const parts = [];
 
       if (item.educationalQualification)
         parts.push(`Education: ${item.educationalQualification}`);
-      if (item.typingSkills)
-        parts.push(`Typing: ${item.typingSkills}`);
+      if (item.typingSkills) parts.push(`Typing: ${item.typingSkills}`);
       if (item.stenographySkills)
         parts.push(`Stenography: ${item.stenographySkills}`);
-      if (item.otherRequirements)
-        parts.push(`Other: ${item.otherRequirements}`);
+      if (item.otherRequirements) parts.push(`Other: ${item.otherRequirements}`);
 
       return {
         type: "position",
@@ -466,7 +442,6 @@ export const extractEligibility = (elig) => {
     });
   }
 
-  // Handle object eligibility
   const result = [];
 
   const eduQualification =
@@ -492,27 +467,23 @@ export const extractEligibility = (elig) => {
     }
   }
 
-  // Special requirements
   if (elig.specialRequirements && Array.isArray(elig.specialRequirements)) {
     elig.specialRequirements.forEach((req) => {
       result.push({ type: "special", text: req });
     });
   }
 
-  // Stream required
   if (elig.streamRequired && !isPlaceholderValue(elig.streamRequired)) {
     result.push({ type: "text", text: `Stream: ${elig.streamRequired}` });
   }
 
-  // Minimum percentage
   if (elig.minimumPercentage && elig.minimumPercentage !== 0) {
-    result.push({ 
-      type: "text", 
-      text: `Minimum Percentage: ${elig.minimumPercentage}%` 
+    result.push({
+      type: "text",
+      text: `Minimum Percentage: ${elig.minimumPercentage}%`,
     });
   }
 
-  // Experience required
   if (elig.experienceRequired && !isPlaceholderValue(elig.experienceRequired)) {
     result.push({ type: "text", text: `Experience: ${elig.experienceRequired}` });
   } else if (elig.experience) {
@@ -523,7 +494,6 @@ export const extractEligibility = (elig) => {
     result.push({ type: "text", text: `Skills: ${elig.skills}` });
   }
 
-  // Handle other fields
   const processedKeys = [
     "educationalQualification",
     "educationQualification",
@@ -542,9 +512,7 @@ export const extractEligibility = (elig) => {
     if (processedKeys.includes(key)) return;
     if (!value || isPlaceholderValue(value)) return;
 
-    const label = toTitleCase(
-      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-    );
+    const label = toTitleCase(key.replace(/([A-Z])/g, " $1"));
 
     if (typeof value === "string") {
       result.push({ type: "item", label, text: value });
@@ -554,9 +522,6 @@ export const extractEligibility = (elig) => {
   return result;
 };
 
-/* ============================================================
-   PHYSICAL STANDARDS
-============================================================ */
 export const extractPhysicalStandards = (physical) => {
   if (!physical || typeof physical !== "object") return null;
 
@@ -575,7 +540,6 @@ export const extractPhysicalStandards = (physical) => {
     }
   });
 
-  // Return null if both male and female are empty
   if (
     Object.keys(result.male).length === 0 &&
     Object.keys(result.female).length === 0
@@ -586,9 +550,6 @@ export const extractPhysicalStandards = (physical) => {
   return result;
 };
 
-/* ============================================================
-   PHYSICAL EFFICIENCY TEST
-============================================================ */
 export const extractPhysicalTest = (test) => {
   if (!test || typeof test !== "object") return null;
 
@@ -607,7 +568,6 @@ export const extractPhysicalTest = (test) => {
     }
   });
 
-  // Return null if both male and female are empty
   if (
     Object.keys(result.male).length === 0 &&
     Object.keys(result.female).length === 0
@@ -618,33 +578,46 @@ export const extractPhysicalTest = (test) => {
   return result;
 };
 
-/* ============================================================
-   IMPORTANT LINKS (WITH ACTIVATION DATE SUPPORT)
-============================================================ */
 export const extractLinks = (links) => {
   if (!links || typeof links !== "object") return [];
 
   const seen = new Set();
   const result = [];
 
+  const otherLinkMap = {
+    finalResultCutoff: "Final Result & Cutoff",
+    finalScoreCard: "Final Score Card",
+    interviewLetter: "Interview Letter",
+    mainsScoreCard: "Mains Score Card",
+    mainsResult: "Mains Result",
+    mainsAdmitCard: "Mains Admit Card",
+    preScoreCard: "Pre Score Card",
+    preResult: "Pre Result",
+    petAdmitCard: "PET Admit Card",
+    onlineApplicationCorrection: "Online Application Correction",
+    applicationCorrectionNotice: "Application Correction Notice",
+    dateExtendNotice: "Date Extension Notice",
+    joinWhatsAppChannel: "Join WhatsApp Channel",
+    joinTelegramChannel: "Join Telegram Channel",
+    whatsappChannel: "WhatsApp Channel",
+    telegramChannel: "Telegram Channel",
+  };
+
   Object.entries(links).forEach(([key, value]) => {
     if (!value) return;
 
     let url = null;
-    let label = toTitleCase(
-      key.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-    );
+    let label = toTitleCase(key.replace(/([A-Z])/g, " $1"));
     let activationDate = null;
     let customText = null;
 
-    // Handle nested "other" object
     if (key === "other" && typeof value === "object") {
       Object.entries(value).forEach(([nestedKey, nestedValue]) => {
         if (typeof nestedValue === "string" && nestedValue.startsWith("http")) {
-          const nestedLabel = toTitleCase(
-            nestedKey.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-          );
-          
+          const nestedLabel =
+            otherLinkMap[nestedKey] ||
+            toTitleCase(nestedKey.replace(/([A-Z])/g, " $1"));
+
           if (!seen.has(nestedValue)) {
             seen.add(nestedValue);
             result.push({
@@ -660,22 +633,17 @@ export const extractLinks = (links) => {
       return;
     }
 
-    // Handle string URLs
     if (typeof value === "string") {
       url = value;
-    }
-    // Handle object with url/link/href
-    else if (typeof value === "object") {
+    } else if (typeof value === "object") {
       url = value.url || value.link || value.href;
       activationDate = value.activationDate || null;
       customText = value.text || value.label || null;
-      
+
       if (customText) label = customText;
     }
 
-    // Skip if no URL or URL is placeholder
     if (!url || isPlaceholderValue(url)) {
-      // If there's activation date but no URL, still add with pending status
       if (activationDate) {
         result.push({
           label,
@@ -688,15 +656,20 @@ export const extractLinks = (links) => {
       return;
     }
 
-    // Skip duplicate URLs
     if (seen.has(url)) return;
-    
-    // Skip placeholder domains
-    if (url.includes("jobsaddah.com") && 
-        !["whatsappChannel", "telegramChannel", "joinWhatsAppChannel", "joinTelegramChannel"].includes(key)) {
+
+    if (
+      url.includes("jobsaddah.com") &&
+      ![
+        "whatsappChannel",
+        "telegramChannel",
+        "joinWhatsAppChannel",
+        "joinTelegramChannel",
+      ].includes(key)
+    ) {
       return;
     }
-    
+
     seen.add(url);
 
     result.push({
@@ -711,35 +684,26 @@ export const extractLinks = (links) => {
   return result;
 };
 
-/* ============================================================
-   LINK HELPER: CHECK IF LINK IS CLICKABLE
-============================================================ */
 export const isLinkClickable = (link) => {
   if (!link) return false;
   if (!link.url || isPlaceholderValue(link.url)) return false;
   return link.isActive === true;
 };
 
-/* ============================================================
-   LINK HELPER: GET LINK STATUS MESSAGE
-============================================================ */
 export const getLinkStatusMessage = (link) => {
   if (!link) return null;
-  
+
   if (link.isPending && link.activationDate) {
     return `Available from ${link.activationDate}`;
   }
-  
+
   if (!link.url && link.activationDate) {
     return `Will be active from ${link.activationDate}`;
   }
-  
+
   return null;
 };
 
-/* ============================================================
-   DOCUMENTATION NORMALIZATION
-============================================================ */
 const normalizeDocumentation = (docs) => {
   if (!Array.isArray(docs)) return [];
 
@@ -756,9 +720,6 @@ const normalizeDocumentation = (docs) => {
   });
 };
 
-/* ============================================================
-   DISTRICT WISE DATA
-============================================================ */
 const normalizeDistricts = (arr) => {
   if (!Array.isArray(arr) || arr.length === 0) return [];
 
@@ -771,9 +732,6 @@ const normalizeDistricts = (arr) => {
   }));
 };
 
-/* ============================================================
-   UI HELPER: ADDITIONAL DETAILS RENDERER
-============================================================ */
 export const renderAdditionalValue = (value) => {
   if (value == null) return null;
 
@@ -793,10 +751,7 @@ export const renderAdditionalValue = (value) => {
         {Object.entries(value).map(([k, v]) => (
           <div key={k}>
             <strong>
-              {toTitleCase(
-                k.replace(/_/g, " ").replace(/([A-Z])/g, " $1")
-              )}
-              :
+              {toTitleCase(k.replace(/([A-Z])/g, " $1"))}:
             </strong>{" "}
             {extractText(v)}
           </div>
@@ -808,9 +763,6 @@ export const renderAdditionalValue = (value) => {
   return <span>{extractText(value)}</span>;
 };
 
-/* ============================================================
-   HELPER: FORMAT PHYSICAL STANDARDS FOR DISPLAY
-============================================================ */
 export const formatPhysicalStandards = (standards) => {
   if (!standards) return null;
 

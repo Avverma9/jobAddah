@@ -140,8 +140,9 @@ export default function JobDetailServer({ data, canonicalPath, sourcePath }) {
 
     const parts = [];
 
-    if (d.shortDescription && d.shortDescription.trim()) {
-      parts.push(d.shortDescription.trim());
+    const short = extractText(d.shortDescription);
+    if (short && String(short).trim()) {
+      parts.push(String(short).trim());
     }
 
     // Basic overview

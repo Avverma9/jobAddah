@@ -13,14 +13,16 @@ function renderDates(dates = {}) {
   });
 }
 
-export default async function PostPage({ searchParams = {} }) {
-  const url = searchParams?.url || null;
-  const id = searchParams?.id || null;
+export default async function PostPage({ searchParams }) {
+  const params = await (searchParams || {});
+  const url = params?.url || null;
+  const id = params?.id || null;
 
   if (!url && !id) return notFound();
 
   // Try scraper endpoint which now returns the full post document
   try {
+    console.log('PostPage: calling scraper', { url, id, target: `${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete` });
     const resp = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete`,
       {
