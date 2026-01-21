@@ -67,6 +67,10 @@ export default function SEO({
       {resolvedTitle && <title>{resolvedTitle}</title>}
       <meta name="description" content={resolvedDescription} />
       <meta name="keywords" content={resolvedKeywords} />
+      <meta
+        name="google-site-verification"
+        content="pHJE47RJ0hoH0RC_KkdTem_-ECsDDjNEA296FWOdObY"
+      />
       <link rel="canonical" href={canonicalUrl} />
       <meta property="og:title" content={resolvedTitle} />
       <meta property="og:description" content={resolvedDescription} />

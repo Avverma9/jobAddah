@@ -61,13 +61,7 @@ const TOOLS_CONFIG = [
     desc: "Test your typing speed",
     color: "indigo",
   },
-  {
-    name: "Salary Calculator",
-    path: "/tools/salary",
-    icon: "Briefcase",
-    desc: "Calculate in-hand salary",
-    color: "green",
-  },
+ 
 ];
 
 const INFO_LINKS = [
