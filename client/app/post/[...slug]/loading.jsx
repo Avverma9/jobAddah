@@ -3,5 +3,5 @@
 import Loader from "@/util/Loader";
 
 export default function Loading() {
-  return <Loader message="Aligning the recruitment pages..." />;
+  return <Loader message="Getting latest data..." />;
 }
