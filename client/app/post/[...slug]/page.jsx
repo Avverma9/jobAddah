@@ -1,803 +1,641 @@
-"use client";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { cache } from "react";
+import { connectDB } from "@/lib/db/connectDB";
+import Post from "@/lib/models/job";
+import { extractRecruitmentData } from "@/util/post-helper";
+import { getCleanPostUrl } from "@/lib/job-url";
+import {
+  Calendar,
+  CheckCircle2,
+  Briefcase,
+  ChevronRight,
+  BookOpen,
+  Flame,
+  MousePointer2,
+} from "lucide-react";
+import { generateJobPostingSchema } from "@/lib/seo-schemas";
 
-import { useEffect, useMemo, useState, use } from "react";
-import { ExternalLink, CheckSquare } from "lucide-react";
-import SEO, { generateJobPostingSchema } from "@/lib/SEO";
-import { extractRecruitmentData, extractText } from "@/util/post-helper";
-
-// --- HELPERS ---
-
-// Fix 1: Date Cleaner Logic
-// Agar value bahut lambi hai (junk text) ya keywords contain karti hai, toh use skip karo
-const cleanDateValue = (label, value) => {
-  if (!value) return "Notify Soon";
-  // Admit card aksar junk text le leta hai agar date available na ho
-  if (
-    label.toLowerCase().includes("admit card") ||
-    label.toLowerCase().includes("exam date")
-  ) {
-    if (
-      value.length > 25 ||
-      value.includes("Related") ||
-      value.includes("Form")
-    ) {
-      return "Notify Soon";
-    }
-  }
-  // General safety for other dates
-  if (value.length > 50) return "Check Notification";
-  return value;
-};
-
-const SALARY_KEYS = [
-  ["salaryRange", "Salary Range"],
-  ["payScale", "Pay Scale"],
-  ["gradePay", "Grade Pay"],
-  ["salary", "Salary"],
-  ["package", "Offered Package"],
-  ["startingSalary", "Starting Salary"],
-  ["allowances", "Allowances"],
+const COMPETITOR_DOMAINS = [
+  "sarkariresult.com",
+  "sarkariresult.com.cm",
+  "sarkariexam.com",
+  "freejobalert.com",
+  "jagranjosh.com",
 ];
 
-const buildSalaryHighlights = (details) => {
-  if (!details) return [];
-  return SALARY_KEYS.reduce((list, [key, label]) => {
-    const value = details[key];
-    if (value) {
-      list.push({ label, value: extractText(value) });
-    }
-    return list;
-  }, []);
+const sanitizeLinks = (links) => {
+  if (!Array.isArray(links)) return [];
+  return links
+    .filter((l) => l && typeof l === "object" && typeof l.url === "string")
+    .map((l) => {
+      const u = l.url.toLowerCase();
+      const isCompetitor = COMPETITOR_DOMAINS.some((d) => u.includes(d));
+      return isCompetitor ? { ...l, url: "https://jobsaddah.com" } : l;
+    });
 };
 
-const findLinkByKeywords = (links, keywords = []) => {
-  if (!links || !links.length) return null;
-  const normalizedKeywords = keywords.map((keyword) => keyword.toLowerCase());
-  return links.find((link) => {
-    const label = (link.label || "").toLowerCase();
-    return normalizedKeywords.some((keyword) => label.includes(keyword));
-  });
+const cleanDateValue = (val) => {
+  if (!val) return "To be announced";
+  const v = String(val).trim();
+  if (v.length > 50 || v.toLowerCase().includes("related"))
+    return "Check Notification";
+  return v;
 };
 
-const findImportantDateLine = (dates = []) => {
-  if (!dates || !dates.length) return null;
-  const cleanDates = dates.filter(Boolean);
-  if (!cleanDates.length) return null;
-  const priority = [
-    "deadline",
-    "last date",
-    "closing",
-    "apply by",
-    "notification end",
-  ];
-  for (const keyword of priority) {
-    const hit = cleanDates.find((line) => line.toLowerCase().includes(keyword));
-    if (hit) return hit;
+const getJobDetails = cache(async (slug) => {
+  let targetPath = Array.isArray(slug) ? slug.join("/") : slug;
+  if (!targetPath) return null;
+  if (!targetPath.startsWith("/")) targetPath = "/" + targetPath;
+  if (!targetPath.endsWith("/")) targetPath = targetPath + "/";
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return null;
+
+  try {
+    const res = await fetch(`${apiUrl}/scrapper/scrape-complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: targetPath }),
+      next: { revalidate: 3600 },
+    });
+
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("text/html")) return null;
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json?.success ? json.data : null;
+  } catch {
+    return null;
   }
-  return cleanDates[0];
-};
+});
 
-const buildIntroParagraphs = (detail) => {
-  const sources = [
-    detail.shortDescription,
-    detail.noteToCandidates,
-    detail.confirmationAdvice,
-    detail.additionalDetails?.overview,
-    detail.additionalDetails?.summary,
-  ].filter(Boolean);
-
-  if (sources.length) return sources;
-
-  const vacancyTotal = detail.vacancy?.total || "multiple";
-  const organization = detail.organization || "the recruiting body";
-  return [
-    `The ${organization} recruitment is inviting applications for ${vacancyTotal} posts through the official notification for ${detail.title}.`,
-    `JobsAddah is tracking every update so you can prepare before the form goes live.`,
-  ];
-};
-
-const buildHighlightBullets = (detail) => {
-  const bullets = [];
-  const totalVacancy = detail.vacancy?.total;
-  if (totalVacancy && totalVacancy !== "See Notification") {
-    bullets.push(`Total Vacancies: ${totalVacancy}`);
+async function getRelatedPosts() {
+  try {
+    await connectDB();
+    const posts = await Post.aggregate([
+      { $match: { fav: true } },
+      { $sample: { size: 6 } },
+      { $project: { "recruitment.title": 1, url: 1, link: 1 } },
+    ]);
+    return JSON.parse(JSON.stringify(posts));
+  } catch {
+    return [];
   }
-  if (detail.organization) {
-    bullets.push(`Recruiter: ${detail.organization}`);
-  }
-  const positions = detail.vacancy?.positions || [];
-  const featured = positions.slice(0, 3).map((pos) => {
-    const count = pos.count || pos.total || "N/A";
-    return `${pos.name} (${count} posts)`;
-  });
-  if (featured.length) {
-    bullets.push(`Key Posts: ${featured.join(", ")}`);
-  }
-  if (detail.selection?.length) {
-    bullets.push(`Selection Rounds: ${detail.selection.length}`);
-  }
-  const deadlineLine = findImportantDateLine(detail.dates);
-  if (deadlineLine) {
-    bullets.push(`Key Deadline: ${deadlineLine}`);
-  }
-  return bullets;
-};
+}
 
-const buildSelectionSteps = (selection = []) =>
-  selection
-    .map((step) => {
-      if (typeof step === "string") return step;
-      return step?.name || step?.title || extractText(step);
-    })
-    .filter(Boolean);
-
-const buildApplicationSteps = (
-  detail,
-  applyLabel,
-  deadlineLine,
-  notificationLabel,
-) => {
-  const steps = [];
-  const org = detail.organization || "the recruiting body";
-  if (notificationLabel) {
-    steps.push(
-      `Download and read the official ${notificationLabel} issued by ${org} to confirm vacancy details, eligibility, and fee structure.`,
-    );
-  } else {
-    steps.push(
-      `Download and read the official notification published by ${org} to confirm vacancy details, eligibility, and fee structure.`,
-    );
-  }
-
-  if (applyLabel) {
-    steps.push(
-      `Use the ${applyLabel} link listed below to reach the application portal before you begin filling the form.`,
-    );
-  } else {
-    steps.push(
-      "Open the Apply Online link in the Important Links section and keep it ready before populating the form.",
-    );
-  }
-
-  steps.push(
-    "Match your academic, age, and document requirements with the Qualification Summary before entering personal and educational details.",
-  );
-
-  const docs = (detail.documentation || [])
-    .map((doc) => doc.name || doc.type)
-    .filter(Boolean);
-  if (docs.length) {
-    steps.push(
-      `Keep ${docs.slice(0, 3).join(", ")} handy for quick uploads once the portal opens.`,
-    );
-  }
-
-  if (deadlineLine) {
-    const dateValue = deadlineLine.split(": ")[1] || deadlineLine;
-    steps.push(
-      `Submit the application and pay the fee before ${dateValue} to avoid last-minute issues.`,
-    );
-  } else {
-    steps.push(
-      `Submit the application before the closing date mentioned in the notification.`,
-    );
-  }
-
-  steps.push(
-    "Save the confirmation reference number and fee receipt for future communication.",
-  );
-
-  return steps;
-};
-// --- COMPONENTS ---
-
-const TableSkeleton = () => (
-  <div className="max-w-5xl mx-auto border-x border-slate-300 bg-white animate-pulse font-sans shadow-sm">
-    {/* 1. Header Section Skeleton */}
-    <div className="p-5 border-b-4 border-slate-300 bg-slate-50 flex flex-col items-center gap-4">
-      {/* Title */}
-      <div className="h-8 md:h-10 bg-slate-300 w-3/4 rounded-md" />
-      {/* Meta Tags (Post Date / Advt) */}
-      <div className="flex gap-3">
-        <div className="h-6 bg-slate-200 w-32 rounded" />
-        <div className="h-6 bg-slate-200 w-24 rounded" />
-      </div>
-      {/* Short Info Lines */}
-      <div className="space-y-2 w-full max-w-4xl mt-2">
-        <div className="h-3 bg-slate-200 w-full rounded" />
-        <div className="h-3 bg-slate-200 w-5/6 mx-auto rounded" />
-        <div className="h-3 bg-slate-200 w-4/6 mx-auto rounded" />
-      </div>
-    </div>
-
-    {/* 2. Grid Section (Dates & Fees) */}
-    <div className="grid md:grid-cols-2 border-b border-slate-300">
-      {/* Left Column: Dates */}
-      <div className="border-r border-slate-300">
-        {/* Header Strip */}
-        <div className="h-10 bg-slate-300 w-full" />
-        {/* List Items */}
-        <div className="divide-y divide-slate-100">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex justify-between p-3">
-              <div className="h-4 bg-slate-200 w-1/3 rounded" />
-              <div className="h-4 bg-slate-200 w-1/4 rounded" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Right Column: Fees */}
-      <div>
-        {/* Header Strip */}
-        <div className="h-10 bg-slate-300 w-full" />
-        {/* List Items */}
-        <div className="divide-y divide-slate-100">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex justify-between p-3">
-              <div className="h-4 bg-slate-200 w-1/4 rounded" />
-              <div className="h-4 bg-slate-200 w-1/5 rounded" />
-            </div>
-          ))}
-          {/* Payment Note Box */}
-          <div className="p-3">
-            <div className="h-12 bg-slate-100 w-full rounded border border-slate-200" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* 3. Vacancy Total Strip */}
-    <div className="h-20 bg-slate-100 border-b border-slate-300 flex flex-col items-center justify-center gap-3 p-2">
-      <div className="h-6 bg-slate-300 w-1/2 rounded" />
-      <div className="flex gap-2">
-        <div className="h-5 bg-white w-16 border rounded" />
-        <div className="h-5 bg-white w-16 border rounded" />
-      </div>
-    </div>
-
-    {/* 4. Vacancy Table Skeleton */}
-    <div className="border-b border-slate-300">
-      <div className="h-10 bg-slate-300 w-full" /> {/* Table Header */}
-      <div className="p-0">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex border-b border-slate-100 last:border-0">
-            <div className="p-3 w-1/4 border-r border-slate-100">
-              <div className="h-4 bg-slate-200 w-3/4 rounded" />
-            </div>
-            <div className="p-3 w-1/6 border-r border-slate-100 flex justify-center">
-              <div className="h-4 bg-slate-200 w-1/2 rounded" />
-            </div>
-            <div className="p-3 flex-1">
-              <div className="h-3 bg-slate-200 w-full rounded mb-2" />
-              <div className="h-3 bg-slate-200 w-2/3 rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* 5. How to Apply Text Block */}
-    <div className="p-5 border-b border-slate-300 bg-slate-50 space-y-2">
-      <div className="h-5 bg-slate-300 w-1/4 rounded mb-2" />
-      <div className="h-3 bg-slate-200 w-full rounded" />
-      <div className="h-3 bg-slate-200 w-11/12 rounded" />
-      <div className="h-3 bg-slate-200 w-full rounded" />
-    </div>
-
-    {/* 6. Important Links Skeleton */}
-    <div>
-      <div className="h-10 bg-slate-300 w-full" />
-      <div className="divide-y divide-slate-100">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex items-center">
-            <div className="p-3 w-2/3 border-r border-slate-100">
-              <div className="h-5 bg-slate-200 w-1/2 rounded" />
-            </div>
-            <div className="p-3 flex-1 flex justify-center">
-              <div className="h-5 bg-slate-200 w-24 rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-const TableHeader = ({ text, color = "bg-rose-600" }) => (
-  <div
-    className={`${color} text-white text-center font-bold text-lg py-2 uppercase tracking-wide border-b border-slate-300`}
-  >
-    {text}
-  </div>
-);
-
-export default function JobDetailsPage({ params }) {
-  const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
-  const targetPath = Array.isArray(slug) ? `/${slug.join("/")}/` : `/${slug}/`;
-
-  const [state, setState] = useState({
-    status: "idle",
-    data: null,
-    error: null,
-  });
-
-  useEffect(() => {
-    if (!targetPath) return;
-    const controller = new AbortController();
-    setState({ status: "loading", data: null, error: null });
-
-    fetch(`/api/gov-post/post-details?url=${encodeURIComponent(targetPath)}`, {
-      signal: controller.signal,
-      cache: "no-store",
-    })
-      .then(async (res) => {
-        const json = await res.json();
-        if (controller.signal.aborted) return;
-        if (json.success) {
-          setState({ status: "success", data: json.data, error: null });
-        } else {
-          setState({
-            status: "error",
-            data: null,
-            error: json.message || "Failed to load",
-          });
-        }
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
-        setState({
-          status: "error",
-          data: null,
-          error: err?.message || "Failed to load",
-        });
-      });
-
-    return () => controller.abort();
-  }, [targetPath]);
-
-  const rawData = state.data;
-  const detail = useMemo(
-    () => (rawData ? extractRecruitmentData(rawData) : null),
-    [rawData],
-  );
-  const recruitment = rawData?.recruitment || {};
-
-  if (state.status === "loading") return <TableSkeleton />;
-  if (state.status === "error")
-    return (
-      <div className="text-center text-red-600 font-bold p-10">
-        {state.error}
-      </div>
-    );
-  if (!detail)
-    return <div className="text-center p-10 font-bold">No Data Found</div>;
-
-  const introParagraphs = buildIntroParagraphs(detail);
-  const highlightBullets = buildHighlightBullets(detail);
-  const selectionSteps = buildSelectionSteps(detail.selection);
-  const deadlineLine = findImportantDateLine(detail.dates);
-  const notificationLink = findLinkByKeywords(detail.links, [
-    "notification",
-    "pdf",
-    "official",
-  ]);
-  const applyLink = findLinkByKeywords(detail.links, [
-    "apply",
-    "registration",
-    "online",
-  ]);
-  const applicationSteps = buildApplicationSteps(
-    detail,
-    applyLink?.label,
-    deadlineLine,
-    notificationLink?.label,
-  );
-  const salaryHighlights = buildSalaryHighlights(detail.additionalDetails);
-  const examDateLine = detail.dates?.find((line) =>
-    line?.toLowerCase().includes("exam date"),
-  );
-  const applicationTips = [
-    "Keep a clean copy of scanned documents ready before uploading to avoid repeated attempts.",
-    `Use the ${detail.organization || "official"} portal and official links for fee payment to avoid phishing attempts.`,
-    examDateLine
-      ? `Mark ${examDateLine} on your calendar and download the admit card once the notification is live.`
-      : "Track the exam date closely so you do not miss admit card or correction windows.",
-  ];
-
-  // Fix 2: Payment Method filtering
-  // Hum "Payment Method" text ko list se hata denge aur alag se yellow box me dikhayenge
-  const feeList =
-    detail.fees?.filter(
-      (f) => !f.text.toLowerCase().includes("payment method"),
-    ) || [];
+function generateOverview(detail) {
+  const org = detail.organization || "The Recruitment Board";
+  const vacancy = detail.vacancy?.total || "various";
+  const title = detail.title || "Government Job Opportunity";
+  const lastDate =
+    detail.dates?.find((d) => String(d).toLowerCase().includes("last date")) ||
+    "the closing date";
 
   return (
-    <div className="bg-white min-h-screen py-6 font-sans text-slate-900">
-      <SEO
-        title={`${detail.title} - Sarkari Result`}
-        description={`Apply for ${detail.title}. Check Dates, Fees, Documents & Link.`}
-        section={detail.organization}
-        jsonLd={[generateJobPostingSchema(detail)]}
+    <>
+      <p className="mb-4 text-lg">
+        <strong>{org}</strong> has officially released the recruitment
+        advertisement for <strong>{title}</strong>. This is a significant
+        opportunity for candidates who are aspiring to join the government
+        sector. The recruitment board has announced a total of{" "}
+        <strong>{vacancy}</strong> vacancies for various posts. Eligible
+        aspirants can now check the detailed notification, including the
+        eligibility criteria, age limit, selection process, and important dates
+        before applying.
+      </p>
+      <p className="mb-4">
+        The online application process will be conducted through the official
+        website. Interested aspirants are advised to read the complete
+        notification carefully to avoid any mistakes during the application
+        process. The application window is open for a limited time, and
+        candidates must submit their forms before{" "}
+        <strong>{typeof lastDate === "string" ? lastDate : "the deadline"}</strong>
+        . Below, you will find a detailed breakdown of the recruitment process,
+        including the direct link to apply, application fee structure, syllabus,
+        and exam pattern.
+      </p>
+      <p>
+        Securing a job in {org} is a prestigious achievement, offering stability
+        and career growth. Ensure you prepare all necessary documents and meet
+        the medical and physical standards (if applicable) required for the
+        post. Read on for a comprehensive guide to this recruitment drive.
+      </p>
+    </>
+  );
+}
+
+function generateDatesText(dates) {
+  if (!Array.isArray(dates) || dates.length === 0) {
+    return (
+      <p>
+        Dates for this recruitment have not been released yet. Please check back
+        later.
+      </p>
+    );
+  }
+
+  const importantLines = dates
+    .filter(Boolean)
+    .map((d) => {
+      const s = String(d);
+      if (!s.includes(":")) return { label: "Important Date", val: s };
+      const parts = s.split(":");
+      const label = parts[0]?.trim() || "Important Date";
+      const val = parts.slice(1).join(":");
+      return { label, val: cleanDateValue(val) };
+    });
+
+  return (
+    <div className="space-y-3">
+      <p>
+        Keeping track of important dates is crucial for every aspirant. Missing
+        a deadline can result in disqualification. Here is the official
+        schedule:
+      </p>
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        {importantLines.map((item, i) => (
+          <li
+            key={i}
+            className="flex justify-between items-center bg-white p-3 rounded border border-rose-100 shadow-sm"
+          >
+            <span className="font-semibold text-rose-700 text-sm w-1/2">
+              {item.label}
+            </span>
+            <span className="font-bold text-slate-800 text-sm w-1/2 text-right">
+              {item.val}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-sm text-slate-500 italic">
+        Candidates are advised to complete their application process well before
+        the last date to avoid last-minute server congestion.
+      </p>
+    </div>
+  );
+}
+
+function generateFeesText(fees) {
+  if (!Array.isArray(fees) || fees.length === 0) {
+    return <p>Fee details are available in the official notification.</p>;
+  }
+
+  const validFees = fees
+    .filter((f) => f?.text && typeof f.text === "string")
+    .filter((f) => !f.text.toLowerCase().includes("payment method"));
+
+  if (validFees.length === 0) {
+    return <p>Fee details are available in the official notification.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <p>
+        The application fee must be paid online via Net Banking, Debit Card, or
+        Credit Card. The specific fee details for different categories are:
+      </p>
+      <ul className="list-disc pl-5 space-y-1 bg-white p-4 rounded-lg border border-slate-200">
+        {validFees.map((f, i) => {
+          const parts = f.text.match(/(.*?)[\-–:](.*)/);
+          const cat = parts ? parts[1].trim() : "Category Fee";
+          let amount = parts ? parts[2].trim() : f.text;
+          if (!amount.includes("₹") && !Number.isNaN(Number(amount))) {
+            amount = `₹${amount}`;
+          }
+          return (
+            <li key={i}>
+              <span className="font-semibold">{cat}:</span> {amount}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-sm bg-yellow-50 p-3 border border-yellow-200 rounded text-yellow-800 font-medium">
+        Note: Fees once paid are generally non-refundable. Ensure you check your
+        eligibility before making the payment.
+      </p>
+    </div>
+  );
+}
+
+function generateSteps(detail) {
+  const hasLinks = Array.isArray(detail.links) && detail.links.length > 0;
+  return (
+    <div className="space-y-4">
+      <p>
+        The application process is entirely online. Follow these step-by-step
+        instructions to submit your application successfully:
+      </p>
+      <ol className="list-decimal pl-5 space-y-3 marker:font-bold marker:text-blue-600">
+        <li>
+          <strong>Visit the Official Website:</strong> Click on the apply link
+          provided in the "Important Links" section below{" "}
+          {hasLinks ? "" : "(if available)"} or visit the official website of
+          the recruitment authority.
+        </li>
+        <li>
+          <strong>Read the Notification:</strong> Download and read the official
+          notification thoroughly to ensure you meet all eligibility criteria.
+        </li>
+        <li>
+          <strong>Registration:</strong> Use "New Registration" if you are a
+          first-time user to generate your credentials.
+        </li>
+        <li>
+          <strong>Login & Fill Form:</strong> Fill in the application form with
+          accurate details.
+        </li>
+        <li>
+          <strong>Upload Documents:</strong> Upload photo, signature, and other
+          required documents in the prescribed format.
+        </li>
+        <li>
+          <strong>Fee Payment:</strong> Pay the fee using available online
+          payment methods.
+        </li>
+        <li>
+          <strong>Review & Submit:</strong> Preview your application and submit.
+        </li>
+        <li>
+          <strong>Print Confirmation:</strong> Save/print the confirmation page
+          for future reference.
+        </li>
+      </ol>
+      <p className="text-sm bg-blue-50 p-3 rounded text-blue-800 italic">
+        Tip: Keep your login credentials safe and regularly check the official
+        website for updates.
+      </p>
+    </div>
+  );
+}
+
+function generateSelectionProcess(selection) {
+  if (!Array.isArray(selection) || selection.length === 0) {
+    return (
+      <p>The selection process details will be updated as per the official notification.</p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p>The selection of candidates will be based on the following stages:</p>
+      <ul className="list-disc pl-5 space-y-1">
+        {selection.map((step, i) => {
+          const txt =
+            typeof step === "string"
+              ? step
+              : step?.name || step?.title || "";
+          const safeTxt = String(txt || "")
+            .replace(/_/g, " ")
+            .trim();
+          if (!safeTxt) return null;
+          return (
+            <li
+              key={i}
+              className="font-medium text-slate-800 capitalize"
+            >
+              {safeTxt}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+export async function generateMetadata({ params }) {
+  const resolvedParams = await params;
+  const rawData = await getJobDetails(resolvedParams.slug);
+
+  if (!rawData) return { title: "Job Details - JobsAddah" };
+
+  const detail = extractRecruitmentData(rawData);
+  const title = `${detail.title} - Apply Online, Dates, Syllabus`;
+  const desc = `Latest recruitment: ${detail.title}. Check eligibility, total ${
+    detail.vacancy?.total || "posts"
+  }, exam date, salary, and direct application link here.`;
+
+  const slugPath = Array.isArray(resolvedParams.slug)
+    ? resolvedParams.slug.join("/")
+    : resolvedParams.slug;
+
+  return {
+    title: title.slice(0, 60),
+    description: desc.slice(0, 160),
+    alternates: { canonical: `/post/${slugPath}` },
+    openGraph: { title, description: desc, type: "article" },
+  };
+}
+
+export default async function JobDetailsPage({ params }) {
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug;
+  if (!slug) notFound();
+
+  const [rawData, relatedPosts] = await Promise.all([
+    getJobDetails(slug),
+    getRelatedPosts(),
+  ]);
+
+  if (!rawData) notFound();
+
+  const detail0 = extractRecruitmentData(rawData);
+  const detail = { ...detail0, links: sanitizeLinks(detail0.links) };
+
+  const recruitment = rawData.recruitment || {};
+  const postDate = rawData.createdAt
+    ? new Date(rawData.createdAt).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Recent";
+
+  let salaryText = "As per rules";
+  const salaryVal = detail.additionalDetails?.salary;
+  if (salaryVal) {
+    salaryText =
+      typeof salaryVal === "object"
+        ? Object.values(salaryVal).filter(Boolean).join(", ")
+        : String(salaryVal);
+  }
+
+  const faqs = [
+    {
+      q: `What is the last date to apply for ${detail.organization}?`,
+      a: `The last date to apply is ${
+        recruitment.importantDates?.applicationLastDate ||
+        "mentioned in the notification"
+      }.`,
+    },
+    {
+      q: `How many vacancies are available in ${detail.title}?`,
+      a: `There are a total of ${detail.vacancy?.total || "multiple"} vacancies announced.`,
+    },
+    {
+      q: `What is the age limit for this recruitment?`,
+      a: detail.age?.text?.[0] || "Please check the official notification for detailed age criteria.",
+    },
+    {
+      q: `Can I apply online?`,
+      a: "Yes, candidates can apply online through the official link provided in the 'Important Links' section below.",
+    },
+  ];
+
+  const positions = Array.isArray(detail.vacancy?.positions)
+    ? detail.vacancy.positions
+    : [];
+
+  return (
+    <article className="min-h-screen bg-slate-50 font-sans">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(generateJobPostingSchema(detail)),
+        }}
       />
 
-      <div className="max-w-5xl mx-auto border-x border-slate-300 shadow-sm">
-        {/* --- HEADER --- */}
-        <div className="text-center p-5 border-b-4 border-rose-600 bg-slate-50">
-          <h1 className="text-2xl md:text-3xl font-black text-rose-700 uppercase mb-3 leading-tight">
-            {detail.title}
-          </h1>
-          <div className="flex flex-wrap justify-center gap-3 text-sm font-bold text-slate-700">
-            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              Post Date:{" "}
-              {rawData?.createdAt
-                ? new Date(rawData.createdAt).toLocaleDateString()
-                : "Recent"}
-            </span>
-            {recruitment.advertisementNumber && (
-              <span className="bg-slate-200 text-slate-800 px-2 py-1 rounded">
-                Advt No: {recruitment.advertisementNumber}
+      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-8 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+          <header className="border-b border-slate-100 pb-6">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-4">
+              {detail.title}
+            </h1>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+              <span className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
+                <Calendar className="w-4 h-4 text-slate-500" /> {postDate}
               </span>
-            )}
-          </div>
-          {detail.shortInfo && (
-            <p className="mt-4 text-sm text-slate-600 max-w-4xl mx-auto leading-relaxed text-justify px-2">
-              <span className="font-bold text-rose-600">
-                Short Information:{" "}
+              <span className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
+                <Briefcase className="w-4 h-4 text-slate-500" />{" "}
+                {detail.organization}
               </span>
-              {detail.shortInfo}
+              <span className="flex items-center gap-1 bg-rose-50 text-rose-700 font-bold px-3 py-1 rounded-full">
+                <CheckCircle2 className="w-4 h-4" />{" "}
+                {detail.vacancy?.total || "N/A"} Posts
+              </span>
+            </div>
+          </header>
+
+          <section className="prose max-w-none text-slate-700 leading-relaxed text-base md:text-lg">
+            {generateOverview(detail)}
+          </section>
+
+          <section className="scroll-mt-20" id="dates">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-rose-600 pl-3">
+              Important Dates
+            </h2>
+            <div className="bg-rose-50/50 p-6 rounded-xl border border-rose-100">
+              {generateDatesText(detail.dates)}
+            </div>
+          </section>
+
+          <section className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-green-600 pl-3">
+              Application Fee
+            </h2>
+            <div className="prose max-w-none text-slate-700">
+              {generateFeesText(detail.fees)}
+            </div>
+          </section>
+
+          <section className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-blue-600 pl-3">
+              Vacancy Details & Eligibility
+            </h2>
+            <p className="mb-4 text-slate-700">
+              The eligibility criteria including educational qualification and
+              age limit are strictly enforced. The detailed vacancy distribution
+              is as follows:
             </p>
-          )}
-        </div>
 
-        {/* --- 2 COLUMN SECTION (Dates & Fee) --- */}
-        <div className="grid md:grid-cols-2 border-b border-slate-300">
-          {/* COLUMN 1: IMPORTANT DATES */}
-          <div className="border-r border-slate-300">
-            <TableHeader text="Important Dates" color="bg-rose-600" />
-            <ul className="divide-y divide-slate-200 text-sm">
-              {detail.dates?.map((d, i) => {
-                const parts = d.split(": ");
-                const label = parts[0];
-                // Fix 1 Applied Here: Join rest of parts and clean it
-                const rawValue = parts.slice(1).join(": ");
-                const value = cleanDateValue(label, rawValue);
-
-                return (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center p-3 hover:bg-rose-50/50"
-                  >
-                    <span className="font-bold text-slate-700 w-1/2">
-                      {label}
-                    </span>
-                    <span className="font-bold text-slate-900 w-1/2 text-right">
-                      {value}
-                    </span>
-                  </li>
-                );
-              })}
-              {(!detail.dates || detail.dates.length === 0) && (
-                <li className="p-3 text-center">Check Notification</li>
-              )}
-            </ul>
-          </div>
-
-          {/* COLUMN 2: APPLICATION FEE */}
-          <div>
-            <TableHeader text="Application Fee" color="bg-blue-700" />
-            <div className="p-0">
-              <ul className="divide-y divide-slate-200 text-sm">
-                {feeList.map((fee, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center p-3 hover:bg-blue-50/50"
-                  >
-                    <span className="font-bold text-slate-700">
-                      {fee.text.split("-")[0] || "Category"}
-                    </span>
-                    <span className="font-black text-slate-900">
-                      {fee.text.split("-")[1] || fee.text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Fix 2: Hardcoded/Static Payment Note at bottom to avoid duplication */}
-              <div className="bg-yellow-50 p-3 text-xs text-center border-t border-yellow-200 font-bold text-slate-700 leading-tight">
-                Pay the Examination Fee Through Debit Card, Credit Card, Net
-                Banking or E-Challan Only.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* --- AGE & VACANCY STRIP --- */}
-        <div className="bg-slate-100 border-b border-slate-300 p-4 text-center">
-          <h3 className="text-lg md:text-xl font-black text-slate-800 uppercase">
-            Vacancy Details Total :{" "}
-            <span className="text-rose-600">
-              {detail.vacancy?.total || "NA"}
-            </span>{" "}
-            Posts
-          </h3>
-          {detail.age?.text && (
-            <div className="mt-2 text-sm font-semibold text-slate-600 flex flex-wrap justify-center gap-3">
-              {detail.age.text.map((t, i) => (
-                <span
-                  key={i}
-                  className="bg-white border px-2 py-0.5 rounded shadow-sm"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* --- VACANCY TABLE --- */}
-        <div className="border-b border-slate-300">
-          <TableHeader
-            text="Post Name, Eligibility & Total Post"
-            color="bg-green-700"
-          />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-center">
-              <thead className="bg-green-50 text-green-900 font-bold border-b border-green-200">
-                <tr>
-                  <th className="p-3 w-1/4 border-r border-green-200">
-                    Post Name
-                  </th>
-                  <th className="p-3 w-1/6 border-r border-green-200">Total</th>
-                  <th className="p-3">Eligibility</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {detail.vacancy?.positions?.map((pos, i) => (
-                  <tr key={i} className="hover:bg-green-50/30">
-                    <td className="p-3 border-r border-slate-200 font-bold text-rose-700 align-middle">
-                      {pos.name}
-                    </td>
-                    <td className="p-3 border-r border-slate-200 font-black text-slate-900 align-middle">
-                      {pos.count}
-                    </td>
-                    <td className="p-3 text-left text-slate-700 align-middle leading-relaxed">
-                      {pos.qualification}
-                    </td>
+            <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-100 text-slate-900 uppercase tracking-wider text-xs">
+                  <tr>
+                    <th className="p-4 border-b border-slate-200">Post Name</th>
+                    <th className="p-4 border-b border-slate-200 text-center">
+                      Total
+                    </th>
+                    <th className="p-4 border-b border-slate-200">
+                      Qualification
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {salaryHighlights.length > 0 && (
-          <section className="px-6 py-6 border-b border-slate-200 bg-slate-50">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-              Salary Range & Benefits
-            </h2>
-            <ul className="space-y-3 text-sm text-slate-700">
-              {salaryHighlights.map((item, idx) => (
-                <li key={idx} className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-slate-800">
-                    {item.label}:
-                  </span>
-                  <span>{item.value}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* --- DISTRICT DETAILS (Optional) --- */}
-        {detail.districtData?.length > 0 && (
-          <div className="border-b border-slate-300">
-            <TableHeader
-              text="District Wise Vacancy Details"
-              color="bg-slate-600"
-            />
-            <div className="bg-slate-50 p-2 max-h-60 overflow-y-auto">
-              <div className="flex flex-wrap gap-2 justify-center">
-                {detail.districtData.map((d, i) => (
-                  <div
-                    key={i}
-                    className="bg-white border border-slate-300 px-3 py-1 text-xs font-bold rounded shadow-sm"
-                  >
-                    {d.districtName}:{" "}
-                    <span className="text-rose-600">{d.posts}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* --- FIX 3: DOCUMENTATION SECTION --- */}
-        {detail.documentation && detail.documentation.length > 0 && (
-          <div className="border-b border-slate-300">
-            <TableHeader
-              text="Documents Required (Upload)"
-              color="bg-orange-600"
-            />
-            <div className="p-4 bg-orange-50/20">
-              <ul className="grid md:grid-cols-2 gap-3 text-sm">
-                {detail.documentation.map((doc, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <CheckSquare className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="font-bold text-slate-800">
-                        {doc.name || doc.type}
-                      </span>
-                      {doc.format && (
-                        <span className="text-xs text-slate-500 block">
-                          Format: {doc.format}
-                        </span>
-                      )}
-                      {doc.size && (
-                        <span className="text-xs text-slate-500 block">
-                          Size: {doc.size}
-                        </span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* --- HOW TO APPLY --- */}
-        <div className="p-5 border-b border-slate-300 bg-slate-50 text-sm">
-          <h4 className="font-bold text-blue-800 mb-2 uppercase text-center md:text-left">
-            How to Fill Form
-          </h4>
-          <div
-            className="space-y-1 text-slate-700 leading-relaxed list-disc-inside"
-            dangerouslySetInnerHTML={{
-              __html:
-                detail.howToApply ||
-                "Read the full notification before applying.",
-            }}
-          />
-        </div>
-
-        {/* --- IMPORTANT LINKS --- */}
-        <div>
-          <TableHeader text="Useful Important Links" color="bg-rose-600" />
-          <table className="w-full text-sm border-collapse">
-            <tbody className="divide-y divide-slate-200">
-              {detail.links?.map((link, i) => (
-                <tr key={i} className="hover:bg-rose-50 transition-colors">
-                  <td className="p-3 font-bold text-slate-700 w-2/3 pl-5 md:pl-8 border-r border-slate-200">
-                    {link.label}
-                  </td>
-                  <td className="p-3 text-center">
-                    {link.isActive ? (
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 hover:underline"
-                      >
-                        Click Here <ExternalLink className="w-4 h-4" />
-                      </a>
-                    ) : (
-                      <span className="text-slate-400 font-semibold cursor-not-allowed">
-                        Link Activate Soon
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-
-              {/* Manual Official Website Link Row */}
-              {recruitment.organization?.website && (
-                <tr className="bg-slate-50 hover:bg-slate-100">
-                  <td className="p-3 font-bold text-slate-700 w-2/3 pl-5 md:pl-8 border-r border-slate-200">
-                    Official Website
-                  </td>
-                  <td className="p-3 text-center">
-                    <a
-                      href={recruitment.organization.website}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 hover:underline"
-                    >
-                      Click Here <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {(introParagraphs.length > 0 || highlightBullets.length > 0) && (
-          <section className="px-6 py-6 border-b border-slate-200 bg-slate-50/70">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-              Recruitment Snapshot
-            </h2>
-            <div className="space-y-3 text-sm text-slate-600">
-              {introParagraphs.map((paragraph, idx) => (
-                <p key={idx}>{paragraph}</p>
-              ))}
-            </div>
-            {highlightBullets.length > 0 && (
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2 text-sm text-slate-700">
-                {highlightBullets.map((bullet, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                    <span>{bullet}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-
-        {detail.eligibility?.length > 0 && (
-          <section className="px-6 py-6 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-              Qualification Summary
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2 text-sm text-slate-700">
-              {detail.eligibility.map((item, idx) => {
-                const text = item.text || extractText(item);
-                if (!text) return null;
-                return (
-                  <div
-                    key={idx}
-                    className="bg-slate-50 border border-slate-100 rounded-lg p-4"
-                  >
-                    {item.position && (
-                      <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">
-                        {item.position}
-                      </div>
-                    )}
-                    <p className="leading-relaxed text-slate-700">{text}</p>
-                  </div>
-                );
-              })}
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {positions.length > 0 ? (
+                    positions.map((pos, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 font-bold text-rose-700 align-top">
+                          {pos?.name || "Post"}
+                        </td>
+                        <td className="p-4 font-black text-center align-top text-slate-800">
+                          {pos?.count ?? "-"}
+                        </td>
+                        <td className="p-4 text-slate-600 align-top leading-relaxed">
+                          {pos?.qualification || "As per notification"}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="p-4 text-slate-600" colSpan={3}>
+                        Vacancy breakup will be updated as per notification.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
-        )}
 
-        {selectionSteps.length > 0 && (
-          <section className="px-6 py-6 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
+          <section className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-purple-600 pl-3">
               Selection Process
             </h2>
-            <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700">
-              {selectionSteps.map((step, idx) => (
-                <li key={idx}>{step}</li>
-              ))}
-            </ol>
+            <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 text-slate-700">
+              {generateSelectionProcess(detail.selection)}
+              <p className="mt-3 text-sm">
+                For detailed exam pattern and syllabus, please refer to the
+                official notification.
+              </p>
+            </div>
           </section>
-        )}
 
-        {applicationSteps.length > 0 && (
-          <section className="px-6 py-6 border-b border-slate-200 bg-white">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">
-              Application Steps & Tips
+          <section className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-yellow-500 pl-3">
+              Salary & Benefits
             </h2>
-            <ol className="list-decimal pl-5 space-y-2 text-sm text-slate-700">
-              {applicationSteps.map((step, idx) => (
-                <li key={idx}>{step}</li>
-              ))}
-            </ol>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-xs text-slate-600">
-              {applicationTips.map((tip, idx) => (
-                <div
-                  key={idx}
-                  className="border border-slate-100 rounded-lg p-3 bg-slate-50"
-                >
-                  {tip}
+            <div className="prose max-w-none text-slate-700">
+              <p>
+                Candidates selected for the post of{" "}
+                <strong>
+                  {detail.vacancy?.positions?.[0]?.name || "various roles"}
+                </strong>{" "}
+                will receive a salary as per the recruiting body norms.
+              </p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">
+                Expected Pay Scale: {salaryText}
+              </p>
+            </div>
+          </section>
+
+          <section className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-indigo-600 pl-3">
+              How to Apply
+            </h2>
+            <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+              {generateSteps(detail)}
+            </div>
+          </section>
+
+          <section id="links" className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-rose-600 pl-3">
+              Important Links
+            </h2>
+            <div className="grid gap-4">
+              {detail.links?.length ? (
+                detail.links.map((link, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-5 border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-all group"
+                  >
+                    <span className="font-bold text-slate-700 mb-3 sm:mb-0 text-lg group-hover:text-blue-700 transition-colors">
+                      {link.label || "Link"}
+                    </span>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-bold rounded-lg hover:bg-rose-600 transition-colors"
+                    >
+                      Click Here <MousePointer2 size={18} />
+                    </a>
+                  </div>
+                ))
+              ) : (
+                <div className="text-slate-500 text-sm">
+                  Links will be updated soon.
                 </div>
+              )}
+            </div>
+          </section>
+
+          <section className="mt-12 pt-8 border-t border-slate-100">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <BookOpen className="text-blue-600" /> Frequently Asked Questions
+              (FAQs)
+            </h2>
+            <div className="space-y-4">
+              {faqs.map((faq, i) => (
+                <details
+                  key={i}
+                  className="group border border-slate-200 rounded-lg bg-slate-50 open:bg-white open:shadow-sm transition-all duration-200"
+                >
+                  <summary className="flex cursor-pointer items-center justify-between p-4 font-bold text-slate-800 select-none">
+                    {faq.q}
+                    <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
+                      <ChevronRight />
+                    </div>
+                  </summary>
+                  <div className="px-4 pb-4 text-slate-600 leading-relaxed border-t border-slate-100 pt-4 animate-in fade-in slide-in-from-top-2">
+                    {faq.a}
+                  </div>
+                </details>
               ))}
             </div>
           </section>
-        )}
+        </div>
+
+        <aside className="lg:col-span-4 space-y-8">
+          <div className="bg-white border border-rose-100 rounded-xl shadow-sm p-6 sticky top-24">
+            <div className="mb-6 flex items-center gap-2 text-rose-600 font-bold uppercase tracking-wider text-sm border-b pb-2">
+              <Flame className="w-5 h-5" /> Quick Updates
+            </div>
+
+            {relatedPosts.length > 0 ? (
+              <ul className="space-y-4">
+                {relatedPosts.map((post, i) => {
+                  const url = getCleanPostUrl(post.url || post.link);
+                  const title = post.recruitment?.title || "Latest Gov Job Update";
+                  if (!url) return null;
+                  return (
+                    <li key={i} className="group">
+                      <Link href={url} className="block">
+                        <span className="font-semibold text-slate-800 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {title}
+                        </span>
+                        <div className="mt-1 flex items-center text-xs text-rose-500 font-bold group-hover:translate-x-1 transition-transform">
+                          Check Now <ChevronRight className="w-3 h-3 ml-1" />
+                        </div>
+                      </Link>
+                      {i !== relatedPosts.length - 1 && (
+                        <hr className="mt-3 border-slate-50" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                No trending updates.
+              </div>
+            )}
+
+            <div className="mt-8 bg-blue-50 rounded-lg p-4 text-center">
+              <p className="text-xs font-bold text-blue-800 mb-2">
+                JOIN OUR COMMUNITY
+              </p>
+              <p className="text-xs text-blue-600 mb-3">
+                Get daily updates via Telegram
+              </p>
+              <div className="inline-block bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-full cursor-pointer hover:bg-blue-700">
+                Join Telegram
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
-    </div>
+    </article>
   );
 }
