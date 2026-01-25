@@ -106,3 +106,8 @@ Since government notifications differ in format, this utility acts as a **Normal
 ### Modifying Job Data
 * To change how jobs look: Edit `app/post/[...slug]/page.jsx`.
 * To change how data is parsed: Edit `util/post-helper.js`.
+
+## 8. SEO Strategy
+* A new `seo.md` companion document walks through how metadata, canonical URLs, JSON-LD, and crawl hygiene are wired together (see [seo.md](seo.md)).
+* Core pieces include `lib/SEO.jsx` for consistent `<head>` tags, `app/post/[...slug]/generateMetadata` for slug-specific descriptions, `lib/seo-schemas.js` for `JobPosting`/`FAQPage`/`BreadcrumbList`, and the focused `/sitemap.xml`/`robots.txt` handlers that only publish index-worthy URLs.
+* The sitemap filter rejects posts with fewer than three unique job links and skips blocked titles (`Privacy Policy`, `Sarkari Result`), so only substantial recruitment alerts reach search engines.
