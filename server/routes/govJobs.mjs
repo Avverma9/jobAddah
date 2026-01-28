@@ -2,7 +2,9 @@ import express from "express";
 import {
   createPost,
   getallPost,
+  getJobById,
   getJobs,
+  updatePost,
 } from "../controllers/govJob/govJob.mjs";
 import {
   getGovJobSections,
@@ -19,8 +21,10 @@ import { verifyToken, authorizeRoles } from "../middleware/auth.mjs";
 const router = express.Router();
 
 router.get("/get-jobs", getJobs);
+router.get("/get-job/:id", getJobById);
 router.get("/get-all", getallPost);
 router.post("/add-job", createPost);
+router.patch("/update-job/:id", updatePost);
 
 router.get("/get-sections", getGovJobSections);
 router.post("/get-postlist", getGovPostListBySection);

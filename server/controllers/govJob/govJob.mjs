@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import Post from "../../models/govJob/govJob.mjs";
 
 const formatResponse = (data) => ({
@@ -6,10 +7,81 @@ const formatResponse = (data) => ({
   data,
 });
 
+const normalizeForHash = (value) => {
+  if (value == null) return "";
+  if (typeof value === "string") return value.replace(/\s+/g, " ").trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    return "";
+  }
+};
+
+const buildManualHashInput = (payload) => {
+  const fields = [
+    payload.postTitle,
+    payload.slug,
+    payload.organization,
+    payload.postType,
+    payload.url,
+    payload.sourceUrl,
+    payload.postLocation,
+    payload.recruitment?.board,
+  ];
+
+  const normalizedValues = [];
+  fields.forEach((field) => {
+    const normalized = normalizeForHash(field);
+    if (normalized) {
+      normalizedValues.push(normalized);
+    }
+  });
+
+  const importantDates = payload.recruitment?.importantDates;
+  if (importantDates && typeof importantDates === "object") {
+    Object.keys(importantDates)
+      .sort()
+      .forEach((key) => {
+        const normalized = normalizeForHash(importantDates[key]);
+        if (normalized) {
+          normalizedValues.push(`${key}:${normalized}`);
+        }
+      });
+  }
+
+  if (!normalizedValues.length) {
+    return JSON.stringify(payload || {});
+  }
+
+  return normalizedValues.join("|");
+};
+
+const generateManualPageHash = (payload) =>
+  crypto.createHash("md5").update(buildManualHashInput(payload)).digest("hex");
+
+const prepareManualPostData = (rawBody) => {
+  const body = { ...rawBody };
+  const sourceUrl = body.sourceUrl || body.url;
+  if (sourceUrl) {
+    body.sourceUrl = sourceUrl;
+    if (!body.url) {
+      body.url = sourceUrl;
+    }
+  }
+
+  if (!body.pageHash) {
+    body.pageHash = generateManualPageHash(body);
+  }
+
+  return body;
+};
+
 const createPost = async (req, res) => {
   try {
     const { _id, createdAt, updatedAt, ...cleanBody } = req.body;
-    const newPost = new Post(cleanBody);
+    const preparedBody = prepareManualPostData(cleanBody);
+    const newPost = new Post(preparedBody);
     const savedPost = await newPost.save();
 
     res.status(201).json({
@@ -23,6 +95,8 @@ const createPost = async (req, res) => {
     });
   }
 };
+
+
 
 const insertBulkPosts = async (req, res) => {
   try {
@@ -121,7 +195,7 @@ const deleteAllPosts = async (req, res) => {
   }
 };
 
-const getDocsById = async (req, res) => {
+const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
@@ -362,7 +436,7 @@ export {
   getJobs,
   insertBulkPosts,
   getallPost,
-  getDocsById,
+  getJobById,
   getExpiringJobsReminder,
   getJobsSmartByState,
   deleteAllJobs,

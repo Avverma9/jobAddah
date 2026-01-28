@@ -767,13 +767,14 @@ export default function Scrapper() {
                       key={item._id || item.id || item.link || item.url || i}
                       item={item}
                       onToggleFav={handleToggleFav}
-                      onEdit={() =>
-                        navigate(`/dashboard/job-edit/${item._id}`, {
+                      onEdit={(itemId) =>
+                        itemId &&
+                        navigate(`/dashboard/job-edit/${itemId}`, {
                           state: { data: item },
                         })
                       }
-                      onDelete={() =>
-                        item._id && setConfirmDelete({ id: item._id })
+                      onDelete={(itemId) =>
+                        itemId && setConfirmDelete({ id: itemId })
                       }
                       isSelected={isSelected}
                       onToggleSelect={() =>
@@ -846,6 +847,22 @@ const ListItem = React.memo(
     const [dbStatus, setDbStatus] = useState("loading");
 
     const activeId = initialId || fetchedId;
+
+    const handleEditClick = () => {
+      if (!activeId) {
+        toast.error("Sync this entry before editing.");
+        return;
+      }
+      onEdit?.(activeId);
+    };
+
+    const handleDeleteClick = () => {
+      if (!activeId) {
+        toast.error("Sync this entry before deleting.");
+        return;
+      }
+      onDelete?.(activeId);
+    };
 
     useEffect(() => {
       setLocalFav(!!item.fav);
@@ -1037,8 +1054,12 @@ const ListItem = React.memo(
 
           {onEdit && (
             <button
-              onClick={onEdit}
-              className="p-2 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+              onClick={handleEditClick}
+              disabled={!activeId}
+              className="p-2 rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400"
+              title={
+                activeId ? "Edit" : "Sync first to enable editing"
+              }
             >
               Edit
             </button>
@@ -1046,8 +1067,12 @@ const ListItem = React.memo(
 
           {onDelete && (
             <button
-              onClick={onDelete}
-              className="p-2 rounded-md hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+              onClick={handleDeleteClick}
+              disabled={!activeId}
+              className="p-2 rounded-md text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400"
+              title={
+                activeId ? "Delete" : "Sync first to enable deletion"
+              }
             >
               Delete
             </button>

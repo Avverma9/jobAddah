@@ -11,11 +11,12 @@ import { getJobById, updateJob, deleteJob } from "../../redux/slices/job";
 // --- Utility Functions ---
 
 const formatLabel = (text) => {
-  if (!text) return "";
-  // Split camelCase, capitalize first letter
-  return text
+  if (text === undefined || text === null) return "";
+  const str = String(text);
+  if (!str) return "";
+  return str
     .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (str) => str.toUpperCase())
+    .replace(/^./, (s) => s.toUpperCase())
     .trim();
 };
 
@@ -61,7 +62,8 @@ const SwitchInput = ({ label, value, onChange }) => (
 
 // 2. Compact Input Component
 const SimpleInput = ({ label, value, path, onChange, error }) => {
-  const isDate = label.toLowerCase().includes("date") || (!isNaN(Date.parse(value)) && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value));
+  const labelText = typeof label === "string" ? label : String(label ?? "");
+  const isDate = labelText.toLowerCase().includes("date") || (!isNaN(Date.parse(value)) && typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value));
   const isNumber = typeof value === "number";
   
   return (
@@ -218,6 +220,8 @@ export default function JobEditPage() {
   const [jsonOutput, setJsonOutput] = useState("");
   const [status, setStatus] = useState({ saving: false, copySuccess: false, message: "" });
   const [validationErrors, setValidationErrors] = useState({});
+  const [rawJsonInput, setRawJsonInput] = useState("");
+  const [jsonFeedback, setJsonFeedback] = useState({ message: "", type: "" });
 
   useEffect(() => {
     if (id) dispatch(getJobById(id));
@@ -225,7 +229,10 @@ export default function JobEditPage() {
 
   useEffect(() => {
     if (currentJob) {
-      setFormData(JSON.parse(JSON.stringify(currentJob)));
+      const copy = JSON.parse(JSON.stringify(currentJob));
+      setFormData(copy);
+      setRawJsonInput(JSON.stringify(copy, null, 2));
+      setJsonFeedback({ message: "", type: "" });
     }
   }, [currentJob]);
 
@@ -234,14 +241,15 @@ export default function JobEditPage() {
       const copy = JSON.parse(JSON.stringify(prev));
       const keys = path.split(".");
       let current = copy;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) current[keys[i]] = {}; 
+        if (!current[keys[i]]) current[keys[i]] = {};
         current = current[keys[i]];
       }
       current[keys[keys.length - 1]] = newValue;
       return copy;
     });
+    setJsonFeedback({ message: "", type: "" });
   }, []);
 
   // --- Recursive Render Logic ---
@@ -307,6 +315,29 @@ export default function JobEditPage() {
     setModalState({ ...modalState, showJson: true });
   };
 
+  const handleApplyJsonInput = () => {
+    if (!rawJsonInput.trim()) {
+      setJsonFeedback({ message: "JSON is empty", type: "error" });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(rawJsonInput);
+      if (typeof parsed !== "object" || parsed === null) {
+        throw new Error("JSON must describe an object");
+      }
+      setFormData(parsed);
+      setRawJsonInput(JSON.stringify(parsed, null, 2));
+      setJsonFeedback({ message: "JSON loaded into form", type: "success" });
+    } catch (err) {
+      setJsonFeedback({ message: err.message || "Invalid JSON", type: "error" });
+    }
+  };
+
+  const handleRefreshJson = () => {
+    setRawJsonInput(JSON.stringify(formData, null, 2));
+    setJsonFeedback({ message: "JSON refreshed from form", type: "info" });
+  };
+
   const handleUpdate = async () => {
     setStatus((prev) => ({ ...prev, saving: true }));
     try {
@@ -337,6 +368,13 @@ export default function JobEditPage() {
   if (loading || !currentJob) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-8 w-8 border-2 border-blue-600 rounded-full border-t-transparent"></div></div>;
   }
+
+    const jsonFeedbackClass =
+      jsonFeedback.type === "error"
+        ? "text-rose-500"
+        : jsonFeedback.type === "success"
+        ? "text-emerald-500"
+        : "text-slate-500";
 
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-800 font-sans pb-20">
@@ -384,6 +422,39 @@ export default function JobEditPage() {
              <CheckCircle size={18} /> {status.message}
           </div>
         )}
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Raw JSON editor</p>
+              <p className="text-xs text-slate-400">Modify the job payload directly and click Apply to load it into the form.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleApplyJsonInput}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors"
+              >
+                Apply JSON
+              </button>
+              <button
+                onClick={handleRefreshJson}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+          <textarea
+            spellCheck="false"
+            rows={10}
+            value={rawJsonInput}
+            onChange={(e) => setRawJsonInput(e.target.value)}
+            className="w-full text-xs font-mono text-emerald-200 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {jsonFeedback.message && (
+            <p className={`text-[11px] mt-2 ${jsonFeedbackClass}`}>{jsonFeedback.message}</p>
+          )}
+        </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

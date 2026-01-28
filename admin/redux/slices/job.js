@@ -36,7 +36,7 @@ export const insertBulkPosts = createAsyncThunk(
 export const updateJob = createAsyncThunk(
   "job/updateJob",
   async ({ id, jobData }) => {
-    const { data } = await api.put(`/jobs/${id}`, jobData);
+    const { data } = await api.put(`/update-job/${id}`, jobData);
     return data;
   }
 );
@@ -47,7 +47,7 @@ export const deleteJob = createAsyncThunk("job/deleteJob", async (id) => {
 });
 
 export const getJobById = createAsyncThunk("job/getJobById", async (id) => {
-  const { data } = await api.get(`/jobs/${id}`);
+  const { data } = await api.get(`/get-job/${id}`);
   return data;
 });
 
