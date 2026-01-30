@@ -43,6 +43,21 @@ const cleanDateValue = (val) => {
   return v;
 };
 
+const hasSubstantialContent = (detail) => {
+  if (!detail) return false;
+  const count = (arr) => (Array.isArray(arr) ? arr.filter(Boolean).length : 0);
+  let score = 0;
+  if (detail.title) score += 1;
+  if (detail.organization) score += 1;
+  if (count(detail.dates)) score += 1;
+  if (count(detail.fees)) score += 1;
+  if (count(detail.links)) score += 1;
+  if (count(detail.vacancy?.positions)) score += 1;
+  if (count(detail.selection)) score += 1;
+  if (count(detail.eligibility)) score += 1;
+  return score >= 4;
+};
+
 const getJobDetails = cache(async (slug) => {
   let targetPath = Array.isArray(slug) ? slug.join("/") : slug;
   if (!targetPath) return null;
@@ -311,6 +326,7 @@ export async function generateMetadata({ params }) {
   if (!rawData) return { title: "Job Details - JobsAddah" };
 
   const detail = extractRecruitmentData(rawData);
+  const shouldIndex = hasSubstantialContent(detail);
   const title = `${detail.title} - Apply Online, Dates, Syllabus`;
   const desc = `Latest recruitment: ${detail.title}. Check eligibility, total ${
     detail.vacancy?.total || "posts"
@@ -325,6 +341,7 @@ export async function generateMetadata({ params }) {
     description: desc.slice(0, 160),
     alternates: { canonical: `/post/${slugPath}` },
     openGraph: { title, description: desc, type: "article" },
+    robots: shouldIndex ? "index,follow" : "noindex,follow",
   };
 }
 
@@ -425,7 +442,8 @@ export default async function JobDetailsPage({ params }) {
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2 border-l-4 border-slate-800 pl-3">
               Preparing for the Recruitment
             </h2>
-            <div className="prose max-w-none text-slate-700 space-y-6">
+            {hasSubstantialContent(detail) ? (
+              <div className="prose max-w-none text-slate-700 space-y-6">
               <p>
                 Treat this notification as a living document. The dates, number of vacancies, and application conditions can shift slightly between the draft notification you see today and the final advertisement that opens for submissions. Bookmark this page, download the official PDF, and compare the terminology used here with the language on the issuing organization’s website before you start filling out any forms. Doing that extra cross-check keeps you clear of last-minute surprises and ensures that every claim in your application mirrors what the recruiters actually published.
               </p>
@@ -448,6 +466,15 @@ export default async function JobDetailsPage({ params }) {
                 Finally, when you print this page or save it as a PDF, make a note of the reference number and the exact slug so you can refer to the same URL when the admit card is issued. A consistent URL makes it easier to share this notification with mentors, coaches, or peers, and it also helps search engines anchor the page in their index by following the canonical `/post/${Array.isArray(slug) ? slug.join("/") : slug}` path that everyone already uses on JobsAddah.
               </p>
             </div>
+            ) : (
+              <div className="prose max-w-none text-slate-700">
+                <p>
+                  This page is awaiting verified recruitment details. Please
+                  check the official notification in the Important Links
+                  section and revisit once the full data has been published.
+                </p>
+              </div>
+            )}
           </section>
 
           <section className="scroll-mt-20" id="dates">
