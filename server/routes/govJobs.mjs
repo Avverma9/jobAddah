@@ -6,6 +6,7 @@ import {
   getJobById,
   getJobs,
   updatePost,
+  backfillPageHash,
 } from "../controllers/govJob/govJob.mjs";
 import {
   getGovJobSections,
@@ -43,5 +44,6 @@ router.post("/fix-all-urls", fixAllUrls);
 router.get("/find-by-title", findByTitle);
 router.delete("/delete-job/:id", deletePost);
 router.post("/rephrase-postlist-titles", rephraseAllGovPostListTitles);
+router.post("/backfill-pagehash", backfillPageHash);
 
 export default router;

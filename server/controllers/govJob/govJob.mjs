@@ -428,6 +428,47 @@ const deleteAllJobs = async (req, res) => {
   }
 };
 
+const backfillPageHash = async (req, res) => {
+  try {
+    const limitRaw = Number(req.query.limit);
+    const limit =
+      Number.isFinite(limitRaw) && limitRaw > 0
+        ? Math.min(Math.floor(limitRaw), 5000)
+        : 1000;
+
+    const filter = {
+      $or: [{ pageHash: { $exists: false } }, { pageHash: { $in: [null, ""] } }],
+    };
+
+    const posts = await Post.find(filter).limit(limit).lean();
+    if (!posts.length) {
+      return res.json({
+        success: true,
+        updated: 0,
+        message: "No posts without pageHash",
+      });
+    }
+
+    const bulkOps = posts.map((p) => ({
+      updateOne: {
+        filter: { _id: p._id },
+        update: { $set: { pageHash: generateManualPageHash(p) } },
+      },
+    }));
+
+    const result = await Post.bulkWrite(bulkOps);
+
+    res.json({
+      success: true,
+      scanned: posts.length,
+      modified: result.modifiedCount,
+      message: "pageHash backfilled",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export {
   createPost,
   updatePost,
@@ -440,4 +481,5 @@ export {
   getExpiringJobsReminder,
   getJobsSmartByState,
   deleteAllJobs,
+  backfillPageHash,
 };
