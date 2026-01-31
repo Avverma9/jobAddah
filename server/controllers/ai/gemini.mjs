@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import ApiKey from "../../models/ai/ai-apiKey.mjs";
 import GeminiModel from "../../models/ai/gemini-model.mjs";
 
@@ -107,29 +105,6 @@ const setApiKey = async (req, res) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
-
-    try {
-      const envPath = path.resolve(process.cwd(), ".env");
-      let envContents = "";
-
-      if (fs.existsSync(envPath)) {
-        envContents = fs.readFileSync(envPath, "utf8");
-      }
-
-      const keyLine = `GEMINI_API_KEY=${apiKey}`;
-      const re = /^GEMINI_API_KEY=.*$/m;
-
-      if (re.test(envContents)) {
-        envContents = envContents.replace(re, keyLine);
-      } else {
-        if (envContents.length && !envContents.endsWith("\n"))
-          envContents += "\n";
-        envContents += keyLine + "\n";
-      }
-
-      fs.writeFileSync(envPath, envContents, "utf8");
-      process.env.GEMINI_API_KEY = apiKey;
-    } catch {}
 
     const keys = await ApiKey.find({ provider: "gemini" }).sort({
       status: -1,

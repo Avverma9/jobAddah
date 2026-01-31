@@ -65,6 +65,17 @@ const scrapeCategoryInternal = async (categoryUrl) => {
       }
     });
 
+    const ignoreTitleRe =
+      /(category|categories|available now|section|home|contact|privacy|disclaimer|about)/i;
+
+    jobs = jobs.filter((j) => {
+      if (!j || !j.link || !j.title) return false;
+      if (ignoreTitleRe.test(j.title)) return false;
+      // skip self/category page links
+      if (canonicalizeLink(j.link) === canonicalizeLink(categoryUrl)) return false;
+      return true;
+    });
+
     const uniqueJobs = [...new Map(jobs.map((i) => [i.canonicalLink || i.link, i])).values()];
 
     // fetch previous jobs to detect new posts

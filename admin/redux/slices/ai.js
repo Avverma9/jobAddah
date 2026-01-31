@@ -1,220 +1,146 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../util/api";
 
+const buildProviderState = () => ({
+  keys: [],
+  models: [],
+  loading: {
+    keys: false,
+    models: false,
+    savingKey: false,
+    savingKeyId: null,
+    savingModel: false,
+    savingModelName: null,
+  },
+});
+
+const initialState = {
+  gemini: buildProviderState(),
+  perplexity: buildProviderState(),
+  checking: false,
+  error: null,
+};
+
+const pickError = (error, fallback) =>
+  error?.response?.data || { message: fallback };
+
+/* ===================== HELPERS ===================== */
+
+const normalizeList = (data, key) => {
+  if (!data) return [];
+  if (Array.isArray(data[key])) return data[key];
+  // some backends might return single object
+  if (data[key]) return [data[key]];
+  return [];
+};
+
 /* ===================== THUNKS ===================== */
 
 // -------- GEMINI --------
 
-export const getModel = createAsyncThunk(
-  "ai/getModel",
+export const fetchGeminiKeys = createAsyncThunk(
+  "ai/fetchGeminiKeys",
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/ai/get-api-key");
+      return normalizeList(data, "keys");
+    } catch (error) {
+      return rejectWithValue(pickError(error, "Failed to load Gemini keys"));
+    }
+  }
+);
+
+export const fetchGeminiModels = createAsyncThunk(
+  "ai/fetchGeminiModels",
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await api.get("/ai/get-model");
-      return {
-        modelName: data.modelName || "",
-        status: data.status ?? true,
-        id: data._id || null,
-      };
+      return normalizeList(data, "models");
     } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to get Gemini model" }
-      );
+      return rejectWithValue(pickError(error, "Failed to load Gemini models"));
     }
   }
 );
 
-export const setModel = createAsyncThunk(
-  "ai/setModel",
-  async (modelName, { rejectWithValue }) => {
+export const saveGeminiKey = createAsyncThunk(
+  "ai/saveGeminiKey",
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/ai/set-model", { modelName });
-      return {
-        modelName,
-        id: data?._id || null,
-      };
+      await api.post("/ai/set-api-key", payload);
+      const { data } = await api.get("/ai/get-api-key");
+      return normalizeList(data, "keys");
     } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to set Gemini model" }
-      );
+      return rejectWithValue(pickError(error, "Failed to save Gemini key"));
     }
   }
 );
 
-export const changeGeminiStatus = createAsyncThunk(
-  "ai/changeGeminiStatus",
-  async ({ status, modelName }, { rejectWithValue }) => {
+export const saveGeminiModel = createAsyncThunk(
+  "ai/saveGeminiModel",
+  async (payload, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/ai/change-gemini-status", {
-        status,
-        modelName,
-      });
-      return {
-        status: data.status,
-        id: data._id,
-      };
+      await api.post("/ai/set-model", payload);
+      const { data } = await api.get("/ai/get-model");
+      return normalizeList(data, "models");
     } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || {
-          message: "Failed to change Gemini status",
-        }
-      );
+      return rejectWithValue(pickError(error, "Failed to save Gemini model"));
     }
   }
 );
 
 // -------- PERPLEXITY --------
 
-export const getPplModel = createAsyncThunk(
-  "ai/getPplModel",
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data } = await api.get("/ai/get-model-ppl");
-      return {
-        modelName: data.modelName || "",
-        status: data.status ?? true,
-        id: data._id || null,
-      };
-    } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to get PPL model" }
-      );
-    }
-  }
-);
-
-export const setPplModel = createAsyncThunk(
-  "ai/setPplModel",
-  async (modelName, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post("/ai/set-model-ppl", { modelName });
-      return {
-        modelName,
-        id: data?._id || null,
-      };
-    } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to set PPL model" }
-      );
-    }
-  }
-);
-
-export const changePplStatus = createAsyncThunk(
-  "ai/changePplStatus",
-  async ({ status, modelName }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post("/ai/change-perplexity-status", {
-        status,
-        modelName,
-      });
-      return {
-        status: data.status,
-        id: data._id,
-      };
-    } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || {
-          message: "Failed to change Perplexity status",
-        }
-      );
-    }
-  }
-);
-
-// -------- API KEYS --------
-
-export const getApiKey = createAsyncThunk(
-  "ai/getApiKey",
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data } = await api.get("/ai/get-api-key");
-      return data.apiKey || "";
-    } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to get API key" }
-      );
-    }
-  }
-);
-
-export const setApiKey = createAsyncThunk(
-  "ai/setApiKey",
-  async (apiKey, { rejectWithValue }) => {
-    try {
-      await api.post("/ai/set-api-key", { apiKey });
-      return apiKey;
-    } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to set API key" }
-      );
-    }
-  }
-);
-
-export const getPplApiKey = createAsyncThunk(
-  "ai/getPplApiKey",
+export const fetchPplKeys = createAsyncThunk(
+  "ai/fetchPplKeys",
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await api.get("/ai/get-api-key-ppl");
-      return data.apiKey || "";
+      return normalizeList(data, "keys");
     } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to get PPL API key" }
-      );
+      return rejectWithValue(pickError(error, "Failed to load Perplexity keys"));
     }
   }
 );
 
-export const setPplApiKey = createAsyncThunk(
-  "ai/setPplApiKey",
-  async (apiKey, { rejectWithValue }) => {
+export const fetchPplModels = createAsyncThunk(
+  "ai/fetchPplModels",
+  async (_, { rejectWithValue }) => {
     try {
-      await api.post("/ai/set-api-key-ppl", { apiKey });
-      return apiKey;
+      const { data } = await api.get("/ai/get-model-ppl");
+      return normalizeList(data, "models");
     } catch (error) {
-      return rejectWithValue(
-        error?.response?.data || { message: "Failed to set PPL API key" }
-      );
+      return rejectWithValue(pickError(error, "Failed to load Perplexity models"));
+    }
+  }
+);
+
+export const savePplKey = createAsyncThunk(
+  "ai/savePplKey",
+  async (payload, { rejectWithValue }) => {
+    try {
+      await api.post("/ai/set-api-key-ppl", payload);
+      const { data } = await api.get("/ai/get-api-key-ppl");
+      return normalizeList(data, "keys");
+    } catch (error) {
+      return rejectWithValue(pickError(error, "Failed to save Perplexity key"));
+    }
+  }
+);
+
+export const savePplModel = createAsyncThunk(
+  "ai/savePplModel",
+  async (payload, { rejectWithValue }) => {
+    try {
+      await api.post("/ai/set-model-ppl", payload);
+      const { data } = await api.get("/ai/get-model-ppl");
+      return normalizeList(data, "models");
+    } catch (error) {
+      return rejectWithValue(pickError(error, "Failed to save Perplexity model"));
     }
   }
 );
 
 /* ===================== SLICE ===================== */
-
-const initialState = {
-  gemini: {
-    model: "",
-    status: true,
-    id: null,
-    loading: {
-      get: false,
-      set: false,
-      toggle: false,
-    },
-  },
-
-  perplexity: {
-    model: "",
-    status: true,
-    id: null,
-    loading: {
-      get: false,
-      set: false,
-      toggle: false,
-    },
-  },
-
-  apiKeys: {
-    gemini: "",
-    ppl: "",
-    loading: {
-      gemini: false,
-      ppl: false,
-    },
-  },
-
-  error: null,
-};
 
 const aiSlice = createSlice({
   name: "ai",
@@ -226,120 +152,126 @@ const aiSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-
-      // ===== GEMINI =====
-      .addCase(getModel.pending, (state) => {
-        state.gemini.loading.get = true;
+      // ===== GEMINI LISTS =====
+      .addCase(fetchGeminiKeys.pending, (state) => {
+        state.error = null;
+        state.gemini.loading.keys = true;
       })
-      .addCase(getModel.fulfilled, (state, action) => {
-        state.gemini.loading.get = false;
-        state.gemini.model = action.payload.modelName;
-        state.gemini.status = action.payload.status;
-        state.gemini.id = action.payload.id;
+      .addCase(fetchGeminiKeys.fulfilled, (state, action) => {
+        state.gemini.loading.keys = false;
+        state.gemini.keys = action.payload;
       })
-      .addCase(getModel.rejected, (state, action) => {
-        state.gemini.loading.get = false;
+      .addCase(fetchGeminiKeys.rejected, (state, action) => {
+        state.gemini.loading.keys = false;
         state.error = action.payload?.message;
       })
 
-      .addCase(setModel.pending, (state) => {
-        state.gemini.loading.set = true;
+      .addCase(fetchGeminiModels.pending, (state) => {
+        state.error = null;
+        state.gemini.loading.models = true;
       })
-      .addCase(setModel.fulfilled, (state, action) => {
-        state.gemini.loading.set = false;
-        state.gemini.model = action.payload.modelName;
-        state.gemini.id = action.payload.id;
+      .addCase(fetchGeminiModels.fulfilled, (state, action) => {
+        state.gemini.loading.models = false;
+        state.gemini.models = action.payload;
       })
-      .addCase(setModel.rejected, (state, action) => {
-        state.gemini.loading.set = false;
+      .addCase(fetchGeminiModels.rejected, (state, action) => {
+        state.gemini.loading.models = false;
         state.error = action.payload?.message;
       })
 
-      .addCase(changeGeminiStatus.pending, (state) => {
-        state.gemini.loading.toggle = true;
+      .addCase(saveGeminiKey.pending, (state, action) => {
+        state.error = null;
+        state.gemini.loading.savingKey = true;
+        state.gemini.loading.savingKeyId =
+          action.meta?.arg?._id || action.meta?.arg?.apiKey || null;
       })
-      .addCase(changeGeminiStatus.fulfilled, (state, action) => {
-        state.gemini.loading.toggle = false;
-        state.gemini.status = action.payload.status;
-        state.gemini.id = action.payload.id;
+      .addCase(saveGeminiKey.fulfilled, (state, action) => {
+        state.gemini.loading.savingKey = false;
+        state.gemini.loading.savingKeyId = null;
+        state.gemini.keys = action.payload;
       })
-      .addCase(changeGeminiStatus.rejected, (state, action) => {
-        state.gemini.loading.toggle = false;
+      .addCase(saveGeminiKey.rejected, (state, action) => {
+        state.gemini.loading.savingKey = false;
+        state.gemini.loading.savingKeyId = null;
         state.error = action.payload?.message;
       })
 
-      // ===== PERPLEXITY =====
-      .addCase(getPplModel.pending, (state) => {
-        state.perplexity.loading.get = true;
+      .addCase(saveGeminiModel.pending, (state, action) => {
+        state.error = null;
+        state.gemini.loading.savingModel = true;
+        state.gemini.loading.savingModelName =
+          action.meta?.arg?.modelName || null;
       })
-      .addCase(getPplModel.fulfilled, (state, action) => {
-        state.perplexity.loading.get = false;
-        state.perplexity.model = action.payload.modelName;
-        state.perplexity.status = action.payload.status;
-        state.perplexity.id = action.payload.id;
+      .addCase(saveGeminiModel.fulfilled, (state, action) => {
+        state.gemini.loading.savingModel = false;
+        state.gemini.loading.savingModelName = null;
+        state.gemini.models = action.payload;
       })
-      .addCase(getPplModel.rejected, (state, action) => {
-        state.perplexity.loading.get = false;
+      .addCase(saveGeminiModel.rejected, (state, action) => {
+        state.gemini.loading.savingModel = false;
+        state.gemini.loading.savingModelName = null;
         state.error = action.payload?.message;
       })
 
-      .addCase(setPplModel.pending, (state) => {
-        state.perplexity.loading.set = true;
+      // ===== PERPLEXITY LISTS =====
+      .addCase(fetchPplKeys.pending, (state) => {
+        state.error = null;
+        state.perplexity.loading.keys = true;
       })
-      .addCase(setPplModel.fulfilled, (state, action) => {
-        state.perplexity.loading.set = false;
-        state.perplexity.model = action.payload.modelName;
-        state.perplexity.id = action.payload.id;
+      .addCase(fetchPplKeys.fulfilled, (state, action) => {
+        state.perplexity.loading.keys = false;
+        state.perplexity.keys = action.payload;
       })
-      .addCase(setPplModel.rejected, (state, action) => {
-        state.perplexity.loading.set = false;
+      .addCase(fetchPplKeys.rejected, (state, action) => {
+        state.perplexity.loading.keys = false;
         state.error = action.payload?.message;
       })
 
-      .addCase(changePplStatus.pending, (state) => {
-        state.perplexity.loading.toggle = true;
+      .addCase(fetchPplModels.pending, (state) => {
+        state.error = null;
+        state.perplexity.loading.models = true;
       })
-      .addCase(changePplStatus.fulfilled, (state, action) => {
-        state.perplexity.loading.toggle = false;
-        state.perplexity.status = action.payload.status;
-        state.perplexity.id = action.payload.id;
+      .addCase(fetchPplModels.fulfilled, (state, action) => {
+        state.perplexity.loading.models = false;
+        state.perplexity.models = action.payload;
       })
-      .addCase(changePplStatus.rejected, (state, action) => {
-        state.perplexity.loading.toggle = false;
+      .addCase(fetchPplModels.rejected, (state, action) => {
+        state.perplexity.loading.models = false;
         state.error = action.payload?.message;
       })
 
-      // ===== API KEYS =====
-      .addCase(getApiKey.pending, (state) => {
-        state.apiKeys.loading.gemini = true;
+      .addCase(savePplKey.pending, (state, action) => {
+        state.error = null;
+        state.perplexity.loading.savingKey = true;
+        state.perplexity.loading.savingKeyId =
+          action.meta?.arg?._id || action.meta?.arg?.apiKey || null;
       })
-      .addCase(getApiKey.fulfilled, (state, action) => {
-        state.apiKeys.loading.gemini = false;
-        state.apiKeys.gemini = action.payload;
+      .addCase(savePplKey.fulfilled, (state, action) => {
+        state.perplexity.loading.savingKey = false;
+        state.perplexity.loading.savingKeyId = null;
+        state.perplexity.keys = action.payload;
       })
-      .addCase(getApiKey.rejected, (state, action) => {
-        state.apiKeys.loading.gemini = false;
+      .addCase(savePplKey.rejected, (state, action) => {
+        state.perplexity.loading.savingKey = false;
+        state.perplexity.loading.savingKeyId = null;
         state.error = action.payload?.message;
       })
 
-      .addCase(setApiKey.fulfilled, (state, action) => {
-        state.apiKeys.gemini = action.payload;
+      .addCase(savePplModel.pending, (state, action) => {
+        state.error = null;
+        state.perplexity.loading.savingModel = true;
+        state.perplexity.loading.savingModelName =
+          action.meta?.arg?.modelName || null;
       })
-
-      .addCase(getPplApiKey.pending, (state) => {
-        state.apiKeys.loading.ppl = true;
+      .addCase(savePplModel.fulfilled, (state, action) => {
+        state.perplexity.loading.savingModel = false;
+        state.perplexity.loading.savingModelName = null;
+        state.perplexity.models = action.payload;
       })
-      .addCase(getPplApiKey.fulfilled, (state, action) => {
-        state.apiKeys.loading.ppl = false;
-        state.apiKeys.ppl = action.payload;
-      })
-      .addCase(getPplApiKey.rejected, (state, action) => {
-        state.apiKeys.loading.ppl = false;
+      .addCase(savePplModel.rejected, (state, action) => {
+        state.perplexity.loading.savingModel = false;
+        state.perplexity.loading.savingModelName = null;
         state.error = action.payload?.message;
-      })
-
-      .addCase(setPplApiKey.fulfilled, (state, action) => {
-        state.apiKeys.ppl = action.payload;
       });
   },
 });

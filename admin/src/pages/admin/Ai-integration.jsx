@@ -1,681 +1,749 @@
+import React, { useEffect, useState } from "react";
 import {
-  AlertCircle,
-  Code2,
   Cpu,
   Globe,
+  Info,
   KeyRound,
   Loader2,
-  Server,
+  Plus,
+  RefreshCw,
   Settings2,
   ShieldCheck,
   Sparkles,
-  Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
 import {
-  changeGeminiStatus,
-  changePplStatus,
-  getApiKey,
-  getModel,
-  getPplApiKey,
-  getPplModel,
-  setApiKey,
-  setModel,
-  setPplApiKey,
-  setPplModel,
+  fetchGeminiKeys,
+  fetchGeminiModels,
+  fetchPplKeys,
+  fetchPplModels,
+  saveGeminiKey,
+  saveGeminiModel,
+  savePplKey,
+  savePplModel,
 } from "../../../redux/slices/ai";
 
-/* ================= HELPERS ================= */
-
-const getEnv = (k) => (import.meta?.env?.[k] ? String(import.meta.env[k]) : "");
-
-const resolvePresetEnvValue = (presetId, presets) => {
-  const preset = presets.find((p) => p.id === presetId);
-  if (!preset?.env) return "";
-  return getEnv(preset.env).trim();
+const PROVIDERS = {
+  gemini: {
+    name: "Gemini",
+    icon: Sparkles,
+    accent: "indigo",
+    bg: "from-indigo-600 to-violet-500",
+    keyRoutes: "/ai/get-api-key | /ai/set-api-key",
+    modelRoutes: "/ai/get-model | /ai/set-model",
+  },
+  perplexity: {
+    name: "Perplexity",
+    icon: Globe,
+    accent: "teal",
+    bg: "from-emerald-500 to-teal-500",
+    keyRoutes: "/ai/get-api-key-ppl | /ai/set-api-key-ppl",
+    modelRoutes: "/ai/get-model-ppl | /ai/set-model-ppl",
+  },
 };
 
-/* ================= CONSTANTS ================= */
+const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "DISABLED"];
 
-// --- GEMINI CONSTANTS ---
-const FLASH_MODELS = [
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Latest Standard)" },
-  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (Most Efficient)" },
-  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
-  { id: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash Experimental" },
-  { id: "gemini-flash-latest", label: "Gemini Flash Latest (Auto-update)" },
-  { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (Reliable Old)" },
-];
+const emptyKeyForm = () => ({
+  apiKey: "",
+  label: "",
+  priority: 0,
+  status: "ACTIVE",
+});
 
-// NOTE: Any API key present in client-side code is not truly secret.
-const GEMINI_PRESET_KEYS = [
-  { id: "key_1", label: "anv9576", env: "VITE_PRESET_API_KEY_anv9576", hint: "Primary App Usage" },
-  { id: "key_2", label: "av95766", env: "VITE_PRESET_API_KEY_av95766", hint: "QA Environment" },
-  { id: "key_3", label: "romrommerom", env: "VITE_PRESET_API_KEY_romrommerom", hint: "Local Dev" },
-];
+const emptyModelForm = () => ({
+  modelName: "",
+  priority: 0,
+  status: true,
+});
 
-// --- PERPLEXITY CONSTANTS ---
-const PERPLEXITY_MODELS = [
-  { id: "sonar", label: "Sonar (Standard Search)" },
-  { id: "sonar-pro", label: "Sonar Pro (Advanced Reasoning)" },
-];
+const maskKey = (value = "") => {
+  if (!value) return "—";
+  const tail = value.slice(-4);
+  return `••••••${tail}`;
+};
 
-const PERPLEXITY_PRESET_API_KEYS = [
-  { id: "anv9576", label: "Primary Search Key", env: "VITE_PERPLEXITY_API_KEY_anv9576", hint: "Main Account" },
-  { id: "av95766", label: "Backup Search Key", env: "VITE_PERPLEXITY_API_KEY_av95766", hint: "Failover Account" },
-  { id: "romrommerom", label: "Local Dev Key", env: "VITE_PERPLEXITY_API_KEY_romrommerom", hint: "Local Development" },
-];
+const formatDate = (value) => {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString();
+};
 
-const ToggleSwitch = ({ checked, onChange, disabled, ariaLabel }) => (
-  <button
-    onClick={onChange}
-    disabled={disabled}
-    type="button"
-    aria-label={ariaLabel}
-    aria-pressed={checked}
-    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-      checked ? "bg-emerald-500" : "bg-gray-200"
-    } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-  >
-    <span
-      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-        checked ? "translate-x-6" : "translate-x-1"
-      }`}
-    />
-  </button>
-);
+const activeKeyFromList = (keys = []) => {
+  const active = keys
+    .filter((k) => (k.status || "").toUpperCase() === "ACTIVE")
+    .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  return active[0] || null;
+};
 
-const AISettingsPage = () => {
-  /* ================= REDUX ================= */
+const statusTone = (status = "") => {
+  const s = status.toUpperCase();
+  if (s === "ACTIVE") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (s === "DISABLED") return "bg-red-50 text-red-700 border-red-200";
+  return "bg-slate-100 text-slate-600 border-slate-200";
+};
 
+const AIPanel = () => {
   const dispatch = useDispatch();
-  const { gemini, perplexity, apiKeys } = useSelector((s) => s.ai);
+  const ai = useSelector((s) => s.ai);
 
-  /* ================= OPTIMISTIC STATUS ================= */
-
-  const [geminiEnabled, setGeminiEnabled] = useState(true);
-  const [pplEnabled, setPplEnabled] = useState(true);
-
-  /* ================= PRESET STATE ================= */
-
-  const [selectedGeminiPresetId, setSelectedGeminiPresetId] = useState("");
-  const [selectedPplPresetId, setSelectedPplPresetId] = useState("");
-
-  const [customApiKey, setCustomApiKey] = useState("");
-  const [customPplApiKey, setCustomPplApiKey] = useState("");
-
-  /* ================= MODEL STATE ================= */
-
-  const [selectedModel, setSelectedModel] = useState("");
-  const [selectedPplModel, setSelectedPplModel] = useState("");
-
-  /* ================= LOADING ================= */
-
-  const isTogglingGemini = gemini.loading.toggle;
-  const isTogglingPpl = perplexity.loading.toggle;
-
-  const geminiBusy = gemini.loading.set || apiKeys.loading.gemini;
-  const pplBusy = perplexity.loading.set || apiKeys.loading.ppl;
-
-  const isSettingModel = gemini.loading.set;
-  const isGettingModel = gemini.loading.get;
-
-  const isSettingPplModel = perplexity.loading.set;
-  const isGettingPplModel = perplexity.loading.get;
-
-  const isSettingApiKey = apiKeys.loading.gemini;
-  const isSettingPplApiKey = apiKeys.loading.ppl;
-
-  const currentModel = gemini.model;
-  const currentPplModel = perplexity.model;
-
-  /* ================= INITIAL FETCH ================= */
+  const [tab, setTab] = useState("gemini");
+  const [keyForms, setKeyForms] = useState({
+    gemini: emptyKeyForm(),
+    perplexity: emptyKeyForm(),
+  });
+  const [modelForms, setModelForms] = useState({
+    gemini: emptyModelForm(),
+    perplexity: emptyModelForm(),
+  });
+  const [keyDrafts, setKeyDrafts] = useState({ gemini: {}, perplexity: {} });
+  const [modelDrafts, setModelDrafts] = useState({ gemini: {}, perplexity: {} });
 
   useEffect(() => {
-    dispatch(getModel());
-    dispatch(getApiKey());
-    dispatch(getPplModel());
-    dispatch(getPplApiKey());
+    dispatch(fetchGeminiKeys());
+    dispatch(fetchGeminiModels());
+    dispatch(fetchPplKeys());
+    dispatch(fetchPplModels());
   }, [dispatch]);
 
-  /* ================= SYNC FROM REDUX ================= */
-
   useEffect(() => {
-    setGeminiEnabled(gemini.status);
-    setSelectedModel(gemini.model || "");
-  }, [gemini.status, gemini.model]);
+    if (ai.error) toast.error(ai.error);
+  }, [ai.error]);
 
-  useEffect(() => {
-    setPplEnabled(perplexity.status);
-    setSelectedPplModel(perplexity.model || "");
-  }, [perplexity.status, perplexity.model]);
+  const providerOrder = import.meta?.env?.VITE_AI_PROVIDER_ORDER || "";
 
-  useEffect(() => {
-    setCustomApiKey(apiKeys.gemini || "");
-    setCustomPplApiKey(apiKeys.ppl || "");
-  }, [apiKeys]);
+  const providerState = (provider) =>
+    provider === "gemini" ? ai.gemini : ai.perplexity;
 
-  /* ================= TOGGLES (REALTIME) ================= */
+  const handleDraftChange = (provider, id, field, value) => {
+    setKeyDrafts((prev) => ({
+      ...prev,
+      [provider]: {
+        ...(prev[provider] || {}),
+        [id]: {
+          ...(prev[provider]?.[id] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
 
-  const toggleGemini = async () => {
-    const next = !geminiEnabled;
-    setGeminiEnabled(next);
+  const handleModelDraftChange = (provider, id, field, value) => {
+    setModelDrafts((prev) => ({
+      ...prev,
+      [provider]: {
+        ...(prev[provider] || {}),
+        [id]: {
+          ...(prev[provider]?.[id] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const onSaveKey = async (provider, key) => {
+    const id = key._id || key.apiKey;
+    const draft = keyDrafts[provider]?.[id] || {};
+    const payload = {
+      apiKey: key.apiKey,
+      label: (draft.label ?? key.label ?? "").trim(),
+      status: (draft.status ?? key.status ?? "INACTIVE").toUpperCase(),
+      priority: Number(draft.priority ?? key.priority ?? 0) || 0,
+    };
 
     try {
-      await dispatch(
-        changeGeminiStatus({
-          status: next,
-          modelName: gemini.model,
-        })
-      ).unwrap();
-    } catch {
-      setGeminiEnabled(!next);
-      toast.error("Failed to update Gemini status");
+      const action =
+        provider === "gemini" ? saveGeminiKey(payload) : savePplKey(payload);
+      await dispatch(action).unwrap();
+      toast.success(`${PROVIDERS[provider].name} key saved`);
+      setKeyDrafts((prev) => ({
+        ...prev,
+        [provider]: { ...(prev[provider] || {}), [id]: {} },
+      }));
+    } catch (err) {
+      const msg = err?.message || err?.payload?.message || "Save failed";
+      toast.error(msg);
     }
   };
 
-  const togglePpl = async () => {
-    const next = !pplEnabled;
-    setPplEnabled(next);
-
+  const onAddKey = async (provider) => {
+    const form = keyForms[provider];
+    const payload = {
+      apiKey: (form.apiKey || "").trim(),
+      label: (form.label || "").trim(),
+      priority: Number(form.priority) || 0,
+      status: (form.status || "ACTIVE").toUpperCase(),
+    };
+    if (!payload.apiKey) {
+      toast.error("API key required");
+      return;
+    }
     try {
-      await dispatch(
-        changePplStatus({
-          status: next,
-          modelName: perplexity.model,
-        })
-      ).unwrap();
-    } catch {
-      setPplEnabled(!next);
-      toast.error("Failed to update Perplexity status");
+      const action =
+        provider === "gemini" ? saveGeminiKey(payload) : savePplKey(payload);
+      await dispatch(action).unwrap();
+      toast.success(`${PROVIDERS[provider].name} key added`);
+      setKeyForms((prev) => ({ ...prev, [provider]: emptyKeyForm() }));
+    } catch (err) {
+      toast.error(err?.message || "Failed to add key");
     }
   };
 
-  /* ================= SAVE HANDLERS ================= */
-
-  const handleSaveApiKey = async () => {
-    const presetValue = resolvePresetEnvValue(selectedGeminiPresetId, GEMINI_PRESET_KEYS);
-    const key = (customApiKey || presetValue || "").trim();
-
-    if (!key) {
-      // More specific error if preset selected but env missing
-      if (selectedGeminiPresetId && !presetValue) {
-        return toast.error("Preset env key missing. Check .env and restart dev server.");
-      }
-      return toast.error("Enter Gemini API key");
+  const onSaveModel = async (provider, model) => {
+    const id = model._id || model.modelName;
+    const draft = modelDrafts[provider]?.[id] || {};
+    const payload = {
+      modelName: model.modelName,
+      status: !!(draft.status ?? model.status ?? true),
+      priority: Number(draft.priority ?? model.priority ?? 0) || 0,
+    };
+    try {
+      const action =
+        provider === "gemini" ? saveGeminiModel(payload) : savePplModel(payload);
+      await dispatch(action).unwrap();
+      toast.success(`${PROVIDERS[provider].name} model saved`);
+      setModelDrafts((prev) => ({
+        ...prev,
+        [provider]: { ...(prev[provider] || {}), [id]: {} },
+      }));
+    } catch (err) {
+      toast.error(err?.message || "Failed to save model");
     }
-
-    await dispatch(setApiKey(key)).unwrap();
-    toast.success("Gemini API key saved");
   };
 
-  const handleSavePplApiKey = async () => {
-    const presetValue = resolvePresetEnvValue(selectedPplPresetId, PERPLEXITY_PRESET_API_KEYS);
-    const key = (customPplApiKey || presetValue || "").trim();
-
-    if (!key) {
-      if (selectedPplPresetId && !presetValue) {
-        return toast.error("Preset env key missing. Check .env and restart dev server.");
-      }
-      return toast.error("Enter Perplexity API key");
+  const onAddModel = async (provider) => {
+    const form = modelForms[provider];
+    const payload = {
+      modelName: (form.modelName || "").trim(),
+      status: !!(form.status ?? true),
+      priority: Number(form.priority) || 0,
+    };
+    if (!payload.modelName) {
+      toast.error("Model name required");
+      return;
     }
-
-    await dispatch(setPplApiKey(key)).unwrap();
-    toast.success("Perplexity API key saved");
+    try {
+      const action =
+        provider === "gemini" ? saveGeminiModel(payload) : savePplModel(payload);
+      await dispatch(action).unwrap();
+      toast.success(`${PROVIDERS[provider].name} model added`);
+      setModelForms((prev) => ({ ...prev, [provider]: emptyModelForm() }));
+    } catch (err) {
+      toast.error(err?.message || "Failed to add model");
+    }
   };
 
-  const handleSaveModel = async () => {
-    await dispatch(setModel(selectedModel)).unwrap();
-    await dispatch(getModel());
-    toast.success("Gemini model updated");
+  const renderKeyTable = (provider) => {
+    const state = providerState(provider);
+    const activeKey = activeKeyFromList(state.keys);
+    const savingId = state.loading.savingKeyId;
+
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-400">
+              API Keys
+            </p>
+            <p className="text-sm text-slate-600">
+              Manage {PROVIDERS[provider].name} keys, status, and rotation priority.
+            </p>
+          </div>
+          {activeKey && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+              <ShieldCheck className="h-4 w-4" />
+              Active: {activeKey.label || maskKey(activeKey.apiKey)}
+            </span>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-3 text-left">Label</th>
+                <th className="px-4 py-3 text-left">Key</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Priority</th>
+                <th className="px-4 py-3 text-left">Success/Fail</th>
+                <th className="px-4 py-3 text-left">Last Used / Failed</th>
+                <th className="px-4 py-3 text-left">Last Error</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {state.loading.keys ? (
+                <tr>
+                  <td colSpan={8} className="py-10 text-center text-slate-500">
+                    <div className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading keys...
+                    </div>
+                  </td>
+                </tr>
+              ) : state.keys.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-500">
+                    No keys found. Add one below.
+                  </td>
+                </tr>
+              ) : (
+                state.keys.map((k) => {
+                  const id = k._id || k.apiKey;
+                  const draft = keyDrafts[provider]?.[id] || {};
+                  const status = (draft.status ?? k.status ?? "").toUpperCase();
+                  const priority = draft.priority ?? k.priority ?? 0;
+                  const label = draft.label ?? k.label ?? "";
+
+                  const rowTone =
+                    status === "ACTIVE"
+                      ? "bg-emerald-50/60"
+                      : status === "DISABLED"
+                      ? "bg-red-50/40"
+                      : "bg-white";
+
+                  return (
+                    <tr key={id} className={`hover:bg-slate-50/70 transition-colors ${rowTone}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm"
+                          value={label}
+                          onChange={(e) =>
+                            handleDraftChange(provider, id, "label", e.target.value)
+                          }
+                          placeholder="Label"
+                        />
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                        {maskKey(k.apiKey)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={status}
+                          onChange={(e) =>
+                            handleDraftChange(provider, id, "status", e.target.value)
+                          }
+                          className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
+                        >
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          className="w-20 rounded-md border border-slate-200 px-2 py-1 text-sm"
+                          value={priority}
+                          onChange={(e) =>
+                            handleDraftChange(provider, id, "priority", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        <span className="text-emerald-600 font-semibold">
+                          {k.successCount ?? 0}
+                        </span>
+                        <span className="text-slate-400 px-1">/</span>
+                        <span className="text-red-500 font-semibold">
+                          {k.failCount ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        <div>{formatDate(k.lastUsedAt)}</div>
+                        <div className="text-red-500">{formatDate(k.lastFailedAt)}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-red-600 max-w-xs">
+                        {k.lastError ? (
+                          <span className="line-clamp-2">{k.lastError}</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => onSaveKey(provider, k)}
+                          disabled={state.loading.savingKey && savingId === id}
+                          className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          {state.loading.savingKey && savingId === id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          Save
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+            <KeyRound className="h-4 w-4 text-slate-500" />
+            Add Key
+          </div>
+          <div className="grid md:grid-cols-4 gap-3">
+            <input
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              placeholder="API Key"
+              value={keyForms[provider].apiKey}
+              onChange={(e) =>
+                setKeyForms((prev) => ({
+                  ...prev,
+                  [provider]: { ...prev[provider], apiKey: e.target.value },
+                }))
+              }
+            />
+            <input
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Label"
+              value={keyForms[provider].label}
+              onChange={(e) =>
+                setKeyForms((prev) => ({
+                  ...prev,
+                  [provider]: { ...prev[provider], label: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="number"
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Priority"
+              value={keyForms[provider].priority}
+              onChange={(e) =>
+                setKeyForms((prev) => ({
+                  ...prev,
+                  [provider]: { ...prev[provider], priority: e.target.value },
+                }))
+              }
+            />
+            <div className="flex gap-2">
+              <select
+                className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                value={keyForms[provider].status}
+                onChange={(e) =>
+                  setKeyForms((prev) => ({
+                    ...prev,
+                    [provider]: { ...prev[provider], status: e.target.value },
+                  }))
+                }
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => onAddKey(provider)}
+                disabled={state.loading.savingKey}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+              >
+                {state.loading.savingKey ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const handleSavePplModel = async () => {
-    await dispatch(setPplModel(selectedPplModel)).unwrap();
-    await dispatch(getPplModel());
-    toast.success("Perplexity model updated");
+  const renderModelTable = (provider) => {
+    const state = providerState(provider);
+    const savingName = state.loading.savingModelName;
+
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-400">
+              Models
+            </p>
+            <p className="text-sm text-slate-600">
+              Toggle availability and set priority order.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-4 py-3 text-left">Model</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Priority</th>
+                <th className="px-4 py-3 text-left">Last Used</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {state.loading.models ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-slate-500">
+                    <div className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading models...
+                    </div>
+                  </td>
+                </tr>
+              ) : state.models.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
+                    No models configured. Add one below.
+                  </td>
+                </tr>
+              ) : (
+                state.models.map((m) => {
+                  const id = m._id || m.modelName;
+                  const draft = modelDrafts[provider]?.[id] || {};
+                  const status = draft.status ?? m.status ?? true;
+                  const priority = draft.priority ?? m.priority ?? 0;
+                  return (
+                    <tr key={id} className="hover:bg-slate-50/70">
+                      <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                        {m.modelName}
+                      </td>
+                      <td className="px-4 py-3">
+                        <label className="inline-flex items-center gap-2 text-xs font-semibold">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={Boolean(status)}
+                            onChange={(e) =>
+                              handleModelDraftChange(provider, id, "status", e.target.checked)
+                            }
+                          />
+                          {status ? "Enabled" : "Disabled"}
+                        </label>
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          className="w-20 rounded-md border border-slate-200 px-2 py-1 text-sm"
+                          value={priority}
+                          onChange={(e) =>
+                            handleModelDraftChange(provider, id, "priority", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {formatDate(m.lastUsedAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => onSaveModel(provider, m)}
+                          disabled={state.loading.savingModel && savingName === m.modelName}
+                          className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          {state.loading.savingModel && savingName === m.modelName ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          Save
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3">
+            <Cpu className="h-4 w-4 text-slate-500" />
+            Add Model
+          </div>
+          <div className="grid md:grid-cols-3 gap-3 items-center">
+            <input
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              placeholder="model-name"
+              value={modelForms[provider].modelName}
+              onChange={(e) =>
+                setModelForms((prev) => ({
+                  ...prev,
+                  [provider]: { ...prev[provider], modelName: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="number"
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+              placeholder="Priority"
+              value={modelForms[provider].priority}
+              onChange={(e) =>
+                setModelForms((prev) => ({
+                  ...prev,
+                  [provider]: { ...prev[provider], priority: e.target.value },
+                }))
+              }
+            />
+            <div className="flex items-center justify-between gap-3">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={Boolean(modelForms[provider].status)}
+                  onChange={(e) =>
+                    setModelForms((prev) => ({
+                      ...prev,
+                      [provider]: { ...prev[provider], status: e.target.checked },
+                    }))
+                  }
+                />
+                Enabled
+              </label>
+              <button
+                onClick={() => onAddModel(provider)}
+                disabled={state.loading.savingModel}
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+              >
+                {state.loading.savingModel ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderProvider = (provider) => {
+    const meta = PROVIDERS[provider];
+    const state = providerState(provider);
+    const activeKey = activeKeyFromList(state.keys);
+    const icon = meta.icon;
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs uppercase font-semibold text-slate-400">
+              <Settings2 className="h-4 w-4" />
+              Provider
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <div
+                className={`h-10 w-10 rounded-lg bg-gradient-to-br ${meta.bg} text-white flex items-center justify-center shadow`}
+              >
+                {React.createElement(icon, { className: "h-5 w-5" })}
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-900">{meta.name}</div>
+                <div className="text-xs text-slate-500">{meta.keyRoutes}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs uppercase font-semibold text-slate-400">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Active Key
+            </div>
+            <div className="mt-2 text-sm text-slate-700">
+              {activeKey ? (
+                <>
+                  <div className="font-semibold">{activeKey.label || "(no label)"}</div>
+                  <div className="text-xs text-slate-500">{maskKey(activeKey.apiKey)}</div>
+                </>
+              ) : (
+                <span className="text-slate-500">None (server will pick fallback)</span>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-xs uppercase font-semibold text-slate-400">
+              <Cpu className="h-4 w-4 text-indigo-600" />
+              Models
+            </div>
+            <div className="mt-2 text-sm text-slate-700">
+              <div className="font-semibold">{state.models.length}</div>
+              <div className="text-xs text-slate-500">
+                Enabled:{" "}
+                {
+                  state.models.filter((m) => m.status === true || m.status === "ACTIVE")
+                    .length
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {renderKeyTable(provider)}
+        {renderModelTable(provider)}
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] text-gray-900 font-sans">
-      {/* Navbar */}
-      <div className="sticky top-0 z-20 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2 rounded-lg text-white shadow-md">
-              <Settings2 size={18} />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-gray-900 leading-tight">
-                AI Control Center
-              </h1>
-              <p className="text-xs text-gray-500 font-medium">
-                Provider Configuration
-              </p>
-            </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-400">
+          <ShieldCheck className="h-4 w-4" />
+          Admin
+        </div>
+        <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              AI Providers, Models & API Keys
+            </h1>
+            <p className="text-sm text-slate-500">
+              Manage Gemini and Perplexity credentials, rotation priority, and model availability.
+            </p>
           </div>
-          <div className="hidden sm:flex items-center gap-4 text-xs font-medium text-gray-500">
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-gray-200 shadow-sm">
-              <ShieldCheck size={12} className="text-emerald-500" />
-              Secure Environment
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
+              <Info className="h-4 w-4" />
+              AI_PROVIDER_ORDER: {providerOrder || "not set"}
             </span>
           </div>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-8 lg:grid-cols-[2fr_1fr] items-start">
-          {/* LEFT COLUMN */}
-          <div className="space-y-8">
-            {/* GOOGLE GEMINI CARD */}
-            <div
-              className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${
-                geminiEnabled ? "ring-0" : "opacity-90 grayscale-[0.3]"
+      <div className="flex gap-2">
+        {Object.keys(PROVIDERS).map((key) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                active
+                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
               }`}
             >
-              {/* Header with Toggle */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      geminiEnabled ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    <Sparkles size={22} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-gray-900">
-                        Google Gemini
-                      </h2>
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          geminiEnabled
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {geminiEnabled ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Core reasoning & generation engine
-                    </p>
-                  </div>
-                </div>
+              {React.createElement(PROVIDERS[key].icon, { className: "h-4 w-4" })}
+              {PROVIDERS[key].name}
+            </button>
+          );
+        })}
+      </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-400 hidden sm:block">
-                    {geminiEnabled ? "Enabled" : "Disabled"}
-                  </span>
-                  <ToggleSwitch
-                    checked={geminiEnabled}
-                    disabled={isTogglingGemini}
-                    onChange={toggleGemini}
-                    ariaLabel="Toggle Gemini"
-                  />
-                </div>
-              </div>
-
-              {/* Configuration Content - Dimmed if Inactive */}
-              <div
-                className={`p-6 space-y-8 ${
-                  !geminiEnabled ? "opacity-50 pointer-events-none select-none" : ""
-                }`}
-              >
-                {/* API Key Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                    <KeyRound size={16} className="text-gray-400" />
-                    <h3>Authentication</h3>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">
-                        Preset Key
-                      </label>
-                      <select
-                        value={selectedGeminiPresetId}
-                        onChange={(e) => {
-                          setSelectedGeminiPresetId(e.target.value);
-                          setCustomApiKey("");
-                        }}
-                        disabled={geminiBusy}
-                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                      >
-                        <option value="">(Use custom key)</option>
-                        {GEMINI_PRESET_KEYS.map((k) => (
-                          <option key={k.id} value={k.id}>
-                            {k.label}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedGeminiPresetId && (
-                        <p className="mt-1 text-[11px] text-gray-400">
-                          {
-                            GEMINI_PRESET_KEYS.find((x) => x.id === selectedGeminiPresetId)
-                              ?.hint
-                          }
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">
-                        Custom Key
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="gemini-xxxx..."
-                        value={customApiKey}
-                        onChange={(e) => {
-                          setCustomApiKey(e.target.value);
-                          if (e.target.value) setSelectedGeminiPresetId("");
-                        }}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleSaveApiKey}
-                      disabled={geminiBusy}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isSettingApiKey && <Loader2 size={12} className="animate-spin" />}{" "}
-                      Save API Key
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-px bg-gray-100 w-full" />
-
-                {/* Model Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                    <Cpu size={16} className="text-gray-400" />
-                    <h3>Model Configuration</h3>
-                  </div>
-
-                  <div>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      disabled={isSettingModel || isGettingModel}
-                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                    >
-                      {FLASH_MODELS.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <AlertCircle size={12} /> Currently active:{" "}
-                        <span className="text-gray-700 font-medium">
-                          {currentModel || "(not set)"}
-                        </span>
-                      </p>
-
-                      <button
-                        onClick={handleSaveModel}
-                        disabled={isSettingModel || isGettingModel}
-                        className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-md transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isSettingModel ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Server size={12} />
-                        )}{" "}
-                        Update Model
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* PERPLEXITY AI CARD */}
-            <div
-              className={`bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${
-                pplEnabled ? "ring-0" : "opacity-90 grayscale-[0.3]"
-              }`}
-            >
-              {/* Header with Toggle */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      pplEnabled ? "bg-teal-50 text-teal-600" : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    <Globe size={22} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-gray-900">
-                        Perplexity AI
-                      </h2>
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          pplEnabled
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {pplEnabled ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Live web search & deep research
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-400 hidden sm:block">
-                    {pplEnabled ? "Enabled" : "Disabled"}
-                  </span>
-                  <ToggleSwitch
-                    checked={pplEnabled}
-                    disabled={isTogglingPpl}
-                    onChange={togglePpl}
-                    ariaLabel="Toggle Perplexity"
-                  />
-                </div>
-              </div>
-
-              {/* Configuration Content */}
-              <div
-                className={`p-6 space-y-8 ${
-                  !pplEnabled ? "opacity-50 pointer-events-none select-none" : ""
-                }`}
-              >
-                {/* API Key Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                    <KeyRound size={16} className="text-gray-400" />
-                    <h3>Authentication</h3>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">
-                        Preset Key
-                      </label>
-                      <select
-                        value={selectedPplPresetId}
-                        onChange={(e) => {
-                          setSelectedPplPresetId(e.target.value);
-                          setCustomPplApiKey("");
-                        }}
-                        disabled={pplBusy}
-                        className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
-                      >
-                        <option value="">(Use custom key)</option>
-                        {PERPLEXITY_PRESET_API_KEYS.map((k) => (
-                          <option key={k.id} value={k.id}>
-                            {k.label}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedPplPresetId && (
-                        <p className="mt-1 text-[11px] text-gray-400">
-                          {
-                            PERPLEXITY_PRESET_API_KEYS.find((x) => x.id === selectedPplPresetId)
-                              ?.hint
-                          }
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase">
-                        Custom Key
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="pplx-xxxx..."
-                        value={customPplApiKey}
-                        onChange={(e) => {
-                          setCustomPplApiKey(e.target.value);
-                          if (e.target.value) setSelectedPplPresetId("");
-                        }}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleSavePplApiKey}
-                      disabled={pplBusy}
-                      className="text-xs font-semibold text-teal-600 hover:text-teal-800 flex items-center gap-1 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {isSettingPplApiKey && <Loader2 size={12} className="animate-spin" />}{" "}
-                      Save API Key
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-px bg-gray-100 w-full" />
-
-                {/* Model Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                    <Zap size={16} className="text-gray-400" />
-                    <h3>Model Configuration</h3>
-                  </div>
-
-                  <div>
-                    <select
-                      value={selectedPplModel}
-                      onChange={(e) => setSelectedPplModel(e.target.value)}
-                      disabled={isSettingPplModel || isGettingPplModel}
-                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
-                    >
-                      {PERPLEXITY_MODELS.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <AlertCircle size={12} /> Currently active:{" "}
-                        <span className="text-gray-700 font-medium">
-                          {currentPplModel || "(not set)"}
-                        </span>
-                      </p>
-
-                      <button
-                        onClick={handleSavePplModel}
-                        disabled={isSettingPplModel || isGettingPplModel}
-                        className="text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 px-4 py-1.5 rounded-md transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isSettingPplModel ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Server size={12} />
-                        )}{" "}
-                        Update Model
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <aside className="space-y-6 lg:sticky lg:top-24">
-            {/* Developer Info */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-4 text-gray-900">
-                <div className="p-1.5 bg-gray-100 rounded-md">
-                  <Code2 size={16} className="text-gray-600" />
-                </div>
-                <h3 className="text-sm font-bold">API Schema</h3>
-              </div>
-
-              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-                Ensure your backend endpoints match the expected JSON structure
-                for successful connection.
-              </p>
-
-              <div className="bg-[#0F172A] rounded-lg p-4 overflow-x-auto shadow-inner mb-4 border border-gray-800">
-                <p className="text-[10px] text-gray-500 mb-2 font-semibold uppercase tracking-wider">
-                  Gemini
-                </p>
-                <pre className="text-[10px] leading-relaxed font-mono text-blue-300">
-                  <span className="text-purple-400">POST</span>{" "}
-                  /ai/change-gemini-status{"\n"}
-                  <span className="text-purple-400">POST</span> /set-api-key{"\n"}
-                  <span className="text-purple-400">POST</span> /set-model
-                </pre>
-              </div>
-
-              <div className="bg-[#0F172A] rounded-lg p-4 overflow-x-auto shadow-inner border border-gray-800">
-                <p className="text-[10px] text-gray-500 mb-2 font-semibold uppercase tracking-wider">
-                  Perplexity
-                </p>
-                <pre className="text-[10px] leading-relaxed font-mono text-teal-300">
-                  <span className="text-purple-400">POST</span>{" "}
-                  /ai/change-ppl-status{"\n"}
-                  <span className="text-purple-400">POST</span> /set-ppl-api-key{"\n"}
-                  <span className="text-purple-400">POST</span> /set-ppl-model
-                </pre>
-              </div>
-            </div>
-
-            {/* Environment Badge */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between shadow-sm">
-              <span className="text-xs font-semibold text-gray-500">
-                System Status
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold text-emerald-600">
-                  Operational
-                </span>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </main>
+      {renderProvider(tab)}
     </div>
   );
 };
 
-export default AISettingsPage;
+export default AIPanel;

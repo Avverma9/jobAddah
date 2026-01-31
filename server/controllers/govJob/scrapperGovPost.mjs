@@ -12,14 +12,7 @@ const getGovPostDetails = async (req, res) => {
       return res.status(400).json({ success: false, error: "URL is required" });
     }
 
-    try {
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        const parsed = new URL(url);
-        url = parsed.pathname;
-      }
-    } catch {}
-
-    url = url.trim();
+    url = stripDomain(url.trim());
 
     const getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
 

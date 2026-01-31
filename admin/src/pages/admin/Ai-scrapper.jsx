@@ -877,6 +877,62 @@ const ListItem = React.memo(
       hostname = "Invalid URL";
     }
 
+    const fetchPostDetails = useCallback(async () => {
+      if (!linkUrl || linkUrl === "#") return null;
+
+      const variants = new Set();
+      variants.add(linkUrl);
+
+      // normalize trailing slash variants
+      const stripSlash = linkUrl.endsWith("/")
+        ? linkUrl.slice(0, -1)
+        : linkUrl;
+      const addSlash = linkUrl.endsWith("/") ? linkUrl : `${linkUrl}/`;
+      variants.add(stripSlash);
+      variants.add(addSlash);
+
+      try {
+        const u = new URL(linkUrl);
+        variants.add(u.pathname);
+        variants.add(u.pathname.endsWith("/") ? u.pathname.slice(0, -1) : `${u.pathname}/`);
+      } catch {
+        /* ignore URL parse errors */
+      }
+
+      const isHit = (res) => {
+        if (!res) return false;
+        if (!(res.status >= 200 && res.status < 300)) return false;
+        const d = res.data;
+        if (!d) return false;
+        if (d.success === true) return true;
+        if (d.action === "EXISTING_DATA") return true;
+        if (d._id || d.id || d.data?._id || d.job?._id) return true;
+        return false;
+      };
+
+      for (const v of variants) {
+        for (const key of ["url", "link"]) {
+          try {
+            const res = await api.get("/get-post/details", { params: { [key]: v } });
+            if (isHit(res)) return res.data;
+          } catch {
+            /* try next */
+          }
+        }
+      }
+
+      // last resort: POST with body (some servers only accept json)
+      for (const v of variants) {
+        try {
+          const res = await api.post("/get-post/details", { url: v });
+          if (isHit(res)) return res.data;
+        } catch {
+          /* final failure */
+        }
+      }
+      return null;
+    }, [linkUrl]);
+
     useEffect(() => {
       let isMounted = true;
       const checkDbStatus = async () => {
@@ -887,15 +943,14 @@ const ListItem = React.memo(
           }
           return;
         }
-        try {
-          const res = await api.get("/get-post/details", {
-            params: { url: linkUrl },
-          });
-          if (!isMounted) return;
+
+        const data = await fetchPostDetails();
+        if (!isMounted) return;
+
+        if (data) {
           setDbStatus("present");
           onStatusChange(linkUrl, "present");
           try {
-            const data = res.data;
             const foundId =
               data._id || data.id || data.data?._id || data.job?._id;
             if (foundId) setFetchedId(foundId);
@@ -906,17 +961,17 @@ const ListItem = React.memo(
           } catch (err) {
             console.error(err);
           }
-        } catch (error) {
-          if (!isMounted) return;
+        } else {
           setDbStatus("missing");
           onStatusChange(linkUrl, "missing");
         }
       };
+
       checkDbStatus();
       return () => {
         isMounted = false;
       };
-    }, [linkUrl, onStatusChange, refreshTrigger]);
+    }, [fetchPostDetails, linkUrl, onStatusChange, refreshTrigger]);
 
     const handleScrape = async () => {
       const isUpdate = dbStatus === "present";
@@ -924,28 +979,44 @@ const ListItem = React.memo(
       onStatusChange(linkUrl, "scraping");
       const toastId = toast.loading(isUpdate ? "Updating..." : "Syncing...");
       try {
-        const res = await api.post("/scrapper/scrape-complete", {
-          url: linkUrl,
-        });
-        if (res.status >= 200 && res.status < 300) {
-          toast.success(isUpdate ? "Updated!" : "Synced!", { id: toastId });
-          setDbStatus("present");
-          onStatusChange(linkUrl, "present");
-          if (onSyncSuccess) onSyncSuccess();
-          try {
-            const data = res.data;
-            const newId =
-              data._id || data.id || data.data?._id || data.job?._id;
-            if (newId) setFetchedId(newId);
+        const res = await api.post("/scrapper/scrape-complete", { url: linkUrl });
+        if (!(res.status >= 200 && res.status < 300)) throw new Error("Failed");
 
-            if (data.fav !== undefined) setLocalFav(!!data.fav);
-            else if (data.data?.fav !== undefined) setLocalFav(!!data.data.fav);
-          } catch (err) {
-            console.error(err);
-          }
-        } else {
-          throw new Error("Failed");
+        const data = res.data;
+        toast.success(isUpdate ? "Updated!" : "Synced!", { id: toastId });
+
+        // Immediately mark present for UX
+        setDbStatus("present");
+        onStatusChange(linkUrl, "present");
+
+        // Try to read returned id/fav first
+        try {
+          const newId = data?._id || data?.id || data?.data?._id || data?.job?._id;
+          if (newId) setFetchedId(newId);
+
+          const favValue =
+            data?.fav ?? data?.data?.fav ?? data?.job?.fav ?? undefined;
+          if (favValue !== undefined) setLocalFav(!!favValue);
+        } catch (err) {
+          console.error(err);
         }
+
+        // Double-check with detail endpoint to avoid stale "not in DB" labels
+        try {
+          const detail = await fetchPostDetails();
+          if (detail) {
+            const foundId =
+              detail._id || detail.id || detail.data?._id || detail.job?._id;
+            if (foundId) setFetchedId(foundId);
+            const favValue =
+              detail?.fav ?? detail?.data?.fav ?? detail?.job?.fav ?? undefined;
+            if (favValue !== undefined) setLocalFav(!!favValue);
+          }
+        } catch {
+          /* ignore */
+        }
+
+        if (onSyncSuccess) onSyncSuccess();
       } catch (error) {
         toast.error("Error", { id: toastId });
         setDbStatus(isUpdate ? "present" : "missing");

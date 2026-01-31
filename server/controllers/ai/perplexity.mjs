@@ -1,6 +1,4 @@
 import PerplexityModel from "../../models/ai/perplexity-model.mjs";
-import fs from "fs";
-import path from "path";
 import pplKey from "../../models/ai/perplexity-apikey.mjs";
 
 const checkModelAvailability = async (apiKey, modelName) => {
@@ -81,29 +79,6 @@ const setPplApiKey = async (req, res) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
-
-    try {
-      const envPath = path.resolve(process.cwd(), ".env");
-      let envContents = "";
-
-      if (fs.existsSync(envPath)) {
-        envContents = fs.readFileSync(envPath, "utf8");
-      }
-
-      const keyLine = `PERPLEXITY_API_KEY=${apiKey}`;
-      const re = /^PERPLEXITY_API_KEY=.*$/m;
-
-      if (re.test(envContents)) {
-        envContents = envContents.replace(re, keyLine);
-      } else {
-        if (envContents.length && !envContents.endsWith("\n"))
-          envContents += "\n";
-        envContents += keyLine + "\n";
-      }
-
-      fs.writeFileSync(envPath, envContents, "utf8");
-      process.env.PERPLEXITY_API_KEY = apiKey;
-    } catch {}
 
     const keys = await pplKey.find({ provider: "perplexity" }).sort({
       status: -1,

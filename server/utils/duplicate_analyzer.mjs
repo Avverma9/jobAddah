@@ -1,5 +1,8 @@
 import Post from "../models/govJob/govJob.mjs";
 import axios from "axios";
+import getActiveAIConfig from "./aiKey.mjs";
+import pplKey from "../models/ai/perplexity-apikey.mjs";
+import PerplexityModel from "../models/ai/perplexity-model.mjs";
 
 const USE_AI = false;
 const SIMILARITY_THRESHOLD = 65;
@@ -64,8 +67,34 @@ const basicDuplicateScore = (p1, p2) => {
 };
 
 const analyzeWithPerplexity = async ({ older, newer }) => {
-  const apiKey = process.env.PERPLEXITY_API_KEY;
-  if (!apiKey) throw new Error("Perplexity API key missing");
+  let apiKey = null;
+  let modelName = "sonar-pro";
+
+  // try active-config picker first (prefers provider order)
+  try {
+    const cfg = await getActiveAIConfig({
+      excludeKeyIds: [],
+    });
+    if (cfg.provider === "perplexity") {
+      apiKey = cfg.apiKey;
+      modelName = cfg.modelName;
+    }
+  } catch {}
+
+  // fallback: pick first active ppl key/model
+  if (!apiKey) {
+    const keyDoc = await pplKey
+      .findOne({ status: "ACTIVE" })
+      .sort({ priority: -1, updatedAt: -1 })
+      .lean();
+    if (!keyDoc) throw new Error("Perplexity API key missing");
+    apiKey = keyDoc.apiKey;
+  }
+
+  const modelDoc = await PerplexityModel.findOne({ status: true })
+    .sort({ priority: -1, updatedAt: -1 })
+    .lean();
+  if (modelDoc?.modelName) modelName = modelDoc.modelName;
 
   const prompt = `
 Compare two Indian govt job posts.
@@ -86,7 +115,7 @@ ${JSON.stringify(newer, null, 2)}
   const res = await axios.post(
     "https://api.perplexity.ai/chat/completions",
     {
-      model: "sonar-pro",
+      model: modelName,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1,
       max_tokens: 400,

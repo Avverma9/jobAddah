@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createPost,
+  deletePost,
   getallPost,
   getJobById,
   getJobs,
@@ -40,6 +41,7 @@ router.get("/fav-posts", getFavPosts);
 router.get("/reminders/expiring-jobs", getReminders);
 router.post("/fix-all-urls", fixAllUrls);
 router.get("/find-by-title", findByTitle);
+router.delete("/delete-job/:id", deletePost);
 router.post("/rephrase-postlist-titles", rephraseAllGovPostListTitles);
 
 export default router;

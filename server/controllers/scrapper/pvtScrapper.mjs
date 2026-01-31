@@ -2,8 +2,10 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import { URL } from "node:url";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import ApiKey from "../../models/ai/ai-apiKey.mjs";
-import GeminiModel from "../../models/ai/gemini-model.mjs";
+import getActiveAIConfig, {
+  markKeyFailure,
+  markKeySuccess,
+} from "../../utils/aiKey.mjs";
 import PvtSection from "../../models/pvtJob/pvtSection.mjs";
 import pvtPostlist from "../../models/pvtJob/pvtPostlist.mjs";
 import PvtPost from "../../models/pvtJob/pvtPost.mjs";
@@ -34,28 +36,25 @@ const normalizeTitle = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, 
 
 const formatWithAI = async (scrapedData) => {
   try {
-    // 1. Fetch Config in Parallel (Faster)
-    const [modelNameData, apiKeyData] = await Promise.all([
-      GeminiModel.findOne().sort({ createdAt: -1 }).lean(),
-      ApiKey.findOne({}).sort({ createdAt: -1 }).lean(),
-    ]);
+    const tried = new Set();
+    let lastError = null;
 
-    if (!modelNameData) throw new Error("No Gemini model configured");
+    while (true) {
+      let cfg;
+      try {
+        cfg = await getActiveAIConfig({ excludeKeyIds: [...tried] });
+      } catch (e) {
+        throw lastError || e;
+      }
 
-    let effectiveKey = process.env.GEMINI_API_KEY;
-    if (!effectiveKey) {
-      if (!apiKeyData) throw new Error("No API key configured");
-      effectiveKey = apiKeyData.apiKey;
-    }
+      try {
+        const genAI = new GoogleGenerativeAI(cfg.apiKey);
+        const model = genAI.getGenerativeModel({
+          model: cfg.modelName,
+          generationConfig: { responseMimeType: "application/json" },
+        });
 
-    const genAI = new GoogleGenerativeAI(effectiveKey);
-    const model = genAI.getGenerativeModel({
-      model: modelNameData.modelName,
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
-    // 2. Optimized Prompt (Shorter token count, same strictness)
-    const prompt = `
+        const prompt = `
       EXTRACT JSON JOB DATA. RULES:
       1. Valid JSON only. No markdown.
       2. No missing data assumptions. Use null.
@@ -83,11 +82,23 @@ const formatWithAI = async (scrapedData) => {
       ${JSON.stringify(scrapedData).substring(0, 15000)}
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
+        await markKeySuccess({ provider: cfg.provider, keyId: cfg.keyId });
+        return parsed;
+      } catch (error) {
+        lastError = error;
+        await markKeyFailure({
+          provider: cfg.provider,
+          keyId: cfg.keyId,
+          errorMessage: error.message,
+        });
+        tried.add(String(cfg.keyId));
+        continue;
+      }
+    }
   } catch (error) {
     console.error("AI Formatting Error:", error.message);
     return null;

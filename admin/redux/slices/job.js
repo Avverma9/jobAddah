@@ -42,7 +42,8 @@ export const updateJob = createAsyncThunk(
 );
 
 export const deleteJob = createAsyncThunk("job/deleteJob", async (id) => {
-  const { data } = await api.delete(`/jobs/${id}`);
+  // Backend contract: DELETE /delete-job/:id
+  const { data } = await api.delete(`/delete-job/${id}`);
   return { id, ...data };
 });
 
