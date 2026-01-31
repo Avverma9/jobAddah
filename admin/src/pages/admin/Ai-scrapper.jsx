@@ -69,6 +69,7 @@ export default function Scrapper() {
     success: 0,
     failed: 0,
   });
+  const [fixingUrls, setFixingUrls] = useState(false);
   const stopSyncRef = useRef(false);
 
   const [selectedLinks, setSelectedLinks] = useState(new Set());
@@ -261,6 +262,31 @@ export default function Scrapper() {
       toast.error("Failed to analyze duplicates", { id: toastId });
     } finally {
       setAnalyzingDuplicates(false);
+    }
+  };
+
+  const handleFixAllUrls = async () => {
+    setFixingUrls(true);
+    const toastId = toast.loading("Normalizing URLs...");
+    try {
+      const res = await api.post("/fix-all-urls");
+      if (res.status >= 200 && res.status < 300) {
+        toast.success("URLs normalized", { id: toastId });
+        setRefreshTrigger((prev) => prev + 1);
+        if (activeLink) {
+          dispatch(getPostlist(`?url=${encodeURIComponent(activeLink)}`));
+        }
+      } else {
+        throw new Error("Failed");
+      }
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to normalize URLs";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setFixingUrls(false);
     }
   };
 
@@ -624,6 +650,19 @@ export default function Scrapper() {
                         title="Sync only items that are not present in DB"
                       >
                         <Play size={14} fill="currentColor" /> Sync Missing Only
+                      </button>
+
+                      <button
+                        onClick={handleFixAllUrls}
+                        disabled={fixingUrls || isBulkSyncing}
+                        className="flex items-center gap-2 px-3 py-2 bg-orange-50 text-orange-700 border border-orange-100 rounded-lg font-bold text-xs hover:bg-orange-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Normalize URLs for all posts"
+                      >
+                        <RotateCw
+                          size={14}
+                          className={fixingUrls ? "animate-spin" : undefined}
+                        />
+                        {fixingUrls ? "Normalizing..." : "Fix URLs"}
                       </button>
 
                       <button

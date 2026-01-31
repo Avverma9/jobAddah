@@ -17,6 +17,21 @@ const cleanText = (t) =>
 
 const normalizeSemantic = (v) => cleanText(v).toLowerCase();
 
+const normalizePath = (inputUrl) => {
+  if (!inputUrl) return null;
+  let url = inputUrl.trim();
+  url = url.split("#")[0].split("?")[0];
+  try {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const parsed = new URL(url);
+      url = parsed.pathname;
+    }
+  } catch {}
+  if (!url.startsWith("/")) url = "/" + url;
+  if (url.length > 1 && url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
 const INVALID_VALUES = [
   "notify later",
   "will be updated",
@@ -225,9 +240,10 @@ const scrapper = async (req, res) => {
 
     const u = new URL(jobUrl);
     const cleanUrl = u.origin + u.pathname;
+    const cleanPath = normalizePath(jobUrl);
 
     const existingCheck = await Post.findOne(
-      { $or: [{ url: cleanUrl }, { sourceUrl: jobUrl }] },
+      { $or: [{ url: cleanPath }, { sourceUrl: jobUrl }, { url: cleanUrl }] },
       { _id: 1, pageHash: 1 }
     )
       .lean()
@@ -293,7 +309,7 @@ const scrapper = async (req, res) => {
     const scraped = scrapeHTML($, jobUrl);
     const aiData = await formatWithAI(scraped);
 
-    aiData.url = req?.body?.url;
+    aiData.url = cleanPath || req?.body?.url;
     aiData.sourceUrl = jobUrl;
     aiData.pageHash = pageHash;
 

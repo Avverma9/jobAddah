@@ -5,6 +5,22 @@ import { scrapper } from "../scrapper/govScrapper.mjs";
 import Post from "../../models/govJob/govJob.mjs";
 import rephraseTitle from "../../utils/rephraser.js";
 
+const normalizePath = (inputUrl) => {
+  if (!inputUrl) return null;
+  let url = inputUrl.trim();
+  // strip query/hash
+  url = url.split("#")[0].split("?")[0];
+  try {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const parsed = new URL(url);
+      url = parsed.pathname;
+    }
+  } catch {}
+  if (!url.startsWith("/")) url = "/" + url;
+  if (url.length > 1 && url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
 const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
@@ -12,9 +28,14 @@ const getGovPostDetails = async (req, res) => {
       return res.status(400).json({ success: false, error: "URL is required" });
     }
 
-    url = stripDomain(url.trim());
+    const normalized = normalizePath(url);
+    const variants = normalized
+      ? [normalized, `${normalized}/`]
+      : [];
 
-    const getData = await Post.findOne({ url }).sort({ createdAt: -1 }).lean();
+    const getData = await Post.findOne({ url: { $in: variants } })
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!getData) {
       return res.status(404).json({ success: false, error: "Post not found" });

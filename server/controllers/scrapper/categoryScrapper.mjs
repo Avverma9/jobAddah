@@ -33,7 +33,7 @@ const getCategories = async (req, res) => {
 
     $("nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a").each(
       (_, el) => {
-        const name = cleanText($(el).text());
+        const name = $(el).text().trim();
         const href = $(el).attr("href");
         if (!name || !href || href === "#" || href === "/") return;
         if (ignore.includes(name)) return;
@@ -76,7 +76,7 @@ const scrapeCategory = async (req, res) => {
     let jobs = [];
 
     $(".post-link, .entry-title a, .post h2 a, ul li a").each((_, el) => {
-      const title = cleanText($(el).text());
+      const title = $(el).text().trim();
       const link = $(el).attr("href");
       if (title && title.length > 10 && link) {
         const fullLink = new URL(link, categoryUrl).href;
