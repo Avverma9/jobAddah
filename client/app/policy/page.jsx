@@ -65,7 +65,7 @@ const PrivacyPolicy = () => {
               3. Google DoubleClick DART Cookie
             </h2>
             <p className="text-gray-700 leading-relaxed mb-4">
-              Google is one of a third-party vendor on our site. It also uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to www.jobsaddah.com and other sites on the internet. However, visitors may choose to decline the use of DART cookies by visiting the Google ad and content network Privacy Policy at the following URL – <a href="https://policies.google.com/technologies/ads" target="_blank" rel="nofollow noreferrer" className="text-blue-600 underline hover:text-blue-800">https://policies.google.com/technologies/ads</a>
+              Google is one of a third-party vendor on our site. It also uses cookies, known as DART cookies, to serve ads to our site visitors based upon their visit to www.jobsaddah.com and other sites on the internet. However, visitors may choose to decline the use of DART cookies by visiting the Google ad and content network Privacy Policy at the following URL - <a href="https://policies.google.com/technologies/ads" target="_blank" rel="nofollow noreferrer" className="text-blue-600 underline hover:text-blue-800">https://policies.google.com/technologies/ads</a>
             </p>
           </section>
 
@@ -91,10 +91,10 @@ const PrivacyPolicy = () => {
                 We would like to make sure you are fully aware of all of your data protection rights. Every user is entitled to the following:
               </p>
               <ul className="list-disc pl-5 space-y-2 text-gray-600 text-sm">
-                <li><strong>The right to access</strong> – You have the right to request copies of your personal data.</li>
-                <li><strong>The right to rectification</strong> – You have the right to request that we correct any information you believe is inaccurate.</li>
-                <li><strong>The right to erasure</strong> – You have the right to request that we erase your personal data, under certain conditions.</li>
-                <li><strong>The right to restrict processing</strong> – You have the right to request that we restrict the processing of your personal data, under certain conditions.</li>
+                <li><strong>The right to access</strong> - You have the right to request copies of your personal data.</li>
+                <li><strong>The right to rectification</strong> - You have the right to request that we correct any information you believe is inaccurate.</li>
+                <li><strong>The right to erasure</strong> - You have the right to request that we erase your personal data, under certain conditions.</li>
+                <li><strong>The right to restrict processing</strong> - You have the right to request that we restrict the processing of your personal data, under certain conditions.</li>
               </ul>
             </div>
           </section>

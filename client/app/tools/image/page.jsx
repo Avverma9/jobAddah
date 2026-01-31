@@ -179,6 +179,20 @@ export default function ImageEditor() {
               <div className="transition-all duration-300">{renderContent()}</div>
             </div>
           </div>
+
+          <section className="mt-10 bg-white border border-slate-200 rounded-2xl p-6 md:p-8">
+            <h2 className="text-xl font-bold text-slate-900 mb-3">
+              How to use these image tools
+            </h2>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li>1. Upload a clear photo with good lighting and a plain background.</li>
+              <li>2. Use BG Remover or Passport Photo tools to meet form rules.</li>
+              <li>3. Download and reuse the same image across applications.</li>
+            </ul>
+            <p className="text-xs text-slate-500 mt-4">
+              Tip: Keep file size under 100-200KB if your application portal is strict.
+            </p>
+          </section>
         </div>
       </div>
     </div>

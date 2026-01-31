@@ -563,6 +563,22 @@ export default function ResumeBuilderPage() {
          </button>
       </div>
 
+      <section style={{ maxWidth: 1200, margin: "24px auto 60px", padding: "0 24px" }}>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>
+            Resume tips for government exams
+          </h2>
+          <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, marginBottom: 8 }}>
+            Keep your resume short and factual. Mention your exact qualification, year of passing,
+            and any relevant certifications. If a form asks for experience or training, use the same
+            wording here to avoid mismatch.
+          </p>
+          <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+            Always verify field requirements in the official notification before submission.
+          </p>
+        </div>
+      </section>
+
     </div>
   )
 }

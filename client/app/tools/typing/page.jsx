@@ -267,7 +267,7 @@ export default function TypingTest() {
 
             <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 mb-8">
               <p className="text-xs font-bold text-yellow-600 uppercase mb-1">
-                😂 Bonus Joke for You
+                Bonus Joke for You
               </p>
               <p className="text-slate-700 italic whitespace-pre-line">
                 {currentJoke}
@@ -292,8 +292,22 @@ export default function TypingTest() {
         </div>
       )}
       
+      <section className="mt-10 w-full max-w-4xl bg-white border border-slate-200 rounded-2xl p-6 text-sm text-slate-600">
+        <h2 className="text-lg font-bold text-slate-900 mb-2">
+          Why typing practice matters
+        </h2>
+        <p className="mb-2">
+          Many government exams include a typing test. Regular practice improves
+          speed, accuracy, and confidence during the actual assessment.
+        </p>
+        <p>
+          Focus on accuracy first, then build speed. A clean and consistent
+          typing rhythm is more valuable than rushing.
+        </p>
+      </section>
+
       <div className="fixed bottom-4 right-4 text-xs text-slate-300 select-none">
-        Made with ❤️ for faster fingers
+        Made with love for faster fingers
       </div>
     </div>
   );

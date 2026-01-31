@@ -46,11 +46,11 @@ export default function Footer() {
           <div>
             <h3 className="font-bold text-slate-900 mb-6 uppercase text-sm tracking-wider">Browse Jobs</h3>
             <ul className="space-y-3">
-              <FooterLink href="/category/railway">Railway (RRB) Jobs</FooterLink>
-              <FooterLink href="/category/police">Police & Defence</FooterLink>
-              <FooterLink href="/category/ssc">SSC & Banking</FooterLink>
-              <FooterLink href="/category/teaching">Teaching (TET/CTET)</FooterLink>
-              <FooterLink href="/category/upsc">UPSC & State PSC</FooterLink>
+              <FooterLink href="/post">Sarkari Result Sections</FooterLink>
+              <FooterLink href="/view-all">View All Notifications</FooterLink>
+              <FooterLink href="/search">Search Jobs</FooterLink>
+              <FooterLink href="/tools/typing">Typing Test Practice</FooterLink>
+              <FooterLink href="/tools/resume">Resume Builder</FooterLink>
             </ul>
           </div>
 
@@ -58,11 +58,11 @@ export default function Footer() {
           <div>
             <h3 className="font-bold text-slate-900 mb-6 uppercase text-sm tracking-wider">Student Corner</h3>
             <ul className="space-y-3">
-              <FooterLink href="/admit-card">Download Admit Card</FooterLink>
-              <FooterLink href="/results">Sarkari Results</FooterLink>
-              <FooterLink href="/syllabus">Syllabus & Exam Pattern</FooterLink>
-              <FooterLink href="/answer-key">Answer Keys</FooterLink>
-              {/* <FooterLink href="/private-jobs">Private Sector Jobs</FooterLink> */}
+              <FooterLink href="/tools/image">Passport Photo Tools</FooterLink>
+              <FooterLink href="/tools/resume">AI Resume Builder</FooterLink>
+              <FooterLink href="/tools/typing">Typing Speed Test</FooterLink>
+              <FooterLink href="/about">About JobsAddah</FooterLink>
+              <FooterLink href="/contact">Support & Corrections</FooterLink>
             </ul>
           </div>
 
@@ -72,7 +72,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <FooterLink href="/about">About Us</FooterLink>
               <FooterLink href="/contact">Contact Support</FooterLink>
-              <FooterLink href="/privacy-policy">Privacy Policy</FooterLink>
+              <FooterLink href="/policy">Privacy Policy</FooterLink>
               <FooterLink href="/terms">Terms & Conditions</FooterLink>
             </ul>
             
@@ -104,8 +104,10 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
             <p>&copy; 2024-{currentYear} JobsAddah.com. All rights reserved.</p>
             <div className="flex items-center gap-6">
-               <span className="hover:text-slate-800 cursor-pointer">Sitemap</span>
-               <span>Made with ❤️ in Bihar, India</span>
+               <Link href="/sitemap.xml" className="hover:text-slate-800">
+                 Sitemap
+               </Link>
+               <span>Made with love in Bihar, India</span>
             </div>
           </div>
         </div>

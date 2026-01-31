@@ -17,7 +17,7 @@ const ContactPage = () => {
             We&apos;d Love to Hear From You
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Whether you are a student facing issues with a download, an employer wanting to post a job, or just want to say hello—our team in Patna is ready to answer.
+            Whether you are a student facing issues with a download, an employer wanting to post a job, or just want to say hello - our team in Patna is ready to answer.
           </p>
         </div>
 

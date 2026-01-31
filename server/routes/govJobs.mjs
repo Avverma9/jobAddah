@@ -15,6 +15,7 @@ import {
   getReminders,
   fixAllUrls,
   findByTitle,
+  rephraseAllGovPostListTitles,
 } from "../controllers/govJob/scrapperGovPost.mjs";
 import { verifyToken, authorizeRoles } from "../middleware/auth.mjs";
 
@@ -39,5 +40,6 @@ router.get("/fav-posts", getFavPosts);
 router.get("/reminders/expiring-jobs", getReminders);
 router.post("/fix-all-urls", fixAllUrls);
 router.get("/find-by-title", findByTitle);
+router.post("/rephrase-postlist-titles", rephraseAllGovPostListTitles);
 
 export default router;

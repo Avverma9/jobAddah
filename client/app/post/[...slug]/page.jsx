@@ -213,11 +213,11 @@ function generateFeesText(fees) {
       </p>
       <ul className="list-disc pl-5 space-y-1 bg-white p-4 rounded-lg border border-slate-200">
         {validFees.map((f, i) => {
-          const parts = f.text.match(/(.*?)[\-–:](.*)/);
+          const parts = f.text.match(/(.*?)[\--:](.*)/);
           const cat = parts ? parts[1].trim() : "Category Fee";
           let amount = parts ? parts[2].trim() : f.text;
-          if (!amount.includes("₹") && !Number.isNaN(Number(amount))) {
-            amount = `₹${amount}`;
+          if (!amount.includes("Rs.") && !Number.isNaN(Number(amount))) {
+            amount = `Rs.${amount}`;
           }
           return (
             <li key={i}>
@@ -434,6 +434,25 @@ export default async function JobDetailsPage({ params }) {
             </div>
           </header>
 
+          <section className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-700">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">
+              Source and verification
+            </h2>
+            <p className="mb-2">
+              JobsAddah summarizes official notifications and links back to the
+              original source. Always open the official website before filling
+              the form or making any payment.
+            </p>
+            <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+              <span className="bg-white border border-slate-200 rounded-full px-3 py-1">
+                Last updated: {postDate}
+              </span>
+              <span className="bg-white border border-slate-200 rounded-full px-3 py-1">
+                Official links: {detail.links?.length || 0}
+              </span>
+            </div>
+          </section>
+
           <section className="prose max-w-none text-slate-700 leading-relaxed text-base md:text-lg">
             {generateOverview(detail)}
           </section>
@@ -445,22 +464,22 @@ export default async function JobDetailsPage({ params }) {
             {hasSubstantialContent(detail) ? (
               <div className="prose max-w-none text-slate-700 space-y-6">
               <p>
-                Treat this notification as a living document. The dates, number of vacancies, and application conditions can shift slightly between the draft notification you see today and the final advertisement that opens for submissions. Bookmark this page, download the official PDF, and compare the terminology used here with the language on the issuing organization’s website before you start filling out any forms. Doing that extra cross-check keeps you clear of last-minute surprises and ensures that every claim in your application mirrors what the recruiters actually published.
+                Treat this notification as a living document. The dates, number of vacancies, and application conditions can shift slightly between the draft notification you see today and the final advertisement that opens for submissions. Bookmark this page, download the official PDF, and compare the terminology used here with the language on the issuing organization's website before you start filling out any forms. Doing that extra cross-check keeps you clear of last-minute surprises and ensures that every claim in your application mirrors what the recruiters actually published.
               </p>
               <p>
                 Eligibility is more than just the marks on your certificate. Consider not only the minimum educational qualification and age limit, but also domicile clauses, physical standards, and any reservations the body may use for specific districts or departments. Review the timeline of application windows and linking instructions with a calendar view, then note any documents that require certified copies, medical certificates, or self-attestation. A methodical checklist now prevents frantic scanning later when the online portal is live.
               </p>
               <p>
-                Build a personal schedule that mirrors the recruitment milestones. Most Sarkari notifications open the form 10–14 days before the first deadline, so plan a rehearsal run where you log in to the portal, capture the form structure, and test uploading scans of your ID, experience proof, and signature. If you rely on a shared computer or cyber cafe, block out a slot well before the last date so you can submit comfortably even if the network slows down on the final day.
+                Build a personal schedule that mirrors the recruitment milestones. Most Sarkari notifications open the form 10-14 days before the first deadline, so plan a rehearsal run where you log in to the portal, capture the form structure, and test uploading scans of your ID, experience proof, and signature. If you rely on a shared computer or cyber cafe, block out a slot well before the last date so you can submit comfortably even if the network slows down on the final day.
               </p>
               <p>
-                Keep your documents organized in both digital and hard-copy folders. Maintain two copies of each certificate, one as a PDF and one as a photograph with consistent naming (e.g., "aadhaar-front.jpg"). That makes it easy to upload the right file during the online application and to present the same paperwork at the biometric or document-verification stage. If there are photographs or signatures with specifications, create them at a shop or printer that understands the requirement—JobsAddah regularly highlights those dimension notes so you do not lose points due to an incorrectly sized photo.
+                Keep your documents organized in both digital and hard-copy folders. Maintain two copies of each certificate, one as a PDF and one as a photograph with consistent naming (e.g., "aadhaar-front.jpg"). That makes it easy to upload the right file during the online application and to present the same paperwork at the biometric or document-verification stage. If there are photographs or signatures with specifications, create them at a shop or printer that understands the requirement--JobsAddah regularly highlights those dimension notes so you do not lose points due to an incorrectly sized photo.
               </p>
               <p>
                 When the admit card or hall ticket is released, revisit this page to review the contest details while keeping track of new updates via the reminder component on the right. Maintaining calm focus amid the noise of notification updates helps you read every instruction and margin note, which is where the real preparation advantage lies. A collected mindset prevents mistakes like choosing the wrong category or missing a question about preferable centres.
               </p>
               <p>
-                JobsAddah surfaces data from multiple scraped sources, but you can reinforce it by using the reminder alerts, trending- jobs feed, and the search bar at the top to quickly jump from this notification to complementary job listings. See the “Important Links” table below for direct application portals, syllabus outlines, and download instructions so you can keep all information under the same roof. Together, these steps build the 800+ words of context you need for a well-informed, confident application.
+                JobsAddah surfaces data from multiple scraped sources, but you can reinforce it by using the reminder alerts, trending- jobs feed, and the search bar at the top to quickly jump from this notification to complementary job listings. See the "Important Links" table below for direct application portals, syllabus outlines, and download instructions so you can keep all information under the same roof. Together, these steps build the 800+ words of context you need for a well-informed, confident application.
               </p>
               <p>
                 Finally, when you print this page or save it as a PDF, make a note of the reference number and the exact slug so you can refer to the same URL when the admit card is issued. A consistent URL makes it easier to share this notification with mentors, coaches, or peers, and it also helps search engines anchor the page in their index by following the canonical `/post/${Array.isArray(slug) ? slug.join("/") : slug}` path that everyone already uses on JobsAddah.

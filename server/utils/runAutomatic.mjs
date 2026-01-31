@@ -7,10 +7,29 @@ import Site from "../models/govJob/scrapperSite.mjs";
 import govPostList from "../models/govJob/govPostListBycatUrl.mjs";
 import { sendNewPostsEmail } from "../nodemailer/notify_mailer.mjs";
 import { clearNextJsCache } from "./clear-cache.mjs";
+import rephraseTitle from "./rephraser.js";
 
+// Minimal cleaner for internal use
 const cleanText = (text) => {
   if (!text) return "";
-  return text.replace(/\s+/g, " ").replace(/\n+/g, " ").trim();
+  return String(text).replace(/\s+/g, " ").replace(/\n+/g, " ").trim();
+};
+
+const canonicalizeLink = (url) => {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    u.search = "";
+    let pathname = u.pathname || "/";
+    if (pathname.length > 1 && pathname.endsWith("/")) {
+      pathname = pathname.slice(0, -1);
+    }
+    return `${u.origin}${pathname}`;
+  } catch {
+    // if invalid URL, fall back to trimmed string without query/hash
+    return url.split("#")[0].split("?")[0].trim();
+  }
 };
 
 const ensureProtocol = (inputUrl) => {
@@ -35,30 +54,60 @@ const scrapeCategoryInternal = async (categoryUrl) => {
     let jobs = [];
 
     $(postSelectors).each((_, el) => {
-      const title = cleanText($(el).text());
+      const title = rephraseTitle($(el).text());
       const link = $(el).attr("href");
       if (title && title.length > 10 && link) {
         try {
           const fullLink = new URL(link, categoryUrl).href;
-          jobs.push({ title, link: fullLink });
+          const canonicalLink = canonicalizeLink(fullLink);
+          jobs.push({ title, link: fullLink, canonicalLink });
         } catch {}
       }
     });
 
-    const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
+    const uniqueJobs = [...new Map(jobs.map((i) => [i.canonicalLink || i.link, i])).values()];
 
     // fetch previous jobs to detect new posts
     const existing = await govPostList.findOne({ url: categoryUrl });
     const previousJobs = (existing && Array.isArray(existing.jobs)) ? existing.jobs : [];
+    const previousByLink = new Map(
+      previousJobs.map((job) => {
+        const key = job.canonicalLink || canonicalizeLink(job.link);
+        return [key, job];
+      })
+    );
+    const now = new Date();
 
     // determine which jobs are new (by link)
     const newJobs = uniqueJobs.filter(
-      (u) => !previousJobs.some((p) => p.link === u.link)
+      (u) => !previousByLink.has(u.canonicalLink || u.link)
     );
+
+    const mergedJobs = uniqueJobs.map((job) => {
+      const key = job.canonicalLink || job.link;
+      const prev = previousByLink.get(key);
+      if (prev) {
+        const titleChanged = job.title && job.title !== prev.title;
+        const linkChanged = job.link && prev.link && job.link !== prev.link;
+        const stableLink =
+          prev.canonicalLink === job.canonicalLink ||
+          canonicalizeLink(prev.link) === key
+            ? prev.link
+            : job.link;
+        return {
+          ...prev,
+          ...job,
+          link: stableLink,
+          createdAt: prev.createdAt || now,
+          updatedAt: titleChanged || linkChanged ? now : prev.updatedAt || now,
+        };
+      }
+      return { ...job, createdAt: now, updatedAt: now };
+    });
 
     await govPostList.findOneAndUpdate(
       { url: categoryUrl },
-      { $set: { url: categoryUrl, jobs: uniqueJobs, lastScraped: new Date() } },
+      { $set: { url: categoryUrl, jobs: mergedJobs, lastScraped: new Date() } },
       { upsert: true, new: true }
     );
 
@@ -74,7 +123,7 @@ const scrapeCategoryInternal = async (categoryUrl) => {
       }
     }
 
-    return { success: true, count: uniqueJobs.length, jobs: uniqueJobs };
+    return { success: true, count: mergedJobs.length, jobs: mergedJobs };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -179,6 +228,7 @@ const syncCategoriesAndJobs = async () => {
     };
   } catch (error) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.error("syncCategoriesAndJobs error:", error?.message, error);
     return { success: false, error: error.message, duration };
   }
 };
@@ -203,23 +253,28 @@ const scrapeCategory = async (req, res) => {
 };
 
 const initCategoryCron = () => {
-  // schedule to run at minute 0 of every hour (Asia/Kolkata)
+  // schedule to run every 10 minutes (Asia/Kolkata)
   cron.schedule(
-    "0 * * * *",
+    "*/10 * * * *",
     async () => {
       const startedAt = new Date();
       console.log(`Cron: syncCategoriesAndJobs started at ${startedAt.toISOString()}`);
       try {
         const result = await syncCategoriesAndJobs();
-        console.log(
-          `Cron: syncCategoriesAndJobs finished at ${new Date().toISOString()} result: ${
-            result && result.success ? "success" : "failure"
-          }`
-        );
+        const finishedAt = new Date();
+        if (result && result.success) {
+          console.log(
+            `Cron: syncCategoriesAndJobs finished at ${finishedAt.toISOString()} result: success categories=${result.categories} jobs=${result.jobs} duration=${result.duration}s`
+          );
+        } else {
+          console.error(
+            `Cron: syncCategoriesAndJobs finished at ${finishedAt.toISOString()} result: failure error=${result?.error} duration=${result?.duration}s`
+          );
+        }
       } catch (err) {
         console.error("Cron: syncCategoriesAndJobs error:", err);
       }
-    },
+    }, 
     {
       scheduled: true,
       timezone: "Asia/Kolkata",

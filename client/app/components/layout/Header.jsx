@@ -232,7 +232,7 @@ export default function Header() {
     setShowSearchDropdown(false);
     setIsSearching(false);
 
-    router.push(`/gov-post?title=${encodeURIComponent(q)}`);
+    router.push(`/search?q=${encodeURIComponent(q)}`);
     setIsMobileSearchOpen(false);
   }, [searchQuery, router]);
 
@@ -336,7 +336,7 @@ export default function Header() {
                   </span>
                 </span>
                 <span className="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5 opacity-80">
-                  आपकी सफलता, हमारा लक्ष्य
+                  Your success, our mission
                 </span>
               </div>
             </Link>
@@ -447,7 +447,7 @@ export default function Header() {
                       onClick={handleSearchSubmit}
                       className="w-full text-center text-sm font-semibold text-blue-600 hover:text-blue-700 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
                     >
-                      View all results →
+                      View all results ->
                     </button>
                   </div> */}
                 </div>
@@ -812,7 +812,7 @@ function MobileSearchOverlay({
                   onClick={onClose}
                   className="px-3 py-1.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200"
                 >
-                  ✕
+                  x
                 </button>
               </>
             )}
@@ -909,9 +909,6 @@ function MobileMenu({
             <div className="py-4 px-3 space-y-2">
               <MobileNavLink href="/" onClick={onClose}>
                 Home
-              </MobileNavLink>
-              <MobileNavLink href="/private-jobs" onClick={onClose}>
-                Private Jobs
               </MobileNavLink>
 
               {/* Tools Section */}

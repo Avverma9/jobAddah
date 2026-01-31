@@ -3,6 +3,7 @@ import govPostList from "../../models/govJob/govPostListBycatUrl.mjs";
 import govSection from "../../models/govJob/govSection.mjs";
 import { scrapper } from "../scrapper/govScrapper.mjs";
 import Post from "../../models/govJob/govJob.mjs";
+import rephraseTitle from "../../utils/rephraser.js";
 
 const getGovPostDetails = async (req, res) => {
   try {
@@ -376,6 +377,64 @@ const findByTitle = async (req, res) => {
   }
 };
 
+const rephraseAllGovPostListTitles = async (req, res) => {
+  try {
+    const cursor = govPostList.find({}, { jobs: 1 }).lean().cursor();
+    const bulkOps = [];
+    let updatedDocs = 0;
+    let updatedJobs = 0;
+
+    for await (const doc of cursor) {
+      if (!doc.jobs || !Array.isArray(doc.jobs) || doc.jobs.length === 0) {
+        continue;
+      }
+
+      let changed = false;
+      const nextJobs = doc.jobs.map((job) => {
+        if (!job || !job.title) return job;
+        const nextTitle = rephraseTitle(job.title);
+        if (nextTitle && nextTitle !== job.title) {
+          changed = true;
+          updatedJobs += 1;
+          return { ...job, title: nextTitle };
+        }
+        return job;
+      });
+
+      if (changed) {
+        updatedDocs += 1;
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: doc._id },
+            update: { $set: { jobs: nextJobs } },
+          },
+        });
+      }
+
+      if (bulkOps.length >= 200) {
+        await govPostList.bulkWrite(bulkOps);
+        bulkOps.length = 0;
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      await govPostList.bulkWrite(bulkOps);
+    }
+
+    return res.status(200).json({
+      success: true,
+      updatedDocs,
+      updatedJobs,
+      message: "Rephrased govPostList job titles",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Internal server error",
+    });
+  }
+};
+
 export {
   getGovPostDetails,
   getGovJobSections,
@@ -385,4 +444,5 @@ export {
   getReminders,
   fixAllUrls,
   findByTitle,
+  rephraseAllGovPostListTitles,
 };

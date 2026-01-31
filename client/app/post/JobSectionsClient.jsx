@@ -8,7 +8,6 @@ import {
   BookOpen,
   Calendar,
   Layers,
-  ExternalLink,
   ChevronRight,
   GripHorizontal,
 } from "lucide-react";
@@ -290,16 +289,6 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                   </div>
                   <div className="flex items-center gap-2">
                     <GripHorizontal className="w-4 h-4 text-slate-300" />
-                    <a
-                      href={category.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-400 hover:text-blue-600 transition-colors"
-                      title="View All"
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
                   </div>
                 </div>
 
@@ -337,7 +326,7 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                   )}
                 </ul>
 
-                {filteredJobs.length >= 15 && (
+                {filteredJobs.length >= 15 && category.link && (
                   <div className="px-4 py-2 border-t border-slate-100">
                     <button
                       type="button"
@@ -348,6 +337,10 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                           )}&link=${encodeURIComponent(category.link)}`,
                         )
                       }
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                       className="block w-full text-center py-2 text-xs font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all uppercase tracking-wider"
                       onMouseDown={(e) => e.stopPropagation()}
                     >
