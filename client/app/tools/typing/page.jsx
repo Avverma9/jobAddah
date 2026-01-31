@@ -1,4 +1,5 @@
 "use client";
+import VlogSpotlight from "@/components/VlogSpotlight";
 import useIsMobile from "@/hooks/useIsMobile";
 import SEO from "@/lib/SEO";
 import { dataStore, funnyJokes, getFeedback } from "@/lib/typingAsset";
@@ -305,7 +306,9 @@ export default function TypingTest() {
           typing rhythm is more valuable than rushing.
         </p>
       </section>
-
+       <section style={{ maxWidth: 1200, margin: "0 auto 60px", padding: "0 24px" }}>
+      <VlogSpotlight/>
+      </section>
       <div className="fixed bottom-4 right-4 text-xs text-slate-300 select-none">
         Made with love for faster fingers
       </div>

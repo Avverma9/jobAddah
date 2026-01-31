@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import SEO from "@/lib/SEO";
+import VlogSpotlight from "@/components/VlogSpotlight";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BgRemover } from "@/lib/image-tool/bgRemover";
 import { PhotoMakerTool } from "@/lib/image-tool/passport";
@@ -193,6 +194,7 @@ export default function ImageEditor() {
               Tip: Keep file size under 100-200KB if your application portal is strict.
             </p>
           </section>
+          <VlogSpotlight />
         </div>
       </div>
     </div>
