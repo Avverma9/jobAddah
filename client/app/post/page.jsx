@@ -3,9 +3,13 @@ import JobSectionsClient from "./JobSectionsClient";
 async function fetchJobSections() {
   try {
     // Relative URL keeps the fetch working across prod/preview/local without extra env
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000); // 10s guard to avoid build timeouts
     const res = await fetch(`/api/gov-post/job-section`, {
       next: { revalidate: 600 },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     if (!res.ok) return null;
     const payload = await res.json();
     if (payload?.success && Array.isArray(payload.data) && payload.data.length) {
