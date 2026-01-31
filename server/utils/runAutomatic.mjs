@@ -105,12 +105,16 @@ const scrapeCategoryInternal = async (categoryUrl) => {
           canonicalizeLink(prev.link) === key
             ? prev.link
             : job.link;
+        // If nothing meaningful changed, reuse prev as-is to avoid resetting timestamps
+        if (!titleChanged && !linkChanged) {
+          return prev;
+        }
         return {
           ...prev,
           ...job,
           link: stableLink,
           createdAt: prev.createdAt || now,
-          updatedAt: titleChanged || linkChanged ? now : prev.updatedAt || now,
+          updatedAt: now,
         };
       }
       return { ...job, createdAt: now, updatedAt: now };

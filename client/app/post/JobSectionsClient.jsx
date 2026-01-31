@@ -84,6 +84,31 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
   const [dragOverCategory, setDragOverCategory] = useState(null);
   const router = useRouter();
 
+  const getRecentTag = (isoDate) => {
+    if (!isoDate) return null;
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfThatDay = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+    );
+    const diffDays = Math.round(
+      (startOfToday - startOfThatDay) / 86400000,
+    );
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    return null;
+  };
+
   const handleJobSelect = useCallback(
     (job) => {
       const url = getCleanPostUrl(job.link);
@@ -313,6 +338,12 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                             {job.title}
                           </h3>
                         </div>
+
+                        {getRecentTag(job.createdAt) && (
+                          <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            {getRecentTag(job.createdAt)}
+                          </span>
+                        )}
 
                         <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
                       </button>
