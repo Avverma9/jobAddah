@@ -25,12 +25,15 @@ const ViewAllClient = ({
     const load = async () => {
       try {
         setLoading(true);
+        console.log("[ViewAll] fetching", sectionLink);
         const res = await fetch(
           `/api/gov-post/view-all?link=${encodeURIComponent(sectionLink)}`,
           { cache: "no-store" },
         );
+        console.log("[ViewAll] response status", res.status);
         if (!res.ok) throw new Error("Failed");
         const payload = await res.json();
+        console.log("[ViewAll] payload", payload);
         if (active && payload?.success && Array.isArray(payload.data)) {
           setJobs(payload.data);
         }

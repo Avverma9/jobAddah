@@ -28,8 +28,9 @@ async function fetchViewAllJobs(sectionLink) {
 }
 
 export async function generateMetadata({ searchParams }) {
-  const sectionName = searchParams?.name || "All Posts";
-  const sectionLink = searchParams?.link || "";
+  const resolved = await searchParams;
+  const sectionName = resolved?.name || "All Posts";
+  const sectionLink = resolved?.link || "";
   const jobs = await fetchViewAllJobs(sectionLink);
   const shouldIndex = Boolean(sectionLink && jobs.length);
 
@@ -41,8 +42,9 @@ export async function generateMetadata({ searchParams }) {
 }
 
 export default async function ViewAllPage({ searchParams }) {
-  const sectionName = searchParams?.name || "All Posts";
-  const sectionLink = searchParams?.link || "";
+  const resolved = await searchParams;
+  const sectionName = resolved?.name || "All Posts";
+  const sectionLink = resolved?.link || "";
   const jobs = await fetchViewAllJobs(sectionLink);
 
   return (
