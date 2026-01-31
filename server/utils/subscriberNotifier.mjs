@@ -1,8 +1,28 @@
 import Subscriber from "../models/subscriber.mjs";
 import { transporter } from "../nodemailer/notify_mailer.mjs";
 
-const buildPostLink = (post) =>
-  post?.url || post?.sourceUrl || post?.canonicalUrl || post?.path || "";
+const stripToPath = (url) => {
+  if (!url) return "";
+  try {
+    // Add protocol if missing so URL parser works
+    const maybeUrl = url.startsWith("http") ? url : `https://${url.replace(/^\/+/, "")}`;
+    const parsed = new URL(maybeUrl);
+    const path = parsed.pathname || "/";
+    const search = parsed.search || "";
+    return path.startsWith("/") ? `${path}${search}` : `/${path}${search}`;
+  } catch {
+    // fallback: ensure leading slash
+    const clean = url.split("#")[0].trim();
+    return clean.startsWith("/") ? clean : `/${clean}`;
+  }
+};
+
+const buildPostLink = (post) => {
+  const raw =
+    post?.url || post?.sourceUrl || post?.canonicalUrl || post?.path || "";
+  const path = stripToPath(raw);
+  return path ? `https://jobsaddah.com${path}` : "";
+};
 
 const composeEmailText = (post) => {
   const lines = [
