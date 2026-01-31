@@ -2,6 +2,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import { URL } from "node:url";
 import crypto from "crypto";
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import Post from "../../models/govJob/govJob.mjs";
@@ -13,25 +14,12 @@ import getActiveAIConfig, {
 import buildPrompt from "./prompt.mjs";
 import rephraseTitle from "../../utils/rephraser.js";
 
+const UA_HEADERS = { "User-Agent": "Mozilla/5.0" };
+
 const cleanText = (t) =>
   (t || "").replace(/\s+/g, " ").replace(/,/g, "").trim();
 
 const normalizeSemantic = (v) => cleanText(v).toLowerCase();
-
-const normalizePath = (inputUrl) => {
-  if (!inputUrl) return null;
-  let url = inputUrl.trim();
-  url = url.split("#")[0].split("?")[0];
-  try {
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      const parsed = new URL(url);
-      url = parsed.pathname;
-    }
-  } catch {}
-  if (!url.startsWith("/")) url = "/" + url;
-  if (url.length > 1 && url.endsWith("/")) url = url.slice(0, -1);
-  return url;
-};
 
 const INVALID_VALUES = [
   "notify later",
@@ -43,100 +31,45 @@ const INVALID_VALUES = [
   "n/a",
 ];
 
+// ---------------- URL Canonicalization ----------------
+const normalizePath = (inputUrl) => {
+  if (!inputUrl) return null;
+  let url = inputUrl.trim().split("#")[0].split("?")[0];
+  try {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const parsed = new URL(url);
+      url = parsed.pathname;
+    }
+  } catch {}
+  if (!url.startsWith("/")) url = "/" + url;
+  if (url.length > 1 && url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
+const buildCanonical = (jobUrl) => {
+  const u = new URL(jobUrl);
+  const canonicalUrl = u.origin + u.pathname; // no query, no hash
+  const path = u.pathname.endsWith("/") && u.pathname.length > 1
+    ? u.pathname.slice(0, -1)
+    : u.pathname;
+  return { canonicalUrl, path };
+};
+
+// ---------------- Stable hashing ----------------
 const generateStableHash = ($) => {
-  const text = cleanText($("body").find("table, p, li").text());
+  // basic "noise reduction": remove script/style + excessive footer/menus if needed
+  $("script,noscript,style").remove();
+
+  const text = cleanText($("body").find("table, p, li").text())
+    // strip common noise patterns:
+    .replace(/updated\s*on\s*[:\-]?\s*\w.+/gi, "")
+    .replace(/last\s*updated\s*[:\-]?\s*\w.+/gi, "")
+    .replace(/\b\d{1,2}\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\w*\s*\d{2,4}\b/gi, (m) => m.toLowerCase()); // normalize dates text-ish
+
   return crypto.createHash("md5").update(text).digest("hex");
 };
 
-const minifyDataForAI = (scrapedData) => ({
-  url: scrapedData.url,
-  title: scrapedData.title,
-  headings: scrapedData.headings,
-  tables: scrapedData.tables.map((t) => ({
-    rows: t.rows.map((r) => ({
-      cells: r.cells.map((c) => c.text),
-    })),
-  })),
-  lists: {
-    ul: scrapedData.lists.ul.map((l) => ({
-      items: l.items.map((i) => i.text),
-    })),
-    ol: scrapedData.lists.ol.map((l) => ({
-      items: l.items.map((i) => i.text),
-    })),
-  },
-  paragraphs: scrapedData.paragraphs.slice(0, 100),
-  links: scrapedData.links.map((l) => ({ text: l.text, href: l.href })),
-});
-
-const callPerplexity = async ({ apiKey, modelName, prompt }) => {
-  const res = await axios.post(
-    "https://api.perplexity.ai/chat/completions",
-    {
-      model: modelName,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,
-      max_tokens: 2048,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      timeout: 30000,
-    }
-  );
-
-  const text = res?.data?.choices?.[0]?.message?.content;
-  return JSON.parse(text);
-};
-
-const formatWithAI = async (scrapedData) => {
-  const tried = new Set();
-  let lastError = null;
-  const prompt = buildPrompt(minifyDataForAI(scrapedData), {}, "FULL");
-
-  while (true) {
-    let cfg;
-    try {
-      cfg = await getActiveAIConfig({ excludeKeyIds: [...tried] });
-    } catch (e) {
-      throw lastError || e;
-    }
-
-    try {
-      let parsed;
-      if (cfg.provider === "gemini") {
-        const genAI = new GoogleGenerativeAI(cfg.apiKey);
-        const model = genAI.getGenerativeModel({
-          model: cfg.modelName,
-          generationConfig: { responseMimeType: "application/json" },
-        });
-        const res = await model.generateContent(prompt);
-        parsed = JSON.parse(res.response.text());
-      } else {
-        parsed = await callPerplexity({
-          apiKey: cfg.apiKey,
-          modelName: cfg.modelName,
-          prompt,
-        });
-      }
-
-      await markKeySuccess({ provider: cfg.provider, keyId: cfg.keyId });
-      return parsed;
-    } catch (err) {
-      lastError = err;
-      await markKeyFailure({
-        provider: cfg.provider,
-        keyId: cfg.keyId,
-        errorMessage: err.message,
-      });
-      tried.add(String(cfg.keyId));
-      continue;
-    }
-  }
-};
-
+// ---------------- Scrape raw HTML ----------------
 const scrapeHTML = ($, jobUrl) => {
   const data = {
     url: jobUrl,
@@ -198,6 +131,166 @@ const scrapeHTML = ($, jobUrl) => {
   return data;
 };
 
+const minifyDataForAI = (scrapedData) => ({
+  url: scrapedData.url,
+  title: scrapedData.title,
+  headings: scrapedData.headings,
+  tables: scrapedData.tables.map((t) => ({
+    rows: t.rows.map((r) => ({
+      cells: r.cells.map((c) => c.text),
+    })),
+  })),
+  lists: {
+    ul: scrapedData.lists.ul.map((l) => ({
+      items: l.items.map((i) => i.text),
+    })),
+    ol: scrapedData.lists.ol.map((l) => ({
+      items: l.items.map((i) => i.text),
+    })),
+  },
+  paragraphs: scrapedData.paragraphs.slice(0, 120),
+  links: scrapedData.links.slice(0, 200).map((l) => ({ text: l.text, href: l.href })),
+});
+
+// ---------------- AI call (hardened) ----------------
+const callPerplexity = async ({ apiKey, modelName, prompt }) => {
+  const res = await axios.post(
+    "https://api.perplexity.ai/chat/completions",
+    {
+      model: modelName,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2048,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 45000,
+    }
+  );
+
+  const text = res?.data?.choices?.[0]?.message?.content;
+  return JSON.parse(text);
+};
+
+const formatWithAI = async (scrapedData) => {
+  const tried = new Set();
+  let lastError = null;
+  const prompt = buildPrompt(minifyDataForAI(scrapedData), {}, "FULL");
+
+  while (true) {
+    let cfg;
+    try {
+      cfg = await getActiveAIConfig({ excludeKeyIds: [...tried] });
+    } catch (e) {
+      throw lastError || e;
+    }
+
+    try {
+      let parsed;
+      if (cfg.provider === "gemini") {
+        const genAI = new GoogleGenerativeAI(cfg.apiKey);
+        const model = genAI.getGenerativeModel({
+          model: cfg.modelName,
+          generationConfig: { responseMimeType: "application/json" },
+        });
+        const res = await model.generateContent(prompt);
+        parsed = JSON.parse(res.response.text());
+      } else {
+        parsed = await callPerplexity({
+          apiKey: cfg.apiKey,
+          modelName: cfg.modelName,
+          prompt,
+        });
+      }
+
+      // Minimal sanity
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("AI returned invalid JSON object");
+      }
+
+      await markKeySuccess({ provider: cfg.provider, keyId: cfg.keyId });
+      return parsed;
+    } catch (err) {
+      lastError = err;
+      await markKeyFailure({
+        provider: cfg.provider,
+        keyId: cfg.keyId,
+        errorMessage: err.message,
+      });
+      tried.add(String(cfg.keyId));
+      continue;
+    }
+  }
+};
+
+// ---------------- Deterministic content signature ----------------
+// NOTE: title removed to avoid rephrase/non-deterministic differences.
+const dropEmpty = (obj) => {
+  if (Array.isArray(obj)) {
+    const arr = obj
+      .map((v) => dropEmpty(v))
+      .filter((v) => v !== undefined && v !== null && v !== "");
+    return arr.length ? arr : undefined;
+  }
+  if (obj && typeof obj === "object") {
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      const cleaned = dropEmpty(v);
+      if (cleaned !== undefined && cleaned !== null && cleaned !== "") {
+        out[k] = cleaned;
+      }
+    });
+    return Object.keys(out).length ? out : undefined;
+  }
+  if (typeof obj === "string") {
+    const t = cleanText(obj);
+    return t === "" ? undefined : t;
+  }
+  return obj;
+};
+
+const sortKeysDeep = (val) => {
+  if (Array.isArray(val)) {
+    return val.map(sortKeysDeep).sort((a, b) => {
+      const sa = JSON.stringify(a);
+      const sb = JSON.stringify(b);
+      return sa.localeCompare(sb);
+    });
+  }
+  if (val && typeof val === "object") {
+    return Object.keys(val)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = sortKeysDeep(val[key]);
+        return acc;
+      }, {});
+  }
+  return typeof val === "string" ? val.toLowerCase() : val;
+};
+
+const buildContentSignature = (data) => {
+  const r = data?.recruitment || {};
+  const signature = {
+    // title intentionally excluded
+    advertisementNumber: r.advertisementNumber || r.advertisementNo,
+    organization: r.organization || r.orgName,
+    vacancyDetails: r.vacancyDetails,
+    importantDates: r.importantDates,
+    // fallback: if above missing, use some stable-ish extracted anchors:
+    // do NOT use sourceUrl here (it differs across mirrors)
+  };
+
+  const cleaned = dropEmpty(signature);
+  if (!cleaned) return null;
+
+  const sorted = sortKeysDeep(cleaned);
+  return crypto.createHash("md5").update(JSON.stringify(sorted)).digest("hex");
+};
+
+// ---------------- Update detection (same as your idea) ----------------
 const UPDATE_SIGNALS = [
   { key: "examDate", regex: /exam\s*date\s*[:\-]?\s*(.+)/i },
   { key: "resultDate", regex: /result\s*(date|declared|released)\s*[:\-]?\s*(.+)/i },
@@ -229,111 +322,175 @@ const detectUpdatesFromHTML = ($, post) => {
   return updates;
 };
 
+// ---------------- Main scrapper (robust) ----------------
 const scrapper = async (req, res) => {
   try {
     let jobUrl = req.body.url;
     if (!jobUrl) return res.status(400).json({ error: "URL Required" });
 
+    // If path-only, attach latest Site base
     if (jobUrl.startsWith("/")) {
       const site = await Site.findOne().sort({ createdAt: -1 }).lean();
+      if (!site?.url) return res.status(400).json({ error: "Base site not configured" });
       jobUrl = site.url.replace(/\/$/, "") + jobUrl;
     }
 
-    const u = new URL(jobUrl);
-    const cleanUrl = u.origin + u.pathname;
-    const cleanPath = normalizePath(jobUrl);
+    // canonicalize
+    const { canonicalUrl, path } = buildCanonical(jobUrl);
+    const sourceUrlFull = jobUrl;
 
-    const existingCheck = await Post.findOne(
-      { $or: [{ url: cleanPath }, { sourceUrl: jobUrl }, { url: cleanUrl }] },
-      { _id: 1, pageHash: 1 }
-    )
-      .lean()
-      .select("_id pageHash");
+    // 1) Fast lookup by canonicalUrl (best unique key)
+    const existing = await Post.findOne({ canonicalUrl }).lean();
 
-    if (existingCheck) {
-      const [fullPost, response] = await Promise.all([
-        Post.findById(existingCheck._id).lean(),
-        axios.get(jobUrl, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          timeout: 20000,
-        }),
-      ]);
+    // Fetch page (needed both cases for pageHash and updates)
+    const response = await axios.get(sourceUrlFull, { headers: UA_HEADERS, timeout: 25000 });
+    const $ = cheerio.load(response.data);
+    const pageHash = generateStableHash($);
 
-      res.json({
-        success: true,
-        action: "EXISTING_DATA",
-        data: fullPost,
-      });
+    if (existing) {
+      // respond immediately with existing data
+      res.json({ success: true, action: "EXISTING_DATA", data: existing });
 
+      // background refresh (safe upsert update, no duplicates)
       setImmediate(async () => {
         try {
-          const $ = cheerio.load(response.data);
-          const pageHash = generateStableHash($);
-
-          if (existingCheck.pageHash === pageHash) {
+          if (existing.pageHash === pageHash) {
+            // just touch updatedAt
+            await Post.updateOne(
+              { _id: existing._id },
+              { $set: { updatedAt: new Date(), pageHash } }
+            );
             return;
           }
 
-          const updates = detectUpdatesFromHTML($, fullPost);
-
+          const updates = detectUpdatesFromHTML($, existing);
           if (!Object.keys(updates).length) {
             await Post.updateOne(
-              { _id: existingCheck._id },
+              { _id: existing._id },
               { $set: { pageHash, updatedAt: new Date() } }
             );
             return;
           }
 
           const updateObj = {};
-          for (const [key, value] of Object.entries(updates)) {
-            updateObj[`recruitment.importantDates.${key}`] = value;
+          for (const [k, v] of Object.entries(updates)) {
+            updateObj[`recruitment.importantDates.${k}`] = v;
           }
           updateObj.pageHash = pageHash;
           updateObj.updatedAt = new Date();
 
-          await Post.updateOne({ _id: existingCheck._id }, { $set: updateObj });
-        } catch (bgError) {
-          console.error("Background update failed:", bgError.message);
+          await Post.updateOne({ _id: existing._id }, { $set: updateObj });
+        } catch (e) {
+          console.error("Background refresh failed:", e.message);
         }
       });
 
       return;
     }
 
-    const response = await axios.get(jobUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      timeout: 20000,
-    });
+    // 2) Not found by canonicalUrl => scrape + AI
+    const scraped = scrapeHTML($, sourceUrlFull);
 
-    const $ = cheerio.load(response.data);
-    const pageHash = generateStableHash($);
-    const scraped = scrapeHTML($, jobUrl);
-    const aiData = await formatWithAI(scraped);
+    let aiData;
+    try {
+      aiData = await formatWithAI(scraped);
+    } catch (aiErr) {
+      // AI failed => still save a minimal record via canonicalUrl unique upsert
+      const minimal = {
+        canonicalUrl,
+        path,
+        sourceUrlFull,
+        url: path,
+        sourceUrl: sourceUrlFull,
+        pageHash,
+        title: scraped.title,
+        recruitment: { title: scraped.headings?.h1?.[0] || scraped.title },
+      };
 
-    // Rephrase title (keep consistent with list scraper)
-    if (aiData.recruitment?.title) {
+      const doc = await Post.findOneAndUpdate(
+        { canonicalUrl },
+        { $setOnInsert: minimal, $set: { updatedAt: new Date() } },
+        { upsert: true, new: true }
+      ).lean();
+
+      return res.json({ success: true, action: "CREATED_MINIMAL_AI_FAILED", data: doc });
+    }
+
+    // Rephrase title but keep signature stable (title excluded from signature)
+    if (aiData?.recruitment?.title) {
       aiData.recruitment.title = rephraseTitle(aiData.recruitment.title);
-    } else if (aiData.title) {
+    } else if (aiData?.title) {
       aiData.title = rephraseTitle(aiData.title);
     }
 
-    aiData.url = cleanPath || req?.body?.url;
-    aiData.sourceUrl = jobUrl;
-    aiData.pageHash = pageHash;
+    // Build signature
+    const contentSignature = buildContentSignature(aiData);
 
-    const saved = await new Post(aiData).save();
+    // Final document shape
+    const finalData = {
+      ...aiData,
+      canonicalUrl,
+      path,
+      sourceUrlFull,
+      url: path, // backward compat
+      sourceUrl: sourceUrlFull, // backward compat
+      pageHash,
+      contentSignature,
+      updatedAt: new Date(),
+    };
 
-    return res.json({
-      success: true,
-      action: "CREATED_NEW",
-      data: saved,
-    });
+    // 3) Atomic upsert priority order:
+    // - If contentSignature exists, try to upsert by it (dedupe mirrors)
+    // - Else upsert by canonicalUrl (still prevents duplicates)
+    let saved;
+    if (contentSignature) {
+      saved = await Post.findOneAndUpdate(
+        { contentSignature },
+        {
+          $set: finalData,
+          $setOnInsert: { createdAt: new Date() },
+        },
+        { upsert: true, new: true }
+      ).lean();
+
+      // Ensure canonicalUrl uniqueness: if signature matched some existing doc,
+      // but canonicalUrl differs, we still want canonicalUrl stored (or keep original).
+      // Here we overwrite canonicalUrl/path/sourceUrlFull with latest.
+    } else {
+      saved = await Post.findOneAndUpdate(
+        { canonicalUrl },
+        {
+          $set: finalData,
+          $setOnInsert: { createdAt: new Date() },
+        },
+        { upsert: true, new: true }
+      ).lean();
+    }
+
+    // Determine action (best-effort)
+    const action = saved?.createdAt && (Date.now() - new Date(saved.createdAt).getTime() < 5000)
+      ? "CREATED_NEW"
+      : "PATCHED_EXISTING";
+
+    return res.json({ success: true, action, data: saved });
   } catch (e) {
+    // Duplicate key safety: if unique index triggered, re-fetch and return patched
+    if (e?.code === 11000) {
+      try {
+        const jobUrl = req.body.url;
+        let full = jobUrl;
+        if (jobUrl && jobUrl.startsWith("/")) {
+          const site = await Site.findOne().sort({ createdAt: -1 }).lean();
+          full = site?.url ? site.url.replace(/\/$/, "") + jobUrl : jobUrl;
+        }
+        const { canonicalUrl } = buildCanonical(full);
+        const doc = await Post.findOne({ canonicalUrl }).lean();
+        if (doc) return res.json({ success: true, action: "PATCHED_EXISTING", data: doc });
+      } catch {}
+    }
+
     console.error("Scrapper Error:", e.message);
-    res.status(500).json({
-      success: false,
-      error: e.message,
-    });
+    return res.status(500).json({ success: false, error: e.message });
   }
 };
 
