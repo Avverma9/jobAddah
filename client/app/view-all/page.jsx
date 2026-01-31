@@ -1,22 +1,26 @@
 import ViewAllClient from "./ViewAllClient";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
-  /\/$/,
-  "",
-);
-
 async function fetchViewAllJobs(sectionLink) {
   if (!sectionLink) return [];
   try {
+    // Use dedicated view-all API to fetch all jobs for the selected section
     const res = await fetch(
-      `${SITE_URL}/api/gov-post/view-all?link=${encodeURIComponent(sectionLink)}`,
-      { next: { revalidate: 600 } },
+      `/api/gov-post/view-all?link=${encodeURIComponent(sectionLink)}`,
+      { cache: "no-store" },
     );
     if (!res.ok) return [];
     const payload = await res.json();
     if (payload?.success && Array.isArray(payload.data)) {
       return payload.data;
     }
+    // Fallback to job-section endpoint if view-all returns empty
+    const res2 = await fetch(
+      `/api/gov-post/job-section?link=${encodeURIComponent(sectionLink)}`,
+      { cache: "no-store" },
+    );
+    if (!res2.ok) return [];
+    const payload2 = await res2.json();
+    if (payload2?.success && Array.isArray(payload2.data)) return payload2.data;
   } catch {
     return [];
   }
@@ -41,5 +45,11 @@ export default async function ViewAllPage({ searchParams }) {
   const sectionLink = searchParams?.link || "";
   const jobs = await fetchViewAllJobs(sectionLink);
 
-  return <ViewAllClient initialJobs={jobs} sectionName={sectionName} />;
+  return (
+    <ViewAllClient
+      initialJobs={jobs}
+      sectionName={sectionName}
+      sectionLink={sectionLink}
+    />
+  );
 }

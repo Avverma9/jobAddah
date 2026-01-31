@@ -13,6 +13,8 @@ import {
   BookOpen,
   Flame,
   MousePointer2,
+  Share2,
+  Maximize2,
 } from "lucide-react";
 import { generateJobPostingSchema } from "@/lib/seo-schemas";
 
@@ -403,6 +405,12 @@ export default async function JobDetailsPage({ params }) {
   const positions = Array.isArray(detail.vacancy?.positions)
     ? detail.vacancy.positions
     : [];
+  const slugPath = Array.isArray(slug) ? slug.join("/") : slug;
+  const shareUrl = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(
+    /\/$/,
+    "",
+  )}/post/${slugPath}`;
+  const shareText = encodeURIComponent(`${detail.title} | ${shareUrl}`);
 
   return (
     <article className="min-h-screen bg-slate-50 font-sans">
@@ -419,7 +427,7 @@ export default async function JobDetailsPage({ params }) {
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-4">
               {detail.title}
             </h1>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
               <span className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
                 <Calendar className="w-4 h-4 text-slate-500" /> {postDate}
               </span>
@@ -431,6 +439,16 @@ export default async function JobDetailsPage({ params }) {
                 <CheckCircle2 className="w-4 h-4" />{" "}
                 {detail.vacancy?.total || "N/A"} Posts
               </span>
+              <a
+                href={`https://wa.me/?text=${shareText}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600 text-white font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+                aria-label="Share this post"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </a>
             </div>
           </header>
 
@@ -665,6 +683,24 @@ export default async function JobDetailsPage({ params }) {
         </div>
 
         <aside className="lg:col-span-4 space-y-8">
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl shadow-sm p-5">
+            <div className="flex items-center gap-2 text-indigo-700 font-bold uppercase tracking-wider text-xs mb-3">
+              <Maximize2 className="w-4 h-4" /> Image Resizer Tool
+            </div>
+            <p className="text-sm text-slate-700 leading-relaxed mb-4">
+              Form bharne ke liye photo/ID ko sahi size me lana hai? Is tool se
+              aap image resize, signature ka size set, aur basic document edit
+              (crop/adjust) kar sakte hain – submit karne se pehle perfect fit.
+            </p>
+            <Link
+              href="/tools/image"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow hover:bg-indigo-700 transition-colors"
+            >
+              Open Image Resizer
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+
           <div className="bg-white border border-rose-100 rounded-xl shadow-sm p-6 sticky top-24">
             <div className="mb-6 flex items-center gap-2 text-rose-600 font-bold uppercase tracking-wider text-sm border-b pb-2">
               <Flame className="w-5 h-5" /> Quick Updates

@@ -9,10 +9,42 @@ const buildPostDetailParams = (job) => {
   return getCleanPostUrl(job.link);
 };
 
-const ViewAllClient = ({ initialJobs = [], sectionName = "All Posts" }) => {
+const ViewAllClient = ({
+  initialJobs = [],
+  sectionName = "All Posts",
+  sectionLink = "",
+}) => {
   const router = useRouter();
-  const [jobs] = useState(initialJobs);
+  const [jobs, setJobs] = useState(initialJobs);
+  const [loading, setLoading] = useState(!initialJobs.length);
   const [searchQuery, setSearchQuery] = useState("");
+
+  React.useEffect(() => {
+    if (initialJobs.length || !sectionLink) return;
+    let active = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `/api/gov-post/view-all?link=${encodeURIComponent(sectionLink)}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) throw new Error("Failed");
+        const payload = await res.json();
+        if (active && payload?.success && Array.isArray(payload.data)) {
+          setJobs(payload.data);
+        }
+      } catch (err) {
+        console.error("ViewAll fetch failed", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [initialJobs.length, sectionLink]);
 
   const handleJobSelect = (job) => {
     const url = buildPostDetailParams(job);
@@ -56,7 +88,17 @@ const ViewAllClient = ({ initialJobs = [], sectionName = "All Posts" }) => {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        {!filteredJobs.length ? (
+        {loading ? (
+          <div className="bg-white rounded-xl p-12 text-center border border-slate-200">
+            <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-slate-50 rounded-full text-slate-400">
+              <Search className="w-8 h-8 animate-pulse" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-1">
+              Loading posts...
+            </h3>
+            <p className="text-slate-500 text-sm">Please wait</p>
+          </div>
+        ) : !filteredJobs.length ? (
           <div className="bg-white rounded-xl p-12 text-center border border-slate-200">
             <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-slate-50 rounded-full text-slate-400">
               <Search className="w-8 h-8" />

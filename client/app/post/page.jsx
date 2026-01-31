@@ -1,13 +1,9 @@
 import JobSectionsClient from "./JobSectionsClient";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
-  /\/$/,
-  "",
-);
-
 async function fetchJobSections() {
   try {
-    const res = await fetch(`${SITE_URL}/api/gov-post/job-section`, {
+    // Relative URL keeps the fetch working across prod/preview/local without extra env
+    const res = await fetch(`/api/gov-post/job-section`, {
       next: { revalidate: 600 },
     });
     if (!res.ok) return null;

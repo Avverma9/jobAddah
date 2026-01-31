@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import Post from "../../models/govJob/govJob.mjs";
+import { notifySubscribersAboutPost } from "../../utils/subscriberNotifier.mjs";
 
 const formatResponse = (data) => ({
   success: true,
@@ -83,6 +84,10 @@ const createPost = async (req, res) => {
     const preparedBody = prepareManualPostData(cleanBody);
     const newPost = new Post(preparedBody);
     const savedPost = await newPost.save();
+
+    notifySubscribersAboutPost(savedPost).catch((err) =>
+      console.error("Notify subscribers failed:", err?.message || err)
+    );
 
     res.status(201).json({
       success: true,

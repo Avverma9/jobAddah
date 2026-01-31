@@ -8,7 +8,7 @@ import {
   resolveAbsoluteUrl,
 } from "@/lib/seo-utils";
 
-const DEFAULT_TITLE = "JobsAddah - Sarkari Result 2026 | Latest Govt Jobs, Admit Card";
+const DEFAULT_TITLE = "JobsAddah - Govt & Private Job Portal 2026 | Latest Govt Jobs, Admit Card";
 const DEFAULT_DESCRIPTION =
   "JobsAddah is the fastest portal for Sarkari results, government jobs, admit cards, and exam updates in 2026.";
 const DEFAULT_KEYWORDS = "government jobs, sarkari result, admit card, ssc, bank, railway, jobsaddah, 2026";

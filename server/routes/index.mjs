@@ -5,6 +5,7 @@ import govScrapperRoute from "./govScrapper.mjs";
 import pvtScrapperRoute from "./pvtScrapper.mjs";
 import govJobRoute from "./govJobs.mjs";
 import aiRoute from "./ai.mjs";
+import subscriberRoute from "./subscribers.mjs";
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use("/scrapper", govScrapperRoute);
 router.use("/pvt-scrapper", pvtScrapperRoute);
 router.use("/", govJobRoute);
 router.use("/ai", aiRoute);
+router.use("/", subscriberRoute);
 
 export default router;

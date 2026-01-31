@@ -88,25 +88,12 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
     if (!isoDate) return null;
     const date = new Date(isoDate);
     if (Number.isNaN(date.getTime())) return null;
-
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const startOfThatDay = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-    );
-    const diffDays = Math.round(
-      (startOfToday - startOfThatDay) / 86400000,
-    );
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    return null;
+    // Show actual date instead of "Today" / "Yesterday"
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const handleJobSelect = useCallback(

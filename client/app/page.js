@@ -2,9 +2,10 @@ import React from "react";
 import { PostSections } from "./post/JobSectionsClient";
 import ReminderComponent from "./components/ReminderComponent";
 import TrendingJobs from "./components/TrendingJobs";
+import FloatingSubscribe from "./components/FloatingSubscribe";
 
 export const metadata = {
-  title: "JobsAddah - Sarkari Result 2026 | Latest Govt Jobs, Admit Card",
+  title: "JobsAddah - Govt & Private Job Portal 2026 | Latest Govt Jobs, Admit Card",
   description:
     "JobsAddah is the fastest portal for sarkari result 2026, latest government jobs, admit cards, and exam results. Get all job alerts for SSC, Bank, Railway, and more.",
 };
@@ -42,6 +43,7 @@ const Home = () => {
         </section>
       </div>
       <PostSections className="bg-transparent" />
+      <FloatingSubscribe />
     </div>
   );
 };

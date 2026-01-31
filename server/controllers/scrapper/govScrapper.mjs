@@ -48,11 +48,27 @@ const normalizePath = (inputUrl) => {
 
 const buildCanonical = (jobUrl) => {
   const u = new URL(jobUrl);
-  const canonicalUrl = u.origin + u.pathname; // no query, no hash
-  const path = u.pathname.endsWith("/") && u.pathname.length > 1
+  const pathname = u.pathname.endsWith("/") && u.pathname.length > 1
     ? u.pathname.slice(0, -1)
     : u.pathname;
-  return { canonicalUrl, path };
+
+  // Normalize host to lower to avoid duplicates for case differences or scheme flips
+  const host = u.host.toLowerCase();
+  const canonicalUrl = `${u.protocol}//${host}${pathname}`;
+
+  return { canonicalUrl, path: pathname };
+};
+
+const buildDedupeFilter = ({ canonicalUrl, path, pageHash, contentSignature }) => {
+  const ors = [];
+  if (contentSignature) ors.push({ contentSignature });
+  if (canonicalUrl) ors.push({ canonicalUrl });
+  if (path) ors.push({ path });
+  if (pageHash) ors.push({ pageHash });
+
+  if (!ors.length) return { canonicalUrl: null }; // never true, but keeps query valid
+  if (ors.length === 1) return ors[0];
+  return { $or: ors };
 };
 
 // ---------------- Stable hashing ----------------
@@ -339,45 +355,43 @@ const scrapper = async (req, res) => {
     const { canonicalUrl, path } = buildCanonical(jobUrl);
     const sourceUrlFull = jobUrl;
 
-    // 1) Fast lookup by canonicalUrl (best unique key)
-    const existing = await Post.findOne({ canonicalUrl }).lean();
-
     // Fetch page (needed both cases for pageHash and updates)
     const response = await axios.get(sourceUrlFull, { headers: UA_HEADERS, timeout: 25000 });
     const $ = cheerio.load(response.data);
     const pageHash = generateStableHash($);
 
+    // 1) Fast lookup across multiple stable keys to prevent duplicates
+    const dedupeFilterBase = buildDedupeFilter({ canonicalUrl, path, pageHash });
+    const existing = await Post.findOne(dedupeFilterBase).lean();
+
     if (existing) {
       // respond immediately with existing data
       res.json({ success: true, action: "EXISTING_DATA", data: existing });
 
-      // background refresh (safe upsert update, no duplicates)
+      // background refresh (safe patch, no new docs)
       setImmediate(async () => {
         try {
+          const baseSet = {
+            canonicalUrl,
+            path,
+            sourceUrlFull,
+            url: path,
+            sourceUrl: sourceUrlFull,
+            pageHash,
+            updatedAt: new Date(),
+          };
+
           if (existing.pageHash === pageHash) {
-            // just touch updatedAt
-            await Post.updateOne(
-              { _id: existing._id },
-              { $set: { updatedAt: new Date(), pageHash } }
-            );
+            await Post.updateOne({ _id: existing._id }, { $set: baseSet });
             return;
           }
 
           const updates = detectUpdatesFromHTML($, existing);
-          if (!Object.keys(updates).length) {
-            await Post.updateOne(
-              { _id: existing._id },
-              { $set: { pageHash, updatedAt: new Date() } }
-            );
-            return;
-          }
+          const updateObj = { ...baseSet };
 
-          const updateObj = {};
           for (const [k, v] of Object.entries(updates)) {
             updateObj[`recruitment.importantDates.${k}`] = v;
           }
-          updateObj.pageHash = pageHash;
-          updateObj.updatedAt = new Date();
 
           await Post.updateOne({ _id: existing._id }, { $set: updateObj });
         } catch (e) {
@@ -408,7 +422,7 @@ const scrapper = async (req, res) => {
       };
 
       const doc = await Post.findOneAndUpdate(
-        { canonicalUrl },
+        buildDedupeFilter({ canonicalUrl, path, pageHash }),
         { $setOnInsert: minimal, $set: { updatedAt: new Date() } },
         { upsert: true, new: true }
       ).lean();
@@ -439,38 +453,29 @@ const scrapper = async (req, res) => {
       updatedAt: new Date(),
     };
 
-    // 3) Atomic upsert priority order:
-    // - If contentSignature exists, try to upsert by it (dedupe mirrors)
-    // - Else upsert by canonicalUrl (still prevents duplicates)
-    let saved;
-    if (contentSignature) {
-      saved = await Post.findOneAndUpdate(
-        { contentSignature },
-        {
-          $set: finalData,
-          $setOnInsert: { createdAt: new Date() },
-        },
-        { upsert: true, new: true }
-      ).lean();
+    // 3) Single atomic upsert across multiple dedupe keys to avoid new duplicates
+    const dedupeFilter = buildDedupeFilter({
+      canonicalUrl,
+      path,
+      pageHash,
+      contentSignature,
+    });
 
-      // Ensure canonicalUrl uniqueness: if signature matched some existing doc,
-      // but canonicalUrl differs, we still want canonicalUrl stored (or keep original).
-      // Here we overwrite canonicalUrl/path/sourceUrlFull with latest.
-    } else {
-      saved = await Post.findOneAndUpdate(
-        { canonicalUrl },
-        {
-          $set: finalData,
-          $setOnInsert: { createdAt: new Date() },
-        },
-        { upsert: true, new: true }
-      ).lean();
-    }
+    const now = new Date();
+    const saved = await Post.findOneAndUpdate(
+      dedupeFilter,
+      {
+        $set: finalData,
+        $setOnInsert: { createdAt: now },
+      },
+      { upsert: true, new: true }
+    ).lean();
 
-    // Determine action (best-effort)
-    const action = saved?.createdAt && (Date.now() - new Date(saved.createdAt).getTime() < 5000)
-      ? "CREATED_NEW"
-      : "PATCHED_EXISTING";
+    const isNew =
+      saved?.createdAt &&
+      Math.abs(now.getTime() - new Date(saved.createdAt).getTime()) < 5000;
+
+    const action = isNew ? "CREATED_NEW" : "PATCHED_EXISTING";
 
     return res.json({ success: true, action, data: saved });
   } catch (e) {
