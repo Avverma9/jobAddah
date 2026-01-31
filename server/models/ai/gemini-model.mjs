@@ -12,7 +12,13 @@ const geminiModelSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-});
+  priority: {
+    type: Number,
+    default: 0,
+    index: true,
+  },
+  lastUsedAt: { type: Date },
+}, { timestamps: true });
 
 geminiModelSchema.index({ modelName: 1 }, { unique: true });
 

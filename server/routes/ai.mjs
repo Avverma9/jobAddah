@@ -69,8 +69,7 @@ router.get(
 
 router.post(
   "/set-api-key-ppl",
-  verifyToken,
-  authorizeRoles("admin", "super_admin"),
+  
   setPplApiKey
 );
 

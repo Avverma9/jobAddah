@@ -6,7 +6,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import Post from "../../models/govJob/govJob.mjs";
 import Site from "../../models/govJob/scrapperSite.mjs";
-import getActiveAIConfig from "../../utils/aiKey.mjs";
+import getActiveAIConfig, {
+  markKeyFailure,
+  markKeySuccess,
+} from "../../utils/aiKey.mjs";
 import buildPrompt from "./prompt.mjs";
 
 const cleanText = (t) =>
@@ -50,17 +53,72 @@ const minifyDataForAI = (scrapedData) => ({
   links: scrapedData.links.map((l) => ({ text: l.text, href: l.href })),
 });
 
-const formatWithAI = async (scrapedData) => {
-  const { apiKey, modelName } = await getActiveAIConfig();
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: modelName,
-    generationConfig: { responseMimeType: "application/json" },
-  });
+const callPerplexity = async ({ apiKey, modelName, prompt }) => {
+  const res = await axios.post(
+    "https://api.perplexity.ai/chat/completions",
+    {
+      model: modelName,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2048,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 30000,
+    }
+  );
 
+  const text = res?.data?.choices?.[0]?.message?.content;
+  return JSON.parse(text);
+};
+
+const formatWithAI = async (scrapedData) => {
+  const tried = new Set();
+  let lastError = null;
   const prompt = buildPrompt(minifyDataForAI(scrapedData), {}, "FULL");
-  const res = await model.generateContent(prompt);
-  return JSON.parse(res.response.text());
+
+  while (true) {
+    let cfg;
+    try {
+      cfg = await getActiveAIConfig({ excludeKeyIds: [...tried] });
+    } catch (e) {
+      throw lastError || e;
+    }
+
+    try {
+      let parsed;
+      if (cfg.provider === "gemini") {
+        const genAI = new GoogleGenerativeAI(cfg.apiKey);
+        const model = genAI.getGenerativeModel({
+          model: cfg.modelName,
+          generationConfig: { responseMimeType: "application/json" },
+        });
+        const res = await model.generateContent(prompt);
+        parsed = JSON.parse(res.response.text());
+      } else {
+        parsed = await callPerplexity({
+          apiKey: cfg.apiKey,
+          modelName: cfg.modelName,
+          prompt,
+        });
+      }
+
+      await markKeySuccess({ provider: cfg.provider, keyId: cfg.keyId });
+      return parsed;
+    } catch (err) {
+      lastError = err;
+      await markKeyFailure({
+        provider: cfg.provider,
+        keyId: cfg.keyId,
+        errorMessage: err.message,
+      });
+      tried.add(String(cfg.keyId));
+      continue;
+    }
+  }
 };
 
 const scrapeHTML = ($, jobUrl) => {

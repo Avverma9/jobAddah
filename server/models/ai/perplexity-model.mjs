@@ -12,7 +12,13 @@ const perplexityModelSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-});
+  priority: {
+    type: Number,
+    default: 0,
+    index: true,
+  },
+  lastUsedAt: { type: Date },
+}, { timestamps: true });
 
 perplexityModelSchema.index({ modelName: 1 }, { unique: true });
 

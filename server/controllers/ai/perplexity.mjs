@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import pplKey from "../../models/ai/perplexity-apikey.mjs";
 
-const testModelAvailability = async (apiKey, modelName) => {
+const checkModelAvailability = async (apiKey, modelName) => {
   try {
     const response = await fetch(
       "https://api.perplexity.ai/chat/completions",
@@ -31,6 +31,26 @@ const testModelAvailability = async (apiKey, modelName) => {
   }
 };
 
+const testModelAvailability = async (req, res) => {
+  try {
+    const { apiKey, modelName } = req.body;
+    if (!apiKey || !modelName) {
+      return res.status(400).json({
+        success: false,
+        message: "apiKey and modelName are required",
+      });
+    }
+
+    const ok = await checkModelAvailability(apiKey, modelName);
+    return res.json({ success: true, available: ok });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
+  }
+};
+
 (async () => {
   try {
     const apiKey = process.env.PERPLEXITY_API_KEY;
@@ -38,14 +58,14 @@ const testModelAvailability = async (apiKey, modelName) => {
 
     const modelsToTest = ["sonar", "sonar-pro", "r1-1776"];
     for (const model of modelsToTest) {
-      await testModelAvailability(apiKey, model);
+      await checkModelAvailability(apiKey, model);
     }
   } catch {}
 })();
 
 const setPplApiKey = async (req, res) => {
   try {
-    const { apiKey } = req.body;
+    const { apiKey, status = "ACTIVE", label = "", priority = 0 } = req.body;
 
     if (!apiKey) {
       return res
@@ -54,9 +74,12 @@ const setPplApiKey = async (req, res) => {
     }
 
     const apiKeyRecord = await pplKey.findOneAndUpdate(
-      {},
       { apiKey },
-      { new: true, upsert: true }
+      {
+        $set: { status, label, priority, provider: "perplexity" },
+        $setOnInsert: {},
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     try {
@@ -82,38 +105,49 @@ const setPplApiKey = async (req, res) => {
       process.env.PERPLEXITY_API_KEY = apiKey;
     } catch {}
 
+    const keys = await pplKey.find({ provider: "perplexity" }).sort({
+      status: -1,
+      priority: -1,
+      updatedAt: -1,
+    });
+
     return res.json({
       success: true,
-      message: "API key updated successfully",
+      message: "API key saved",
       apiKey: apiKeyRecord,
+      keys,
     });
-  } catch {
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const getPplApiKey = async (req, res) => {
   try {
-    const apiKeyRecord = await pplKey.findOne({});
+    const keys = await pplKey.find({ provider: "perplexity" }).sort({
+      status: -1,
+      priority: -1,
+      updatedAt: -1,
+    });
 
     return res.json({
       success: true,
-      apiKey: apiKeyRecord ? apiKeyRecord.apiKey : null,
+      keys,
     });
-  } catch {
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const setModelName = async (req, res) => {
   try {
-    const { modelName } = req.body;
+    const { modelName, status = true, priority = 0 } = req.body;
 
     if (!modelName) {
       return res
@@ -122,47 +156,39 @@ const setModelName = async (req, res) => {
     }
 
     const modelRecord = await PerplexityModel.findOneAndUpdate(
-      {},
-      { modelName },
-      { new: true, upsert: true }
+      { modelName: modelName.trim().toLowerCase() },
+      { $set: { status: Boolean(status), priority } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     return res.json({
       success: true,
-      message: "Model updated successfully",
+      message: "Model saved",
       model: modelRecord,
     });
-  } catch {
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const getModelName = async (req, res) => {
   try {
-    const modelRecord = await PerplexityModel.findOne({});
-
-    if (!modelRecord) {
-      return res.json({
-        success: true,
-        modelName: null,
-        status: true,
-        _id: null,
-      });
-    }
+    const models = await PerplexityModel.find().sort({
+      priority: -1,
+      updatedAt: -1,
+    });
 
     return res.json({
       success: true,
-      modelName: modelRecord.modelName,
-      status: modelRecord.status,
-      _id: modelRecord._id,
+      models,
     });
-  } catch {
+  } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };

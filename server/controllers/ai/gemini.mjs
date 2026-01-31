@@ -46,7 +46,7 @@ const changeStatus = async (req, res) => {
 
 const setModel = async (req, res) => {
   try {
-    const { modelName } = req.body;
+    const { modelName, status = true, priority = 0 } = req.body;
 
     if (!modelName) {
       return res
@@ -55,54 +55,43 @@ const setModel = async (req, res) => {
     }
 
     const modelRecord = await GeminiModel.findOneAndUpdate(
-      {},
-      { modelName },
-      { new: true, upsert: true }
+      { modelName: modelName.trim().toLowerCase() },
+      { $set: { status: Boolean(status), priority } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     return res.json({
       success: true,
-      message: "Model updated successfully",
+      message: "Model saved",
       model: modelRecord,
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const getModel = async (req, res) => {
   try {
-    const modelRecord = await GeminiModel.findOne({});
-
-    if (!modelRecord) {
-      return res.json({
-        success: true,
-        modelName: null,
-        status: true,
-        _id: null,
-      });
-    }
+    const models = await GeminiModel.find().sort({ priority: -1, updatedAt: -1 });
 
     return res.json({
       success: true,
-      modelName: modelRecord.modelName,
-      status: modelRecord.status,
-      _id: modelRecord._id,
+      models,
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const setApiKey = async (req, res) => {
   try {
-    const { apiKey } = req.body;
+    const { apiKey, status = "ACTIVE", label = "", priority = 0 } = req.body;
 
     if (!apiKey) {
       return res
@@ -111,9 +100,12 @@ const setApiKey = async (req, res) => {
     }
 
     const apiKeyRecord = await ApiKey.findOneAndUpdate(
-      {},
       { apiKey },
-      { new: true, upsert: true }
+      {
+        $set: { status, label, priority, provider: "gemini" },
+        $setOnInsert: {},
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     try {
@@ -139,38 +131,42 @@ const setApiKey = async (req, res) => {
       process.env.GEMINI_API_KEY = apiKey;
     } catch {}
 
+    const keys = await ApiKey.find({ provider: "gemini" }).sort({
+      status: -1,
+      priority: -1,
+      updatedAt: -1,
+    });
+
     return res.json({
       success: true,
-      message: "API key updated successfully",
+      message: "API key saved",
       apiKey: apiKeyRecord,
+      keys,
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
 
 const getApiKey = async (req, res) => {
   try {
-    if (process.env.GEMINI_API_KEY) {
-      return res.json({
-        success: true,
-        apiKey: process.env.GEMINI_API_KEY,
-      });
-    }
-
-    const apiKeyRecord = await ApiKey.findOne({});
+    const keys = await ApiKey.find({ provider: "gemini" }).sort({
+      status: -1,
+      priority: -1,
+      updatedAt: -1,
+    });
 
     return res.json({
       success: true,
-      apiKey: apiKeyRecord ? apiKeyRecord.apiKey : null,
+      keys,
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };
