@@ -14,6 +14,9 @@ const postSchema = new mongoose.Schema(
 
     // Page change tracking
     pageHash: { type: String, index: true },
+
+    // Soft dedupe helpers
+    semanticSignature: { type: String, index: true },
   },
   {
     strict: false,

@@ -59,12 +59,66 @@ const buildCanonical = (jobUrl) => {
   return { canonicalUrl, path: pathname };
 };
 
-const buildDedupeFilter = ({ canonicalUrl, path, pageHash, contentSignature }) => {
+const buildLegacyPaths = (jobUrl, path) => {
+  const variants = new Set();
+  const legacyPath = normalizePath(jobUrl);
+
+  if (legacyPath) {
+    variants.add(legacyPath);
+    if (!legacyPath.endsWith("/")) variants.add(`${legacyPath}/`);
+  }
+
+  if (path) {
+    variants.add(path);
+    if (!path.endsWith("/")) variants.add(`${path}/`);
+  }
+
+  return [...variants];
+};
+
+const buildDedupeFilter = ({
+  canonicalUrl,
+  path,
+  pageHash,
+  contentSignature,
+  semanticSignature,
+  legacyPaths = [],
+  sourceUrls = [],
+  titles = [],
+  advertisementNumbers = [],
+}) => {
   const ors = [];
   if (contentSignature) ors.push({ contentSignature });
+  if (semanticSignature) ors.push({ semanticSignature });
   if (canonicalUrl) ors.push({ canonicalUrl });
   if (path) ors.push({ path });
   if (pageHash) ors.push({ pageHash });
+
+  legacyPaths.filter(Boolean).forEach((p) => {
+    ors.push({ url: p });
+    ors.push({ path: p });
+  });
+
+  sourceUrls.filter(Boolean).forEach((s) => {
+    ors.push({ sourceUrlFull: s });
+    ors.push({ sourceUrl: s });
+  });
+
+   titles
+    .map((t) => cleanText(t))
+    .filter(Boolean)
+    .forEach((t) => {
+      ors.push({ "recruitment.title": t });
+      ors.push({ title: t });
+    });
+
+  advertisementNumbers
+    .map((a) => cleanText(a))
+    .filter(Boolean)
+    .forEach((a) => {
+      ors.push({ "recruitment.advertisementNumber": a });
+      ors.push({ "recruitment.advertisementNo": a });
+    });
 
   if (!ors.length) return { canonicalUrl: null }; // never true, but keeps query valid
   if (ors.length === 1) return ors[0];
@@ -306,6 +360,26 @@ const buildContentSignature = (data) => {
   return crypto.createHash("md5").update(JSON.stringify(sorted)).digest("hex");
 };
 
+// A softer, title-aware signature to catch near-duplicates when contentSignature is null
+const buildSemanticSignature = (data) => {
+  if (!data) return null;
+  const r = data.recruitment || {};
+
+  const sig = {
+    title: cleanText(r.title || data.title || ""),
+    org: cleanText(r.organization?.name || r.organization || ""),
+    adv: cleanText(r.advertisementNumber || r.advertisementNo || ""),
+  };
+
+  const cleaned = dropEmpty(sig);
+  if (!cleaned) return null;
+
+  return crypto
+    .createHash("md5")
+    .update(JSON.stringify(sortKeysDeep(cleaned)))
+    .digest("hex");
+};
+
 // ---------------- Update detection (same as your idea) ----------------
 const UPDATE_SIGNALS = [
   { key: "examDate", regex: /exam\s*date\s*[:\-]?\s*(.+)/i },
@@ -360,8 +434,20 @@ const scrapper = async (req, res) => {
     const $ = cheerio.load(response.data);
     const pageHash = generateStableHash($);
 
+    // Legacy variants used by older records (path + trailing slash variants)
+    const legacyPaths = buildLegacyPaths(jobUrl, path);
+    const sourceVariants = [sourceUrlFull, jobUrl];
+
     // 1) Fast lookup across multiple stable keys to prevent duplicates
-    const dedupeFilterBase = buildDedupeFilter({ canonicalUrl, path, pageHash });
+    const rawTitle = $("title").text().trim();
+    const dedupeFilterBase = buildDedupeFilter({
+      canonicalUrl,
+      path,
+      pageHash,
+      legacyPaths,
+      sourceUrls: sourceVariants,
+      titles: [rawTitle],
+    });
     const existing = await Post.findOne(dedupeFilterBase).lean();
 
     if (existing) {
@@ -378,6 +464,8 @@ const scrapper = async (req, res) => {
             url: path,
             sourceUrl: sourceUrlFull,
             pageHash,
+            contentSignature: existing.contentSignature || buildContentSignature(existing),
+            semanticSignature: existing.semanticSignature || buildSemanticSignature(existing),
             updatedAt: new Date(),
           };
 
@@ -421,9 +509,22 @@ const scrapper = async (req, res) => {
         recruitment: { title: scraped.headings?.h1?.[0] || scraped.title },
       };
 
+      const semanticSignature = buildSemanticSignature(minimal);
+
       const doc = await Post.findOneAndUpdate(
-        buildDedupeFilter({ canonicalUrl, path, pageHash }),
-        { $setOnInsert: minimal, $set: { updatedAt: new Date() } },
+        buildDedupeFilter({
+          canonicalUrl,
+          path,
+          pageHash,
+          semanticSignature,
+          legacyPaths,
+          sourceUrls: sourceVariants,
+          titles: [minimal.title, minimal.recruitment?.title],
+        }),
+        {
+          $setOnInsert: { ...minimal, semanticSignature },
+          $set: { updatedAt: new Date() },
+        },
         { upsert: true, new: true }
       ).lean();
 
@@ -437,8 +538,9 @@ const scrapper = async (req, res) => {
       aiData.title = rephraseTitle(aiData.title);
     }
 
-    // Build signature
+    // Build signatures (hard + soft)
     const contentSignature = buildContentSignature(aiData);
+    const semanticSignature = buildSemanticSignature(aiData);
 
     // Final document shape
     const finalData = {
@@ -450,6 +552,7 @@ const scrapper = async (req, res) => {
       sourceUrl: sourceUrlFull, // backward compat
       pageHash,
       contentSignature,
+      semanticSignature,
       updatedAt: new Date(),
     };
 
@@ -459,6 +562,14 @@ const scrapper = async (req, res) => {
       path,
       pageHash,
       contentSignature,
+      semanticSignature,
+      legacyPaths,
+      sourceUrls: sourceVariants,
+      titles: [aiData?.recruitment?.title, aiData?.title],
+      advertisementNumbers: [
+        aiData?.recruitment?.advertisementNumber,
+        aiData?.recruitment?.advertisementNo,
+      ],
     });
 
     const now = new Date();
@@ -473,7 +584,8 @@ const scrapper = async (req, res) => {
 
     const isNew =
       saved?.createdAt &&
-      Math.abs(now.getTime() - new Date(saved.createdAt).getTime()) < 5000;
+      Math.abs(now.getTime() - new Date(saved.createdAt).getTime()) < 5000 &&
+      saved._id?.toString() !== existing?._id?.toString();
 
     const action = isNew ? "CREATED_NEW" : "PATCHED_EXISTING";
 
