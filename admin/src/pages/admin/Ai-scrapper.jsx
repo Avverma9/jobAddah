@@ -11,6 +11,7 @@ import {
   Plus,
   RefreshCcw,
   RotateCw,
+  Wand2,
   Search,
   Square,
   Star,
@@ -70,6 +71,7 @@ export default function Scrapper() {
     failed: 0,
   });
   const [fixingUrls, setFixingUrls] = useState(false);
+  const [rephrasingPostlist, setRephrasingPostlist] = useState(false);
   const stopSyncRef = useRef(false);
 
   const [selectedLinks, setSelectedLinks] = useState(new Set());
@@ -287,6 +289,30 @@ export default function Scrapper() {
       toast.error(msg, { id: toastId });
     } finally {
       setFixingUrls(false);
+    }
+  };
+
+  const handleRephrasePostlistTitles = async () => {
+    const toastId = toast.loading("Rephrasing post titles...");
+    setRephrasingPostlist(true);
+    try {
+      const payload = activeLink ? { url: activeLink } : {};
+      const res = await api.post("/rephrase-postlist-titles", payload);
+      if (!(res.status >= 200 && res.status < 300)) throw new Error("Failed");
+
+      toast.success("Post titles rephrased", { id: toastId });
+      setRefreshTrigger((prev) => prev + 1);
+      if (activeLink) {
+        dispatch(getPostlist(`?url=${encodeURIComponent(activeLink)}`));
+      }
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to rephrase titles";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setRephrasingPostlist(false);
     }
   };
 
@@ -663,6 +689,21 @@ export default function Scrapper() {
                           className={fixingUrls ? "animate-spin" : undefined}
                         />
                         {fixingUrls ? "Normalizing..." : "Fix URLs"}
+                      </button>
+
+                      <button
+                        onClick={handleRephrasePostlistTitles}
+                        disabled={rephrasingPostlist || isBulkSyncing}
+                        className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg font-bold text-xs hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Rephrase post titles for the current list"
+                      >
+                        <Wand2
+                          size={14}
+                          className={
+                            rephrasingPostlist ? "animate-spin" : undefined
+                          }
+                        />
+                        {rephrasingPostlist ? "Rephrasing..." : "Rephrase Titles"}
                       </button>
 
                       <button

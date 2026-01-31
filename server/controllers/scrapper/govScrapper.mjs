@@ -11,6 +11,7 @@ import getActiveAIConfig, {
   markKeySuccess,
 } from "../../utils/aiKey.mjs";
 import buildPrompt from "./prompt.mjs";
+import rephraseTitle from "../../utils/rephraser.js";
 
 const cleanText = (t) =>
   (t || "").replace(/\s+/g, " ").replace(/,/g, "").trim();
@@ -308,6 +309,13 @@ const scrapper = async (req, res) => {
     const pageHash = generateStableHash($);
     const scraped = scrapeHTML($, jobUrl);
     const aiData = await formatWithAI(scraped);
+
+    // Rephrase title (keep consistent with list scraper)
+    if (aiData.recruitment?.title) {
+      aiData.recruitment.title = rephraseTitle(aiData.recruitment.title);
+    } else if (aiData.title) {
+      aiData.title = rephraseTitle(aiData.title);
+    }
 
     aiData.url = cleanPath || req?.body?.url;
     aiData.sourceUrl = jobUrl;
