@@ -15,6 +15,7 @@ const STATIC_ROUTES = [
   { path: "/tools/image", priority: "0.4", changefreq: "monthly" },
   { path: "/tools/resume", priority: "0.4", changefreq: "monthly" },
   { path: "/tools/typing", priority: "0.4", changefreq: "monthly" },
+  { path: "/guides/why-jobsaddah", priority: "0.3", changefreq: "monthly" },
 ];
 const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
 const MIN_INDEXABLE_JOBS = 3;

@@ -1,5 +1,8 @@
-import { Suspense } from "react";
 import SearchClient from "./SearchClient";
+import { getBaseUrl } from "@/lib/server-url";
+
+const MIN_QUERY_LENGTH = 2;
+const RESULT_LIMIT = 20;
 
 export const metadata = {
   title: "Search Jobs | JobsAddah",
@@ -8,10 +11,27 @@ export const metadata = {
   robots: "noindex,follow",
 };
 
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-slate-600">Loading search…</div>}>
-      <SearchClient />
-    </Suspense>
-  );
+async function fetchSearchResults(query) {
+  if (!query || query.trim().length < MIN_QUERY_LENGTH) return [];
+  try {
+    const baseUrl = await getBaseUrl();
+    const res = await fetch(
+      `${baseUrl}/api/gov-post/find-by-title?title=${encodeURIComponent(
+        query.trim(),
+      )}&limit=${RESULT_LIMIT}`,
+      { cache: "no-store" },
+    );
+    if (!res.ok) return [];
+    const payload = await res.json();
+    return Array.isArray(payload?.data) ? payload.data : [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function SearchPage({ searchParams }) {
+  const query = (searchParams?.q || "").toString();
+  const results = await fetchSearchResults(query);
+
+  return <SearchClient initialQuery={query} initialResults={results} />;
 }

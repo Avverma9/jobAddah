@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 import { ChevronLeft, Search, Briefcase, ExternalLink } from "lucide-react";
@@ -13,11 +14,18 @@ const ViewAllClient = ({
   initialJobs = [],
   sectionName = "All Posts",
   sectionLink = "",
+  currentPage = 1,
+  totalPages = 1,
 }) => {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
   const [loading, setLoading] = useState(!initialJobs.length);
   const [searchQuery, setSearchQuery] = useState("");
+
+  React.useEffect(() => {
+    setJobs(initialJobs);
+    setLoading(!initialJobs.length);
+  }, [initialJobs]);
 
   React.useEffect(() => {
     if (initialJobs.length || !sectionLink) return;
@@ -59,6 +67,15 @@ const ViewAllClient = ({
         job.title.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : jobs;
+
+  const buildPageHref = (page) => {
+    const params = new URLSearchParams();
+    if (sectionName) params.set("name", sectionName);
+    if (sectionLink) params.set("link", sectionLink);
+    if (page && page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return qs ? `/view-all?${qs}` : "/view-all";
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] pb-12">
@@ -114,36 +131,67 @@ const ViewAllClient = ({
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <ul className="divide-y divide-slate-100">
-              {filteredJobs.map((job, index) => (
-                <li key={index} className="group">
-                  <button
-                    onClick={() => handleJobSelect(job)}
-                    className="w-full text-left px-5 py-4 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="mt-1 w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                        <Briefcase className="w-4 h-4" />
+          <>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <ul className="divide-y divide-slate-100">
+                {filteredJobs.map((job, index) => (
+                  <li key={index} className="group">
+                    <button
+                      onClick={() => handleJobSelect(job)}
+                      className="w-full text-left px-5 py-4 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1 w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-[15px] font-semibold text-slate-800 group-hover:text-blue-700 leading-snug">
+                            {job.title}
+                          </h3>
+                          {job.updatedAt && (
+                            <p className="text-[12px] text-slate-400 mt-1 uppercase tracking-wide">
+                              Updated:{" "}
+                              {new Date(job.updatedAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-[15px] font-semibold text-slate-800 group-hover:text-blue-700 leading-snug">
-                          {job.title}
-                        </h3>
-                        {job.updatedAt && (
-                          <p className="text-[12px] text-slate-400 mt-1 uppercase tracking-wide">
-                            Updated:{" "}
-                            {new Date(job.updatedAt).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+                      <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between text-sm text-slate-600">
+                <Link
+                  href={buildPageHref(Math.max(1, currentPage - 1))}
+                  className={`px-3 py-2 rounded-lg border ${
+                    currentPage === 1
+                      ? "border-slate-200 text-slate-400 pointer-events-none"
+                      : "border-slate-300 hover:border-blue-400 hover:text-blue-600"
+                  }`}
+                >
+                  Previous
+                </Link>
+                <span>
+                  Page <strong>{currentPage}</strong> of{" "}
+                  <strong>{totalPages}</strong>
+                </span>
+                <Link
+                  href={buildPageHref(Math.min(totalPages, currentPage + 1))}
+                  className={`px-3 py-2 rounded-lg border ${
+                    currentPage === totalPages
+                      ? "border-slate-200 text-slate-400 pointer-events-none"
+                      : "border-slate-300 hover:border-blue-400 hover:text-blue-600"
+                  }`}
+                >
+                  Next
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

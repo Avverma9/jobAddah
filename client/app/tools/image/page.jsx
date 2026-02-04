@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import SEO from "@/lib/SEO";
-import VlogSpotlight from "@/components/VlogSpotlight";
+import Link from "next/link";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BgRemover } from "@/lib/image-tool/bgRemover";
 import { PhotoMakerTool } from "@/lib/image-tool/passport";
@@ -194,7 +194,20 @@ export default function ImageEditor() {
               Tip: Keep file size under 100-200KB if your application portal is strict.
             </p>
           </section>
-          <VlogSpotlight />
+          <section className="mt-6 bg-white border border-slate-200 rounded-2xl p-6 md:p-8">
+            <h2 className="text-lg font-bold text-slate-900 mb-3">Quick FAQ</h2>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li>Is this free? Yes, these tools are free to use.</li>
+              <li>Will my images be stored? No, everything runs in your browser.</li>
+              <li>Need more guidance? Read the JobsAddah guide.</li>
+            </ul>
+            <Link
+              href="/guides/why-jobsaddah"
+              className="inline-flex mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800"
+            >
+              Read the full guide
+            </Link>
+          </section>
         </div>
       </div>
     </div>

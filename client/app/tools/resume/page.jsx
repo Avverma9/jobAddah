@@ -3,7 +3,7 @@
 
 import React, { useRef, useState, useEffect } from "react"
 import SEO from "@/lib/SEO"
-import VlogSpotlight from "@/components/VlogSpotlight"
+import Link from "next/link"
 
 const Icons = {
   Download: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>,
@@ -581,60 +581,21 @@ export default function ResumeBuilderPage() {
       </section>
 
       <section style={{ maxWidth: 1200, margin: "0 auto 60px", padding: "0 24px" }}>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24, display: "grid", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "#2563eb", textTransform: "uppercase", marginBottom: 6 }}>
-              Vlog Spotlight
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.3, margin: 0 }}>
-              Why JobsAddaH.com is your reliable Sarkari job companion
-            </h2>
+        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10, color: "#0f172a" }}>
+            Resume builder FAQ
+          </h2>
+          <div style={{ display: "grid", gap: 8, color: "#334155", fontSize: 13, lineHeight: 1.7 }}>
+            <div>Can I edit later? Yes, keep the page open or re-enter details.</div>
+            <div>Is my data saved? No, your data stays in your browser.</div>
+            <div>Need guidance on job updates? Read the JobsAddah guide.</div>
           </div>
-          <div style={{ display: "grid", gap: 10, color: "#334155", fontSize: 14, lineHeight: 1.7 }}>
-            <p>
-              Hello everyone, welcome back to the channel! 👋 If you’re preparing for government jobs, you know
-              the pain of scattered, late, or clickbait updates. JobsAddaH.com keeps it clean with only what
-              matters: which vacancy is out, who can apply, key dates, and when exams/admit cards/results drop—
-              presented in a tidy, mobile-friendly interface.
-            </p>
-            <p>
-              Tough competition, few vacancies, long prep cycles—and missing a deadline hurts. JobsAddaH.com is
-              student-first to prevent that. You get fast SSC, Railway, Banking, Defence, Police, Teaching, and
-              State updates; clear eligibility, age, vacancy, process; plus exam, admit card, answer key, and
-              result trackers. It’s built to be simple on rural networks too. Bookmark it to stay ahead.
-            </p>
-          </div>
-          <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-              🇮🇳 हिंदी व्लॉग स्क्रिप्ट (लगभग 2 पेज)
-            </h3>
-            <div style={{ display: "grid", gap: 8, color: "#1f2937", fontSize: 14, lineHeight: 1.7 }}>
-              <p>
-                नमस्कार दोस्तों! 🙏 सरकारी नौकरी की तैयारी में सही जानकारी सबसे बड़ा हथियार है. कई साइट्स
-                पुरानी या उलझी खबरें देती हैं, लेकिन JobsAddaH.com सरल, सटीक और समय पर अपडेट देता है. यहाँ
-                सीधी बात: कौन-सी भर्ती निकली, कौन आवेदन कर सकता है, ज़रूरी तारीख़ें, और एग्ज़ाम/एडमिट
-                कार्ड/रिज़ल्ट कब आएगा.
-              </p>
-              <p>
-                प्रतियोगिता ज्यादा, vacancies कम, तैयारी लंबी—और अगर जानकारी मिस हो जाए तो फॉर्म भी छूट
-                सकता है. यही समस्या JobsAddaH.com हल करना चाहता है.
-              </p>
-              <p>
-                खास बातें: नई सरकारी भर्तियाँ (SSC, रेलवे, बैंकिंग, पुलिस, शिक्षक, डिफेंस, राज्य स्तर), आसान
-                भाषा में योग्यता/आयु/पद/प्रक्रिया, एग्ज़ाम–एडमिट कार्ड–रिज़ल्ट अपडेट, और मोबाइल पर साफ-सुथरा
-                डिज़ाइन.
-              </p>
-              <p style={{ marginBottom: 0 }}>
-                किसके लिए? SSC/रेलवे/बैंकिंग/PSC के छात्र, फ्रेश ग्रेजुएट्स, ग्रामीण-शहरी सभी जो तेज़ और
-                भरोसेमंद अपडेट चाहते हैं. भरोसेमंद जानकारी चाहिए तो JobsAddaH.com ज़रूर देखें और बुकमार्क करें. ⭐
-              </p>
-            </div>
-          </div>
+          <Link
+            href="/guides/why-jobsaddah"
+            style={{ display: "inline-flex", marginTop: 12, fontSize: 13, fontWeight: 700, color: "#2563eb" }}>
+            Read the full guide
+          </Link>
         </div>
-      </section>
-
-      <section style={{ maxWidth: 1200, margin: "0 auto 60px", padding: "0 24px" }}>
-        <VlogSpotlight />
       </section>
 
     </div>

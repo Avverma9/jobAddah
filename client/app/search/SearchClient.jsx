@@ -1,22 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 import SEO from "@/lib/SEO";
 import { Search, ExternalLink, Briefcase } from "lucide-react";
 
 const MIN_QUERY_LENGTH = 2;
 
-export default function SearchClient() {
+export default function SearchClient({
+  initialQuery: initialQueryProp = "",
+  initialResults = [],
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
+  const initialQuery = initialQueryProp || "";
 
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(initialResults);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(Boolean(initialQuery));
+  const didHydrateRef = useRef(false);
+  const initialQueryRef = useRef(initialQuery);
+  const initialResultsRef = useRef(initialResults);
 
   const trimmedQuery = useMemo(() => query.trim(), [query]);
 
@@ -25,8 +30,24 @@ export default function SearchClient() {
   }, [initialQuery]);
 
   useEffect(() => {
+    setResults(initialResults);
+  }, [initialResults]);
+
+  useEffect(() => {
     let isMounted = true;
     const runSearch = async () => {
+      if (
+        !didHydrateRef.current &&
+        initialResultsRef.current?.length &&
+        trimmedQuery === initialQueryRef.current
+      ) {
+        didHydrateRef.current = true;
+        setHasSearched(Boolean(trimmedQuery));
+        setIsSearching(false);
+        return;
+      }
+
+      didHydrateRef.current = true;
       if (trimmedQuery.length < MIN_QUERY_LENGTH) {
         setResults([]);
         setIsSearching(false);

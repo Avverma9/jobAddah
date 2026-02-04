@@ -7,21 +7,27 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const link = searchParams.get("link");
 
-    if (!link) {
-      return NextResponse.json({ success: false, message: "Link is required" }, { status: 400 });
-    }
-
     await connectDB();
 
-    const safeLink = link.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    let posts = [];
+    if (link) {
+      const safeLink = link.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // Fetch all posts matching this link
-    const posts = await GovPostList.find({
-      url: { $regex: "^" + safeLink, $options: "i" },
-    })
-      .sort({ createdAt: -1 })
-      .select("url jobs updatedAt createdAt")
-      .lean();
+      // Fetch all posts matching this link
+      posts = await GovPostList.find({
+        url: { $regex: "^" + safeLink, $options: "i" },
+      })
+        .sort({ createdAt: -1 })
+        .select("url jobs updatedAt createdAt")
+        .lean();
+    } else {
+      // Fallback: return latest jobs across all sections
+      posts = await GovPostList.find({})
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(25)
+        .select("url jobs updatedAt createdAt")
+        .lean();
+    }
 
     // Flatten all jobs from all matching posts
     let allJobs = [];

@@ -1,11 +1,13 @@
 import JobSectionsClient from "./JobSectionsClient";
+import { getBaseUrl } from "@/lib/server-url";
 
 async function fetchJobSections() {
   try {
+    const baseUrl = await getBaseUrl();
     // Relative URL keeps the fetch working across prod/preview/local without extra env
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000); // 10s guard to avoid build timeouts
-    const res = await fetch(`/api/gov-post/job-section`, {
+    const res = await fetch(`${baseUrl}/api/gov-post/job-section`, {
       next: { revalidate: 600 },
       signal: controller.signal,
     });
