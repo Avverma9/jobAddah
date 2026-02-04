@@ -23,7 +23,7 @@ import {
   Send,
   BookOpen,
 } from "lucide-react";
-import { generateJobPostingSchema } from "@/lib/seo-schemas";
+import { generateBreadcrumbSchema, generateJobPostingSchema } from "@/lib/seo-schemas";
 
 // --- Configuration & Helpers ---
 
@@ -384,6 +384,12 @@ export default async function JobDetailsPage({ params }) {
     recruitment?.additionalInfo ||
     "";
 
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://jobsaddah.com" },
+    { name: "Jobs", url: "https://jobsaddah.com/post" },
+    { name: detail.title || "Job Details", url: shareUrl },
+  ]);
+
   return (
     <article className="min-h-screen bg-[#f8fafc] font-sans text-slate-900 pb-12">
       <script
@@ -392,6 +398,14 @@ export default async function JobDetailsPage({ params }) {
           __html: JSON.stringify(generateJobPostingSchema(detail)),
         }}
       />
+      {breadcrumbSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(breadcrumbSchema),
+          }}
+        />
+      )}
 
       {/* --- Breadcrumb & Meta Bar --- */}
       <div className="bg-white border-b border-slate-200">
