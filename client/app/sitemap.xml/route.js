@@ -16,6 +16,11 @@ const STATIC_ROUTES = [
   { path: "/tools/resume", priority: "0.4", changefreq: "monthly" },
   { path: "/tools/typing", priority: "0.4", changefreq: "monthly" },
   { path: "/guides/why-jobsaddah", priority: "0.3", changefreq: "monthly" },
+  { path: "/guides", priority: "0.4", changefreq: "weekly" },
+  { path: "/guides/interview-tips", priority: "0.3", changefreq: "monthly" },
+  { path: "/guides/salary-info", priority: "0.3", changefreq: "monthly" },
+  { path: "/guides/notification-reading", priority: "0.3", changefreq: "monthly" },
+  { path: "/blog", priority: "0.4", changefreq: "weekly" },
 ];
 const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
 const MIN_INDEXABLE_JOBS = 3;

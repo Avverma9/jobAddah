@@ -49,6 +49,8 @@ export default function Footer() {
               <FooterLink href="/post">Sarkari Result Sections</FooterLink>
               <FooterLink href="/view-all">View All Notifications</FooterLink>
               <FooterLink href="/search">Search Jobs</FooterLink>
+              <FooterLink href="/blog">Blog</FooterLink>
+              <FooterLink href="/guides">Guides</FooterLink>
               <FooterLink href="/tools/typing">Typing Test Practice</FooterLink>
               <FooterLink href="/tools/resume">Resume Builder</FooterLink>
             </ul>
@@ -61,6 +63,8 @@ export default function Footer() {
               <FooterLink href="/tools/image">Passport Photo Tools</FooterLink>
               <FooterLink href="/tools/resume">AI Resume Builder</FooterLink>
               <FooterLink href="/tools/typing">Typing Speed Test</FooterLink>
+              <FooterLink href="/guides/interview-tips">Interview Tips</FooterLink>
+              <FooterLink href="/guides/salary-info">Salary Info</FooterLink>
               <FooterLink href="/about">About JobsAddah</FooterLink>
               <FooterLink href="/contact">Support & Corrections</FooterLink>
             </ul>

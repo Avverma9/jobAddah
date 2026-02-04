@@ -446,6 +446,21 @@ export default async function JobDetailsPage({ params }) {
           <section className="bg-indigo-50/50 rounded-xl p-6 border border-indigo-100">
              {generateOverview(detail)}
           </section>
+          
+          {/* Trust Disclaimer */}
+          <section className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-900">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 text-amber-600" size={18} />
+              <div>
+                <h3 className="font-bold text-amber-900 mb-1">Verification Disclaimer</h3>
+                <p className="leading-relaxed">
+                  JobsAddah aggregates information from official sources and public notices. We do
+                  not verify every detail ourselves. Always cross‑check dates, eligibility, and fees
+                  on the official website before applying or paying any fee.
+                </p>
+              </div>
+            </div>
+          </section>
 
           {/* 3. Dates & Fees (Grid Layout) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -836,6 +851,28 @@ export default async function JobDetailsPage({ params }) {
                   </details>
                   ))}
               </div>
+          </section>
+
+          {/* 9. Feedback */}
+          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Was this post helpful?</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Help us improve accuracy and clarity. If you spot an issue, report it.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 hover:bg-slate-50">
+                👍 Yes
+              </button>
+              <button className="px-4 py-2 text-sm font-semibold rounded-lg border border-slate-200 hover:bg-slate-50">
+                👎 No
+              </button>
+              <Link
+                href="/contact?reason=report"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+              >
+                Report an error
+              </Link>
+            </div>
           </section>
 
         </div>
