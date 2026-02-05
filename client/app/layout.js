@@ -2,7 +2,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
-import SEO from "@/lib/SEO";
 import { PUBLIC_SITE } from "@/lib/seo-utils";
 
 const geistSans = Geist({
@@ -14,6 +13,13 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const metadata = {
+  metadataBase: new URL(PUBLIC_SITE),
+  verification: {
+    google: "pHJE47RJ0hoH0RC_KkdTem_-ECsDDjNEA296FWOdObY",
+  },
+};
 
 export default function RootLayout({ children }) {
   const websiteSchema = {
@@ -33,7 +39,6 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SEO />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}

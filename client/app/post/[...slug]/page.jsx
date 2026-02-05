@@ -304,20 +304,24 @@ export async function generateMetadata({ params }) {
   if (!rawData) return { title: "Job Details - JobsAddah" };
 
   const detail = extractRecruitmentData(rawData);
-  const shouldIndex = hasSubstantialContent(detail);
-  const title = `${detail.title} - Apply Online, Syllabus, Exam Date`;
-  const desc = `Latest Update: ${detail.organization} has released a notification for ${detail.vacancy?.total || 'various'} posts. Check eligibility, age limit, selection process, and direct apply link.`;
+  const safeTitle = detail.title || "Government Job Opportunity";
+  const organization = detail.organization || "The Recruitment Board";
+  const vacancyTotal = detail.vacancy?.total || "various";
+  const title = `${safeTitle} - Apply Online, Syllabus, Exam Date`;
+  const desc = `Latest Update: ${organization} has released a notification for ${vacancyTotal} posts. Check eligibility, age limit, selection process, and direct apply link.`;
 
   const slugPath = Array.isArray(resolvedParams.slug)
     ? resolvedParams.slug.join("/")
     : resolvedParams.slug;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
+  const canonicalUrl = `${siteUrl}/post/${slugPath}`;
 
   return {
     title: title.slice(0, 60),
     description: desc.slice(0, 160),
-    alternates: { canonical: `/post/${slugPath}` },
-    openGraph: { title, description: desc, type: "article" },
-    robots: shouldIndex ? "index,follow" : "noindex,follow",
+    alternates: { canonical: canonicalUrl },
+    openGraph: { title, description: desc, type: "article", url: canonicalUrl },
+    robots: "index,follow",
   };
 }
 

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
-import SEO from "@/lib/SEO";
 import { Search, ExternalLink, Briefcase } from "lucide-react";
 
 const MIN_QUERY_LENGTH = 2;
@@ -94,11 +93,6 @@ export default function SearchClient({
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-slate-900">
-      <SEO
-        title="Search Jobs | JobsAddah"
-        description="Search JobsAddah for the latest Sarkari results, admit cards, and government job notifications."
-      />
-
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8">
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3">

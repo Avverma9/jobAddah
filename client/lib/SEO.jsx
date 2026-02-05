@@ -1,6 +1,7 @@
 "use client";
 
 import Head from "next/head";
+import { usePathname } from "next/navigation";
 import {
   ABSOLUTE_URL_PATTERN,
   PUBLIC_SITE,
@@ -17,19 +18,19 @@ const DEFAULT_SOCIAL_IMAGE = `${PUBLIC_SITE}/logo.png`;
 export default function SEO({
   title,
   description,
-  path = "/",
+  path,
   canonical,
   keywords,
   robots,
 } = {}) {
+  const pathname = usePathname();
   const resolvedTitle = title || DEFAULT_TITLE;
   const resolvedDescription = description || DEFAULT_DESCRIPTION;
   const resolvedKeywords = buildKeywordString(keywords) || DEFAULT_KEYWORDS;
-  const canonicalUrl = canonical
-    ? ABSOLUTE_URL_PATTERN.test(canonical)
-      ? canonical
-      : resolveAbsoluteUrl(canonical)
-    : resolveAbsoluteUrl(path);
+  const resolvedPath = canonical || path || pathname || "/";
+  const canonicalUrl = ABSOLUTE_URL_PATTERN.test(resolvedPath)
+    ? resolvedPath
+    : resolveAbsoluteUrl(resolvedPath);
   const robotsContent = robots || "index,follow";
 
   return (
@@ -37,10 +38,6 @@ export default function SEO({
       {resolvedTitle && <title>{resolvedTitle}</title>}
       <meta name="description" content={resolvedDescription} />
       <meta name="keywords" content={resolvedKeywords} />
-      <meta
-        name="google-site-verification"
-        content="pHJE47RJ0hoH0RC_KkdTem_-ECsDDjNEA296FWOdObY"
-      />
       <link rel="canonical" href={canonicalUrl} />
       <meta property="og:title" content={resolvedTitle} />
       <meta property="og:description" content={resolvedDescription} />
