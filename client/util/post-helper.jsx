@@ -1,3 +1,15 @@
+import { z } from "zod";
+
+const DateValueSchema = z.union([z.string(), z.number()]);
+const UrlSchema = z.string().url();
+
+const isValidDateValue = (value) =>
+  DateValueSchema.safeParse(value).success;
+const isValidUrl = (value) =>
+  typeof value === "string" &&
+  UrlSchema.safeParse(value).success &&
+  /^https?:\/\//i.test(value);
+
 const toTitleCase = (value) => {
   if (!value) return "";
   return value
@@ -201,16 +213,16 @@ export const extractDates = (dates) => {
 
   dateMap.forEach(([key, label]) => {
     const v = dates[key];
-    if (v && !isPlaceholderValue(v)) {
-      result.push(`${label}: ${v}`);
+    if (v && isValidDateValue(v) && !isPlaceholderValue(v)) {
+      result.push(`${label}: ${String(v)}`);
     }
   });
 
   if (dates.other && typeof dates.other === "object") {
     Object.entries(dates.other).forEach(([key, value]) => {
-      if (value && !isPlaceholderValue(value)) {
+      if (value && isValidDateValue(value) && !isPlaceholderValue(value)) {
         const label = otherDateMap[key] || toTitleCase(key.replace(/([A-Z])/g, " $1"));
-        result.push(`${label}: ${value}`);
+        result.push(`${label}: ${String(value)}`);
       }
     });
   }
@@ -658,6 +670,7 @@ export const extractLinks = (links) => {
     }
 
     if (typeof value === "string") {
+      if (!isValidUrl(value)) return;
       url = value;
     } else if (typeof value === "object") {
       url = value.url || value.link || value.href;
@@ -667,7 +680,7 @@ export const extractLinks = (links) => {
       if (customText) label = customText;
     }
 
-    if (!url || isPlaceholderValue(url)) {
+    if (!url || !isValidUrl(url) || isPlaceholderValue(url)) {
       if (activationDate) {
         result.push({
           label,
