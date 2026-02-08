@@ -394,8 +394,11 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                             // ignore storage errors
                           }
                         }
+                        const linkParam = category.link
+                          ? `&link=${encodeURIComponent(category.link)}`
+                          : "";
                         router.push(
-                          `/view-all?name=${encodeURIComponent(category.name)}`,
+                          `/view-all?name=${encodeURIComponent(category.name)}${linkParam}`,
                         );
                       }}
                       onDragStart={(e) => {

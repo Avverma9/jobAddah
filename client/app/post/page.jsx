@@ -1,30 +1,8 @@
 import JobSectionsClient from "./JobSectionsClient";
-import { getBaseUrl } from "@/lib/server-url";
-
-async function fetchJobSections() {
-  try {
-    const baseUrl = await getBaseUrl();
-    // Relative URL keeps the fetch working across prod/preview/local without extra env
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000); // 10s guard to avoid build timeouts
-    const res = await fetch(`${baseUrl}/api/gov-post/job-section`, {
-      next: { revalidate: 600 },
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const payload = await res.json();
-    if (payload?.success && Array.isArray(payload.data) && payload.data.length) {
-      return payload.data[0];
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
+import { getJobSections } from "@/lib/server/getJobSections";
 
 export async function generateMetadata({ searchParams } = {}) {
-  const data = await fetchJobSections();
+  const data = await getJobSections();
   const hasCategories = Boolean(data?.categories?.length);
   const hasQueryParams =
     searchParams && Object.keys(searchParams).length > 0;
@@ -40,6 +18,6 @@ export async function generateMetadata({ searchParams } = {}) {
 }
 
 export default async function JobSectionsPage() {
-  const data = await fetchJobSections();
+  const data = await getJobSections();
   return <JobSectionsClient initialData={data} />;
 }

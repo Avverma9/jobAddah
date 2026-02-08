@@ -24,10 +24,12 @@ const ViewAllClient = ({
 
   // ✅ DO NOT mirror props into state repeatedly (fixes max update depth)
   const [jobs, setJobs] = useState(() => initialJobsList);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(
+    () => !initialJobsList.length && Boolean(sectionLink),
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [resolvedLink, setResolvedLink] = useState("");
+  const [resolvedLink, setResolvedLink] = useState(() => sectionLink || "");
   const [currentPage, setCurrentPage] = useState(initialPage);
 
   /* ---------------- Hydration ---------------- */

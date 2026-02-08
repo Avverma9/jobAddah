@@ -3,6 +3,9 @@ import { PostSections } from "./post/JobSectionsClient";
 import ReminderComponent from "./components/ReminderComponent";
 import TrendingJobs from "./components/TrendingJobs";
 import FloatingSubscribe from "./components/FloatingSubscribe";
+import { getJobSections } from "@/lib/server/getJobSections";
+import { getReminders } from "@/lib/server/getReminders";
+import { getTrendingJobs } from "@/lib/server/getTrendingJobs";
 
 export const metadata = {
   title: "JobsAddah - Govt & Private Job Portal 2026 | Latest Govt Jobs, Admit Card",
@@ -10,12 +13,17 @@ export const metadata = {
     "JobsAddah is the fastest portal for sarkari result 2026, latest government jobs, admit cards, and exam results. Get all job alerts for SSC, Bank, Railway, and more.",
 };
 
-const Home = () => {
+const Home = async () => {
+  const [sections, reminders, trending] = await Promise.all([
+    getJobSections(),
+    getReminders(5),
+    getTrendingJobs(),
+  ]);
   return (
     <div className="bg-[#f8f9fa] text-slate-900 min-h-screen">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-6">
-        <ReminderComponent limit={4} />
-        <TrendingJobs limit={8} />
+        <ReminderComponent limit={4} initialReminders={reminders} />
+        <TrendingJobs limit={8} initialItems={trending} />
         <section className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm mt-6">
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3">
             JobsAddah: Sarkari Result 2026 and Verified Job Updates
@@ -42,7 +50,7 @@ const Home = () => {
           </div>
         </section>
       </div>
-      <PostSections className="bg-transparent" />
+      <PostSections className="bg-transparent" initialData={sections} />
       <FloatingSubscribe />
     </div>
   );

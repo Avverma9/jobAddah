@@ -5,13 +5,19 @@ import { ArrowRight, BellRing } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 
-export default function ReminderComponent({ limit = 4 }) {
-  const [reminders, setReminders] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function ReminderComponent({
+  limit = 4,
+  initialReminders = null,
+}) {
+  const [reminders, setReminders] = useState(
+    Array.isArray(initialReminders) ? initialReminders : [],
+  );
+  const [loading, setLoading] = useState(!Array.isArray(initialReminders));
   const [isExpanded, setIsExpanded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    if (Array.isArray(initialReminders)) return;
     async function fetchReminders() {
       try {
         const res = await fetch("/api/gov-post/reminder?days=5");
@@ -26,7 +32,7 @@ export default function ReminderComponent({ limit = 4 }) {
       }
     }
     fetchReminders();
-  }, []);
+  }, [initialReminders]);
 
   const handleReminderClick = (reminder) => {
     const rawUrl = reminder.url || reminder.link || reminder.postUrl || "";

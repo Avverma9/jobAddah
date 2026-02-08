@@ -121,13 +121,16 @@ function getOrganization(post) {
   );
 }
 
-export default function TrendingJobs({ limit = 8 }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function TrendingJobs({ limit = 8, initialItems = null }) {
+  const [items, setItems] = useState(
+    Array.isArray(initialItems) ? initialItems : [],
+  );
+  const [loading, setLoading] = useState(!Array.isArray(initialItems));
   const [isExpanded, setIsExpanded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    if (Array.isArray(initialItems)) return;
     async function fetchFavs() {
       try {
         const res = await fetch("/api/gov-post/fav-post");
@@ -142,7 +145,7 @@ export default function TrendingJobs({ limit = 8 }) {
       }
     }
     fetchFavs();
-  }, []);
+  }, [initialItems]);
 
   const handleJobClick = (post) => {
     const rawUrl = post.url || post.link || "";
