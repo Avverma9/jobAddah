@@ -54,10 +54,14 @@ export const notifySubscribersAboutPost = async (post) => {
     .filter(Boolean)
     .join(", ");
 
+  const from = process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : "";
+  if (!from) return { sent: 0, reason: "EMAIL_USER missing" };
+
   const subject = `New post: ${post.postTitle || post.slug || "JobAddah update"}`;
 
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from,
+    to: from,
     bcc: recipients,
     subject,
     text: composeEmailText(post),

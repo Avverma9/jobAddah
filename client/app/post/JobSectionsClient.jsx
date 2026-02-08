@@ -383,13 +383,21 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                   <div className="px-4 py-2 border-t border-slate-100">
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          try {
+                            window.sessionStorage.setItem(
+                              `view-all:link:${category.name}`,
+                              category.link,
+                            );
+                          } catch {
+                            // ignore storage errors
+                          }
+                        }
                         router.push(
-                          `/view-all?name=${encodeURIComponent(
-                            category.name,
-                          )}&link=${encodeURIComponent(category.link)}`,
-                        )
-                      }
+                          `/view-all?name=${encodeURIComponent(category.name)}`,
+                        );
+                      }}
                       onDragStart={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

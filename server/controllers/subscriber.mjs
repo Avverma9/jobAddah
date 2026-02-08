@@ -1,4 +1,5 @@
 import Subscriber from "../models/subscriber.mjs";
+import { sendSubscriberWelcomeEmail } from "../nodemailer/notify_mailer.mjs";
 
 const normalizeStatus = (status) => {
   if (!status) return undefined;
@@ -37,6 +38,13 @@ const subscribeUser = async (req, res) => {
       email: normalizedEmail,
       status: normalizedStatus,
     });
+
+    sendSubscriberWelcomeEmail({
+      name: subscriber.name,
+      email: subscriber.email,
+    }).catch((err) =>
+      console.error("Subscriber welcome email failed:", err?.message || err)
+    );
 
     return res
       .status(201)

@@ -16,6 +16,22 @@ const toCanonicalPostPath = (value) => {
 
 export async function middleware(request) {
   const { pathname, searchParams, origin } = request.nextUrl;
+  if (pathname === "/view-all") {
+    const linkParam = searchParams.get("link");
+    if (linkParam) {
+      const cleaned = request.nextUrl.clone();
+      cleaned.searchParams.delete("link");
+      const res = NextResponse.redirect(cleaned, 302);
+      res.cookies.set("view_all_link", linkParam, {
+        path: "/",
+        maxAge: 300,
+      });
+      return res;
+    }
+    return NextResponse.next();
+  }
+
+
   if (pathname !== "/post") return NextResponse.next();
 
   const urlParam = searchParams.get("url");
@@ -58,5 +74,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/post"],
+  matcher: ["/post", "/view-all"],
 };
