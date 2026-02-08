@@ -24,6 +24,7 @@ export async function middleware(request) {
     if (canonical) {
       return NextResponse.redirect(new URL(canonical, origin), 301);
     }
+    return NextResponse.redirect(new URL("/post", origin), 301);
   }
 
   const idParam = searchParams.get("id");
@@ -48,8 +49,9 @@ export async function middleware(request) {
         }
       }
     } catch {
-      return NextResponse.next();
+      return NextResponse.redirect(new URL("/post", origin), 301);
     }
+    return NextResponse.redirect(new URL("/post", origin), 301);
   }
 
   return NextResponse.next();

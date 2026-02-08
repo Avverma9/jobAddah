@@ -123,53 +123,78 @@ const hasSubstantialContent = (detail) => {
   return score >= 4;
 };
 
+const findDateValue = (detail, keywords) => {
+  if (!Array.isArray(detail?.dates)) return null;
+  const terms = Array.isArray(keywords) ? keywords : [keywords];
+  const match = detail.dates.find((d) => {
+    const { label } = normalizeItem(d);
+    if (!label) return false;
+    const lower = label.toLowerCase();
+    return terms.some((term) => lower.includes(term));
+  });
+  if (!match) return null;
+  const { value, label } = normalizeItem(match);
+  return value || label || null;
+};
+
 // --- Text Generators (SEO Content) ---
 
 function generateOverview(detail) {
   const org = detail.organization || "The Recruitment Board";
   const vacancy = detail.vacancy?.total || "various";
   const title = detail.title || "Government Job Opportunity";
-  
-  // Safe extraction for Last Date
-  let lastDate = "the closing date";
-  if(Array.isArray(detail.dates)) {
-     const lastDateObj = detail.dates.find(d => {
-        const { label } = normalizeItem(d);
-        return label.toLowerCase().includes("last date");
-     });
-     if(lastDateObj) {
-        lastDate = normalizeItem(lastDateObj).value || "the closing date";
-     }
+
+  const startDate = findDateValue(detail, ["application start", "start date"]);
+  const lastDate =
+    findDateValue(detail, ["application deadline", "last date", "closing date"]) ||
+    "the closing date";
+  const examDate = findDateValue(detail, ["exam date", "exam"]);
+
+  const feeSample = Array.isArray(detail.fees)
+    ? detail.fees.find((f) => f?.type !== "payment" && (f?.text || f?.value))
+    : null;
+  const feeText = feeSample?.text || normalizeItem(feeSample).label || "";
+
+  let eligibilitySample = "";
+  if (Array.isArray(detail.eligibility) && detail.eligibility.length) {
+    const item = detail.eligibility.find((i) => i?.text || typeof i === "string");
+    if (typeof item === "string") eligibilitySample = item;
+    else if (item?.position && item?.text)
+      eligibilitySample = `${item.position}: ${item.text}`;
+    else if (item?.text) eligibilitySample = item.text;
+    else if (item?.label && item?.text)
+      eligibilitySample = `${item.label}: ${item.text}`;
+    else if (item?.label) eligibilitySample = item.label;
+  } else if (Array.isArray(detail.vacancy?.positions)) {
+    const pos = detail.vacancy.positions.find((p) => p?.qualification);
+    if (pos?.qualification) {
+      eligibilitySample = `${pos.name || "Post"}: ${pos.qualification}`;
+    }
   }
 
   return (
     <div className="space-y-4 text-slate-700 leading-relaxed text-sm md:text-base">
       <p>
-        <strong className="text-indigo-800">{org}</strong> has officially released the recruitment
-        advertisement for <strong>{title}</strong>. This is a significant
-        opportunity for candidates who are aspiring to join the government
-        sector. The recruitment board has announced a total of{" "}
-        <strong>{vacancy}</strong> vacancies for various posts. Eligible
-        aspirants can now check the detailed notification, including the
-        eligibility criteria, age limit, selection process, and important dates
-        before applying.
+        <strong className="text-indigo-800">{org}</strong> has released the
+        recruitment notice for <strong>{title}</strong> with{" "}
+        <strong>{vacancy}</strong> vacancies.{" "}
+        {startDate
+          ? `Applications open from ${startDate}.`
+          : "Application dates are listed below."}{" "}
+        The last date to apply is <strong>{lastDate}</strong>
+        {examDate ? `, and the exam is expected around ${examDate}.` : "."}
       </p>
       <p>
-        The online application process will be conducted through the official
-        website. Interested aspirants are advised to read the complete
-        notification carefully to avoid any mistakes during the application
-        process. The application window is open for a limited time, and
-        candidates must submit their forms before{" "}
-        <strong>{lastDate}</strong>
-        . Below, you will find a detailed breakdown of the recruitment process,
-        including the direct link to apply, application fee structure, syllabus,
-        and exam pattern.
+        {eligibilitySample
+          ? `Eligibility snapshot: ${eligibilitySample}.`
+          : "Review the eligibility table below for post-wise qualifications and requirements."}
       </p>
       <p>
-        Securing a job in {org} is a prestigious achievement, offering stability
-        and career growth. Ensure you prepare all necessary documents and meet
-        the medical and physical standards (if applicable) required for the
-        post. Read on for a comprehensive guide to this recruitment drive.
+        {feeText
+          ? `Fee example: ${feeText}.`
+          : "Fee details are listed in the Application Fee section."}{" "}
+        Use the Important Links section to apply and download the official
+        notice.
       </p>
     </div>
   );
@@ -235,7 +260,7 @@ const findLastDate = (detail, recruitment) => {
     });
     if(match) return normalizeItem(match).value;
   }
-  return "Check notification";
+  return null;
 };
 
 const getPaymentModes = (fees) => {
@@ -341,25 +366,32 @@ export default async function JobDetailsPage({ params }) {
   const detail = { ...detail0, links: sanitizeLinks(detail0.links) };
   const recruitment = rawData.recruitment || {};
   
-  const postDate = rawData.createdAt
+  const createdDate = rawData.createdAt
     ? new Date(rawData.createdAt).toLocaleDateString("en-IN", {
         day: "numeric", month: "short", year: "numeric",
       })
-    : "Recent";
+    : null;
+  const updatedDate = rawData.updatedAt
+    ? new Date(rawData.updatedAt).toLocaleDateString("en-IN", {
+        day: "numeric", month: "short", year: "numeric",
+      })
+    : null;
+  const postDate = updatedDate || createdDate || "Recent";
 
   const slugPath = Array.isArray(slug) ? slug.join("/") : slug;
   const shareUrl = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "")}/post/${slugPath}`;
   const shareText = encodeURIComponent(`${detail.title} | ${shareUrl}`);
 
+  const lastDate =
+    recruitment.importantDates?.applicationLastDate ||
+    findLastDate(detail, recruitment) ||
+    "mentioned in the official notification";
+
   // FAQs Data
   const faqs = [
     {
       q: `What is the last date to apply for ${detail.organization}?`,
-      a: `The last date to apply is ${
-        recruitment.importantDates?.applicationLastDate ||
-        findLastDate(detail, recruitment) ||
-        "mentioned in the official notification"
-      }. Candidates are advised to submit before the deadline.`,
+      a: `The last date to apply is ${lastDate}. Candidates are advised to submit before the deadline.`,
     },
     {
       q: `How many vacancies are available in ${detail.title}?`,
@@ -387,6 +419,90 @@ export default async function JobDetailsPage({ params }) {
     detail.additionalDetails?.additionalInfo ||
     recruitment?.additionalInfo ||
     "";
+  const startDate = findDateValue(detail, ["application start", "start date"]);
+  const examDate = findDateValue(detail, ["exam date", "exam"]);
+  const admitCardDate = findDateValue(detail, ["admit card"]);
+
+  const eligibilityHighlights = [];
+  if (Array.isArray(detail.eligibility) && detail.eligibility.length) {
+    detail.eligibility.forEach((item) => {
+      if (eligibilityHighlights.length >= 4) return;
+      if (!item) return;
+      if (typeof item === "string") {
+        eligibilityHighlights.push(item);
+        return;
+      }
+      if (item.position && item.text) {
+        eligibilityHighlights.push(`${item.position}: ${item.text}`);
+        return;
+      }
+      if (item.label && item.text) {
+        eligibilityHighlights.push(`${item.label}: ${item.text}`);
+        return;
+      }
+      if (item.text) {
+        eligibilityHighlights.push(item.text);
+        return;
+      }
+      const { label } = normalizeItem(item);
+      if (label) eligibilityHighlights.push(label);
+    });
+  } else if (Array.isArray(detail.vacancy?.positions)) {
+    detail.vacancy.positions.slice(0, 3).forEach((pos) => {
+      if (pos?.qualification) {
+        eligibilityHighlights.push(
+          `${pos.name || "Post"}: ${pos.qualification}`,
+        );
+      }
+    });
+  }
+
+  const feeHighlights = Array.isArray(detail.fees)
+    ? detail.fees
+        .filter((f) => f?.type !== "payment")
+        .map((f) => f?.text || normalizeItem(f).label)
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
+
+  const ageHighlights = Array.isArray(detail.age?.text)
+    ? detail.age.text
+        .map((t) => (typeof t === "string" ? t : normalizeItem(t).label))
+        .filter(Boolean)
+    : [];
+  if (detail.age?.relaxation) {
+    ageHighlights.push(`Relaxation: ${detail.age.relaxation}`);
+  }
+
+  const docHighlights = docs
+    .map((doc) => doc?.name || doc?.type || String(doc))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const syllabusAvailable = Array.isArray(detail.links)
+    ? detail.links.some((link) => {
+        const label = normalizeItem(link).label || "";
+        return /syllabus|exam pattern/i.test(label);
+      })
+    : false;
+
+  const updateSummary =
+    updatedDate && createdDate && updatedDate !== createdDate
+      ? `Last updated on ${updatedDate} (posted on ${createdDate}).`
+      : createdDate
+        ? `Posted on ${createdDate}.`
+        : "Recently published.";
+
+  const updateHighlights = [
+    startDate ? `Application opens: ${startDate}` : null,
+    lastDate ? `Last date to apply: ${lastDate}` : null,
+    admitCardDate ? `Admit card: ${admitCardDate}` : null,
+    examDate ? `Exam date: ${examDate}` : null,
+    syllabusAvailable
+      ? "Syllabus or exam pattern link is available in Important Links."
+      : "Syllabus link is not published yet; keep checking the official notice.",
+    updateSummary,
+  ].filter(Boolean);
 
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Home", url: "https://jobsaddah.com" },
@@ -472,9 +588,10 @@ export default async function JobDetailsPage({ params }) {
               <div>
                 <h3 className="font-bold text-amber-900 mb-1">Verification Disclaimer</h3>
                 <p className="leading-relaxed">
-                  JobsAddah aggregates information from official sources and public notices. We do
-                  not verify every detail ourselves. Always cross‑check dates, eligibility, and fees
-                  on the official website before applying or paying any fee.
+                  JobsAddah aggregates information from official sources and public notices and adds
+                  analysis to help you plan your application. We do not verify every detail ourselves.
+                  Always cross-check dates, eligibility, and fees on the official website before
+                  applying or paying any fee.
                 </p>
               </div>
             </div>
@@ -814,35 +931,88 @@ export default async function JobDetailsPage({ params }) {
              </div>
           </section>
 
-          {/* 7. PREPARING FOR RECRUITMENT (LONG SEO CONTENT) */}
+          {/* 7. POST-SPECIFIC CHECKLIST */}
           <section className="mt-8 scroll-mt-20">
-            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-               <BookOpen className="text-slate-600" /> Preparing for the Recruitment
-            </h2>
+            <SectionHeader title="Post-Specific Checklist" icon={BookOpen} colorClass="text-slate-600" />
             {hasSubstantialContent(detail) ? (
-                <div className="prose prose-slate max-w-none text-slate-700 space-y-4 text-sm md:text-base leading-relaxed bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                  <p>
-                    Treat this notification as a living document. The dates, number of vacancies, and application conditions can shift slightly between the draft notification you see today and the final advertisement that opens for submissions. Bookmark this page, download the official PDF, and compare the terminology used here with the language on the issuing organization's website before you start filling out any forms. Doing that extra cross-check keeps you clear of last-minute surprises and ensures that every claim in your application mirrors what the recruiters actually published.
-                  </p>
-                  <p>
-                    Eligibility is more than just the marks on your certificate. Consider not only the minimum educational qualification and age limit, but also domicile clauses, physical standards, and any reservations the body may use for specific districts or departments. Review the timeline of application windows and linking instructions with a calendar view, then note any documents that require certified copies, medical certificates, or self-attestation. A methodical checklist now prevents frantic scanning later when the online portal is live.
-                  </p>
-                  <p>
-                    Build a personal schedule that mirrors the recruitment milestones. Most Sarkari notifications open the form 10-14 days before the first deadline, so plan a rehearsal run where you log in to the portal, capture the form structure, and test uploading scans of your ID, experience proof, and signature. If you rely on a shared computer or cyber cafe, block out a slot well before the last date so you can submit comfortably even if the network slows down on the final day.
-                  </p>
-                  <p>
-                    Keep your documents organized in both digital and hard-copy folders. Maintain two copies of each certificate, one as a PDF and one as a photograph with consistent naming (e.g., "aadhaar-front.jpg"). That makes it easy to upload the right file during the online application and to present the same paperwork at the biometric or document-verification stage. If there are photographs or signatures with specifications, create them at a shop or printer that understands the requirement--JobsAddah regularly highlights those dimension notes so you do not lose points due to an incorrectly sized photo.
-                  </p>
-                  <p>
-                    When the admit card or hall ticket is released, revisit this page to review the contest details while keeping track of new updates via the reminder component on the right. Maintaining calm focus amid the noise of notification updates helps you read every instruction and margin note, which is where the real preparation advantage lies. A collected mindset prevents mistakes like choosing the wrong category or missing a question about preferable centres.
-                  </p>
-                  <p>
-                    JobsAddah surfaces data from multiple scraped sources, but you can reinforce it by using the reminder alerts, trending- jobs feed, and the search bar at the top to quickly jump from this notification to complementary job listings. See the "Important Links" table below for direct application portals, syllabus outlines, and download instructions so you can keep all information under the same roof. Together, these steps build the 800+ words of context you need for a well-informed, confident application.
-                  </p>
-                  <p>
-                    Finally, when you print this page or save it as a PDF, make a note of the reference number and the exact slug so you can refer to the same URL when the admit card is issued. A consistent URL makes it easier to share this notification with mentors, coaches, or peers, and it also helps search engines anchor the page in their index by following the canonical `/post/${Array.isArray(slug) ? slug.join("/") : slug}` path that everyone already uses on JobsAddah.
-                  </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                    Eligibility Snapshot
+                  </h3>
+                  {eligibilityHighlights.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                      {eligibilityHighlights.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Eligibility details will be updated from the official notification.
+                    </p>
+                  )}
                 </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                    Fees & Age Notes
+                  </h3>
+                  {feeHighlights.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700 mb-3">
+                      {feeHighlights.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500 mb-3">Fee details are listed above.</p>
+                  )}
+                  {ageHighlights.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                      {ageHighlights.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Check age limits and relaxations in the Age Limit section.
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                    Document Checklist
+                  </h3>
+                  {docHighlights.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                      {docHighlights.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      The official document list has not been published yet.
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                    Updates & Strategy
+                  </h3>
+                  {updateHighlights.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                      {updateHighlights.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Follow the official notice for schedule updates.
+                    </p>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="p-6 bg-slate-50 rounded-xl text-slate-500 italic border border-slate-200">
                 Verified recruitment details are being updated. Check back soon.
@@ -959,3 +1129,5 @@ export default async function JobDetailsPage({ params }) {
     </article>
   );
 }
+
+

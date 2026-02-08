@@ -23,15 +23,19 @@ async function fetchJobSections() {
   return null;
 }
 
-export async function generateMetadata() {
+export async function generateMetadata({ searchParams } = {}) {
   const data = await fetchJobSections();
   const hasCategories = Boolean(data?.categories?.length);
+  const hasQueryParams =
+    searchParams && Object.keys(searchParams).length > 0;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
 
   return {
     title: "Sarkari Result 2026 | JobsAddah - Latest Govt Jobs, Admit Card",
     description:
       "Official JobsAddah Sarkari Result portal. Get latest government job updates, admit cards, results, and answer keys in one place.",
-    robots: hasCategories ? "index,follow" : "noindex,follow",
+    robots: hasQueryParams ? "noindex,follow" : hasCategories ? "index,follow" : "noindex,follow",
+    alternates: { canonical: `${siteUrl}/post` },
   };
 }
 

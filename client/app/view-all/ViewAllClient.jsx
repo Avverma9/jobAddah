@@ -19,16 +19,21 @@ const ViewAllClient = ({
 }) => {
   const router = useRouter();
   const [jobs, setJobs] = useState(initialJobs);
-  const [loading, setLoading] = useState(!initialJobs.length);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   React.useEffect(() => {
     setJobs(initialJobs);
-    setLoading(!initialJobs.length);
+    setLoading(false);
   }, [initialJobs]);
 
   React.useEffect(() => {
-    if (initialJobs.length || !sectionLink) return;
+    if (!hydrated || initialJobs.length || !sectionLink) return;
     let active = true;
     const load = async () => {
       try {
@@ -55,7 +60,7 @@ const ViewAllClient = ({
     return () => {
       active = false;
     };
-  }, [initialJobs.length, sectionLink]);
+  }, [hydrated, initialJobs.length, sectionLink]);
 
   const handleJobSelect = (job) => {
     const url = buildPostDetailParams(job);

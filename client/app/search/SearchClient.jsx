@@ -18,6 +18,7 @@ export default function SearchClient({
   const [results, setResults] = useState(initialResults);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(Boolean(initialQuery));
+  const [userInitiated, setUserInitiated] = useState(false);
   const didHydrateRef = useRef(false);
   const initialQueryRef = useRef(initialQuery);
   const initialResultsRef = useRef(initialResults);
@@ -26,6 +27,7 @@ export default function SearchClient({
 
   useEffect(() => {
     setQuery(initialQuery);
+    setUserInitiated(false);
   }, [initialQuery]);
 
   useEffect(() => {
@@ -50,9 +52,10 @@ export default function SearchClient({
       if (trimmedQuery.length < MIN_QUERY_LENGTH) {
         setResults([]);
         setIsSearching(false);
+        setHasSearched(Boolean(trimmedQuery));
         return;
       }
-      setIsSearching(true);
+      if (userInitiated) setIsSearching(true);
       try {
         const res = await fetch(
           `/api/gov-post/find-by-title?title=${encodeURIComponent(
@@ -77,12 +80,13 @@ export default function SearchClient({
     return () => {
       isMounted = false;
     };
-  }, [trimmedQuery]);
+  }, [trimmedQuery, userInitiated]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const next = trimmedQuery;
     if (next.length < MIN_QUERY_LENGTH) return;
+    setUserInitiated(true);
     router.push(`/search?q=${encodeURIComponent(next)}`);
   };
 
@@ -108,7 +112,10 @@ export default function SearchClient({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  if (!userInitiated) setUserInitiated(true);
+                  setQuery(e.target.value);
+                }}
                 placeholder="e.g. SSC CGL, Railway Group D, Bihar Police..."
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />

@@ -26,7 +26,7 @@ const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
 const MIN_INDEXABLE_JOBS = 3;
 
 const escapeXml = (value) =>
-  value
+  String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -75,11 +75,16 @@ const collectIndexablePaths = (post) => {
 
 export async function GET() {
   try {
-    await connectDB();
-
-    const posts = await GovPostList.find({})
-      .select("jobs updatedAt createdAt")
-      .lean();
+    let posts = [];
+    try {
+      await connectDB();
+      posts = await GovPostList.find({})
+        .select("jobs updatedAt createdAt")
+        .lean();
+    } catch (dbError) {
+      console.error("Sitemap DB fetch failed, serving static routes only.", dbError);
+      posts = [];
+    }
 
     const urlMap = new Map();
 
@@ -103,12 +108,13 @@ export async function GET() {
       });
     });
 
+    const now = new Date().toISOString();
     const entries = [
       ...STATIC_ROUTES.map((page) => ({
         loc: `${SITE_URL}${page.path}`,
         changefreq: page.changefreq,
         priority: page.priority,
-        lastmod: new Date().toISOString(),
+        lastmod: now,
       })),
       ...Array.from(urlMap.values()),
     ];
