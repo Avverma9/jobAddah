@@ -3,7 +3,11 @@ import Link from "next/link";
 import { cache } from "react";
 import { connectDB } from "@/lib/db/connectDB";
 import Post from "@/lib/models/job";
-import { extractRecruitmentData } from "@/util/post-helper";
+import {
+  extractRecruitmentData,
+  getLinkStatusMessage,
+  isLinkClickable,
+} from "@/util/post-helper";
 import { getCleanPostUrl } from "@/lib/job-url";
 import {
   CalendarDays,
@@ -46,12 +50,63 @@ const sanitizeLinks = (links) => {
     });
 };
 
+const MONTH_TOKENS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "sept",
+  "oct",
+  "nov",
+  "dec",
+];
+
+const looksLikeDateValue = (value) => {
+  const v = String(value || "").trim();
+  if (!v) return false;
+  const lower = v.toLowerCase();
+  if (lower.includes("http") || lower.includes("www.")) return false;
+  if (v.length > 80) return false;
+
+  const hasMonth = MONTH_TOKENS.some((m) => lower.includes(m));
+  const hasDatePattern =
+    /\d{1,2}\s*[\/.-]\s*\d{1,2}(\s*[\/.-]\s*\d{2,4})?/.test(v) ||
+    /\d{4}\s*[\/.-]\s*\d{1,2}(\s*[\/.-]\s*\d{1,2})?/.test(v);
+
+  if (!hasMonth && !hasDatePattern) return false;
+  if (v.split(",").length > 6 && !hasDatePattern) return false;
+  return hasMonth || hasDatePattern;
+};
+
+const sanitizeDateValue = (value) => {
+  if (!value) return null;
+  const v = String(value).replace(/\s+/g, " ").trim();
+  if (!v) return null;
+  const lower = v.toLowerCase();
+  if (lower.includes("related") || lower.includes("other posts")) return null;
+  if (looksLikeDateValue(v)) return v;
+  if (
+    lower.includes("to be announced") ||
+    lower.includes("tba") ||
+    lower.includes("check notification") ||
+    lower.includes("will be updated") ||
+    lower.includes("notify later") ||
+    lower.includes("available soon")
+  ) {
+    return v;
+  }
+  return null;
+};
+
 const cleanDateValue = (val) => {
   if (!val) return "To be announced";
-  const v = String(val).trim();
-  if (v.length > 50 || v.toLowerCase().includes("related"))
-    return "Check Notification";
-  return v;
+  const sanitized = sanitizeDateValue(val);
+  return sanitized || "Check Notification";
 };
 
 // Helper to safely extract label/value from mixed types (string or object)
@@ -134,7 +189,8 @@ const findDateValue = (detail, keywords) => {
   });
   if (!match) return null;
   const { value, label } = normalizeItem(match);
-  return value || label || null;
+  const safeValue = sanitizeDateValue(value || label);
+  return safeValue || null;
 };
 
 // --- Text Generators (SEO Content) ---
@@ -251,14 +307,18 @@ const findLastDate = (detail, recruitment) => {
     recruitment?.importantDates?.applicationLastDate ||
     recruitment?.importantDates?.lastDate ||
     recruitment?.importantDates?.lastDateToApply;
-  if (direct) return direct;
+  const directSafe = sanitizeDateValue(direct);
+  if (directSafe) return directSafe;
 
   if (Array.isArray(detail?.dates)) {
     const match = detail.dates.find((d) => {
         const { label } = normalizeItem(d);
         return label.toLowerCase().includes("application deadline") || label.toLowerCase().includes("last date");
     });
-    if(match) return normalizeItem(match).value;
+    if(match) {
+      const { value, label } = normalizeItem(match);
+      return sanitizeDateValue(value || label);
+    }
   }
   return null;
 };
@@ -383,9 +443,10 @@ export default async function JobDetailsPage({ params }) {
   const shareText = encodeURIComponent(`${detail.title} | ${shareUrl}`);
 
   const lastDate =
-    recruitment.importantDates?.applicationLastDate ||
+    sanitizeDateValue(recruitment.importantDates?.applicationLastDate) ||
     findLastDate(detail, recruitment) ||
     "mentioned in the official notification";
+  const lastDateHighlight = findLastDate(detail, recruitment);
 
   // FAQs Data
   const faqs = [
@@ -495,7 +556,7 @@ export default async function JobDetailsPage({ params }) {
 
   const updateHighlights = [
     startDate ? `Application opens: ${startDate}` : null,
-    lastDate ? `Last date to apply: ${lastDate}` : null,
+    lastDateHighlight ? `Last date to apply: ${lastDateHighlight}` : null,
     admitCardDate ? `Admit card: ${admitCardDate}` : null,
     examDate ? `Exam date: ${examDate}` : null,
     syllabusAvailable
@@ -891,26 +952,42 @@ export default async function JobDetailsPage({ params }) {
                    {detail.links?.length > 0 ? (
                       detail.links.map((link, i) => {
                          const { label } = normalizeItem(link);
-                         const isApply = /apply|online|registration/i.test(label || "");
+                         const displayLabel = label || "Official Link";
+                         const isApply = /apply|online|registration/i.test(displayLabel || "");
+                         const clickable = isLinkClickable(link);
+                         const statusMessage = getLinkStatusMessage(link);
                          return (
                             <div key={i} className="flex flex-col sm:flex-row items-stretch sm:items-center bg-white/10 rounded-xl overflow-hidden border border-white/10 hover:bg-white/15 transition-all group">
-                               <div className="px-4 py-3 flex-1 font-medium text-sm text-slate-200 group-hover:text-white flex items-center gap-2">
-                                  {isApply ? <Send size={16} className="text-emerald-400" /> : <ChevronRight size={16} className="text-slate-400" />}
-                                  {label || "Click Here"}
+                               <div className="px-4 py-3 flex-1 font-medium text-sm text-slate-200 group-hover:text-white">
+                                  <div className="flex items-center gap-2">
+                                    {isApply ? <Send size={16} className="text-emerald-400" /> : <ChevronRight size={16} className="text-slate-400" />}
+                                    {displayLabel}
+                                  </div>
+                                  {statusMessage && (
+                                    <div className="text-xs text-slate-300 mt-1">
+                                      {statusMessage}
+                                    </div>
+                                  )}
                                </div>
-                               <a 
-                                  href={link.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className={`px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
-                                     isApply 
-                                     ? "bg-emerald-500 hover:bg-emerald-400 text-white" 
-                                     : "bg-white text-slate-900 hover:bg-slate-200"
-                                  }`}
-                               >
-                                  {isApply ? "Apply Now" : "Click Here"}
-                                  {isApply ? <ExternalLink size={14} /> : <Download size={14} />}
-                               </a>
+                               {clickable ? (
+                                 <a 
+                                    href={link.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className={`px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
+                                       isApply 
+                                       ? "bg-emerald-500 hover:bg-emerald-400 text-white" 
+                                       : "bg-white text-slate-900 hover:bg-slate-200"
+                                    }`}
+                                 >
+                                    {isApply ? "Apply Now" : "Open Link"}
+                                    {isApply ? <ExternalLink size={14} /> : <Download size={14} />}
+                                 </a>
+                               ) : (
+                                 <div className="px-6 py-3 text-sm font-bold flex items-center justify-center gap-2 bg-white/10 text-slate-300 cursor-not-allowed">
+                                   {statusMessage ? "Link Pending" : "Link Unavailable"}
+                                 </div>
+                               )}
                             </div>
                          );
                       })

@@ -50,6 +50,31 @@ const CATEGORY_THEME = {
 
 const ORDER_STORAGE_KEY = "gov-job-sections-order-v3";
 
+const buildJobKey = (job) => {
+  if (!job) return "job:empty";
+  const id = job._id || job.id || "";
+  if (id) return `job:id:${id}`;
+  const title = (job.title || "").trim().toLowerCase();
+  const link = (job.link || job.url || "").trim().toLowerCase();
+  if (title || link) return `job:tl:${title}|${link}`;
+  try {
+    return `job:raw:${JSON.stringify(job)}`;
+  } catch {
+    return "job:unknown";
+  }
+};
+
+const dedupeJobs = (jobs) => {
+  if (!Array.isArray(jobs)) return [];
+  const seen = new Set();
+  return jobs.filter((job) => {
+    const key = buildJobKey(job);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const CardSkeleton = () => (
   <div className="bg-white rounded-lg flex flex-col h-full border border-slate-200 border-t-[3px] border-t-slate-200 animate-pulse">
     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -266,10 +291,12 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
             const theme =
               CATEGORY_THEME[category.name] || CATEGORY_THEME["Latest Job"];
             const Icon = theme.icon;
-            const jobs = category.data?.[0]?.jobs || [];
+            const jobs = dedupeJobs(category.data?.[0]?.jobs || []);
             const filteredJobs = searchQuery
               ? jobs.filter((job) =>
-                  job.title.toLowerCase().includes(searchQuery.toLowerCase()),
+                  (job.title || "")
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()),
                 )
               : jobs;
 

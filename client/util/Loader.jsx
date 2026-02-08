@@ -32,9 +32,11 @@ export default function Loader({
           <h3 className="text-sm font-bold tracking-widest text-indigo-500 uppercase drop-shadow-sm">
             JOBSADDAH
           </h3>
-          <p className="max-w-[200px] text-xs font-medium text-slate-500 dark:text-slate-300">
-            {message}
-          </p>
+          {message ? (
+            <p className="max-w-[200px] text-xs font-medium text-slate-500 dark:text-slate-300">
+              {message}
+            </p>
+          ) : null}
           
           {/* Minimal Dots */}
           <div className="mt-2 flex gap-1">

@@ -52,8 +52,10 @@ export async function generateMetadata({ searchParams }) {
 
 export default async function ViewAllPage({ searchParams }) {
   const resolved = await searchParams;
-  const sectionName = resolved?.name || "All Posts";
-  const sectionLink = resolved?.link || "";
+  const defaultName = "Latest Job";
+  const defaultLink = "https://sarkariresult.com.cm/latest-jobs/";
+  const sectionName = resolved?.name || defaultName;
+  const sectionLink = resolved?.link || defaultLink;
   const jobs = await fetchViewAllJobs(sectionLink);
   const pageRaw = resolved?.page;
   const page = Math.max(1, Number.parseInt(pageRaw || "1", 10) || 1);

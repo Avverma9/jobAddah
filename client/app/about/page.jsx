@@ -113,7 +113,7 @@ const AboutPage = () => {
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
               <summary className="font-medium text-gray-800 flex justify-between items-center">
                 Is JobsAddah a government website?
-                <span className="text-gray-400 group-open:rotate-180 transition-transform">v</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
                 No, JobsAddah is a private informational entity. We are not affiliated with the Government of India or any State Government. We aggregate information from official sources to help job seekers.
@@ -122,7 +122,7 @@ const AboutPage = () => {
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
               <summary className="font-medium text-gray-800 flex justify-between items-center">
                 Do you charge money for job updates?
-                <span className="text-gray-400 group-open:rotate-180 transition-transform">v</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
                 Absolutely not. All information on JobsAddah is free of cost for students and job seekers.
@@ -131,7 +131,7 @@ const AboutPage = () => {
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
               <summary className="font-medium text-gray-800 flex justify-between items-center">
                 How can I contact the JobsAddah team?
-                <span className="text-gray-400 group-open:rotate-180 transition-transform">v</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
                 You can reach out to us via our Contact Us page or email us at support@jobsaddah.com for queries regarding advertisements, content corrections, or partnerships.
