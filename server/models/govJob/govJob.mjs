@@ -1,5 +1,35 @@
 import mongoose from "mongoose";
 
+const recruitmentContentSchema = new mongoose.Schema(
+  {
+    originalSummary: String,
+    whoShouldApply: [String],
+    keyHighlights: [String],
+    applicationSteps: [String],
+    selectionProcessSummary: String,
+    documentsChecklist: [String],
+    feeSummary: String,
+    importantNotes: [String],
+    faq: [
+      {
+        q: String,
+        a: String,
+      },
+    ],
+    updateSummary: String,
+    keyChanges: [String],
+    actionItems: [String],
+  },
+  { _id: false, strict: false }
+);
+
+const recruitmentSchema = new mongoose.Schema(
+  {
+    content: recruitmentContentSchema,
+  },
+  { _id: false, strict: false }
+);
+
 const postSchema = new mongoose.Schema(
   {
     fav: { type: Boolean, default: false },
@@ -17,6 +47,9 @@ const postSchema = new mongoose.Schema(
 
     // Soft dedupe helpers
     semanticSignature: { type: String, index: true },
+
+    // Partial schema to document and validate content block (other fields remain flexible)
+    recruitment: { type: recruitmentSchema, default: undefined },
   },
   {
     strict: false,

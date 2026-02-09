@@ -105,12 +105,186 @@ const formatFeeLabel = (key) => {
   return labelMap[key] || toTitleCase(key.replace(/_/g, " ").replace(/([A-Z])/g, " $1"));
 };
 
+const normalizeImportantDates = (dates = {}) => ({
+  notificationDate: dates.notificationDate ?? null,
+  postDate: dates.postDate ?? null,
+  applicationStartDate: dates.applicationStartDate ?? null,
+  applicationLastDate: dates.applicationLastDate ?? null,
+  feePaymentLastDate: dates.feePaymentLastDate ?? null,
+  correctionDate: dates.correctionDate ?? null,
+  preExamDate: dates.preExamDate ?? null,
+  mainsExamDate: dates.mainsExamDate ?? null,
+  examDate: dates.examDate ?? null,
+  admitCardDate: dates.admitCardDate ?? null,
+  resultDate: dates.resultDate ?? null,
+  answerKeyReleaseDate: dates.answerKeyReleaseDate ?? null,
+  finalAnswerKeyDate: dates.finalAnswerKeyDate ?? null,
+  documentVerificationDate: dates.documentVerificationDate ?? null,
+  counsellingDate: dates.counsellingDate ?? null,
+  meritListDate: dates.meritListDate ?? null,
+  other: typeof dates.other === "object" && dates.other !== null ? dates.other : {},
+});
+
+const normalizeVacancyDetails = (vacancy = {}) => ({
+  totalPosts: vacancy.totalPosts ?? vacancy.total ?? 0,
+  positions: Array.isArray(vacancy.positions) ? vacancy.positions : [],
+  categoryWise:
+    typeof vacancy.categoryWise === "object" && vacancy.categoryWise !== null
+      ? vacancy.categoryWise
+      : {
+          general: 0,
+          obc: 0,
+          sc: 0,
+          st: 0,
+          ewsExemption: 0,
+          ph: 0,
+          other: {},
+        },
+  districtWise: Array.isArray(vacancy.districtWise) ? vacancy.districtWise : [],
+});
+
+const normalizeApplicationFee = (fees = {}) => ({
+  general: fees.general ?? 0,
+  ewsObc: fees.ewsObc ?? fees.ews_obc ?? 0,
+  scSt: fees.scSt ?? fees.sc_st ?? 0,
+  female: fees.female ?? 0,
+  ph: fees.ph ?? fees.pwd ?? 0,
+  correctionCharge: fees.correctionCharge ?? fees.correction_charge ?? 0,
+  currency: fees.currency ?? "INR",
+  paymentMode: Array.isArray(fees.paymentMode)
+    ? fees.paymentMode
+    : Array.isArray(fees.paymentModes)
+      ? fees.paymentModes
+      : [],
+  exemptions: fees.exemptions ?? "",
+});
+
+const normalizeAgeLimit = (age = {}) => ({
+  minimumAge: age.minimumAge ?? age.minimum ?? 0,
+  maximumAge: age.maximumAge ?? age.maximum ?? 0,
+  asOn:
+    age.asOn ??
+    age.ageLimitAsOnDate ??
+    age.ageCalculationDate ??
+    age.ageCutoffDate ??
+    age.asOnDate ??
+    age.ageAsOnDate ??
+    "",
+  ageRelaxation:
+    typeof age.ageRelaxation === "object" && age.ageRelaxation !== null
+      ? age.ageRelaxation
+      : {
+          scSt: 0,
+          obc: 0,
+          ph: 0,
+          exServicemen: 0,
+          other: {},
+        },
+  categoryWise:
+    typeof age.categoryWise === "object" && age.categoryWise !== null
+      ? age.categoryWise
+      : {
+          ur: { male: 0, female: 0 },
+          obc: { male: 0, female: 0 },
+          sc: { male: 0, female: 0 },
+          st: { male: 0, female: 0 },
+        },
+});
+
+const normalizeEligibilityRaw = (elig = {}) => ({
+  educationQualification:
+    elig.educationQualification ??
+    elig.educationalQualification ??
+    elig.generalRequirement ??
+    elig.qualification ??
+    "",
+  streamRequired: elig.streamRequired ?? "",
+  minimumPercentage: elig.minimumPercentage ?? 0,
+  experienceRequired: elig.experienceRequired ?? elig.experience ?? "",
+  specialRequirements: Array.isArray(elig.specialRequirements)
+    ? elig.specialRequirements
+    : [],
+});
+
+const normalizeImportantLinks = (links = {}) => ({
+  applyOnline: links.applyOnline ?? "",
+  officialNotification: links.officialNotification ?? "",
+  officialWebsite: links.officialWebsite ?? "",
+  syllabus: links.syllabus ?? "",
+  examPattern: links.examPattern ?? "",
+  admitCard: links.admitCard ?? "",
+  resultLink: links.resultLink ?? "",
+  answerKey: links.answerKey ?? "",
+  documentVerificationNotice: links.documentVerificationNotice ?? "",
+  faq: links.faq ?? "",
+  other: typeof links.other === "object" && links.other !== null ? links.other : {},
+});
+
+const normalizeContent = (content = {}) => ({
+  originalSummary: content.originalSummary ?? "",
+  whoShouldApply: Array.isArray(content.whoShouldApply) ? content.whoShouldApply : [],
+  keyHighlights: Array.isArray(content.keyHighlights) ? content.keyHighlights : [],
+  applicationSteps: Array.isArray(content.applicationSteps) ? content.applicationSteps : [],
+  selectionProcessSummary: content.selectionProcessSummary ?? "",
+  documentsChecklist: Array.isArray(content.documentsChecklist)
+    ? content.documentsChecklist
+    : [],
+  feeSummary: content.feeSummary ?? "",
+  importantNotes: Array.isArray(content.importantNotes) ? content.importantNotes : [],
+  faq: Array.isArray(content.faq) ? content.faq : [],
+});
+
 export const extractRecruitmentData = (input) => {
   const payload = input?.data || input || {};
   const rec = payload.recruitment || payload;
 
   const org = rec.organization || {};
-  const additional = rec.additionalDetails || rec.additionalInfo || {};
+  const additional =
+    typeof rec.additionalDetails === "object" && rec.additionalDetails !== null
+      ? rec.additionalDetails
+      : typeof rec.additionalInfo === "object" && rec.additionalInfo !== null
+        ? rec.additionalInfo
+        : {};
+  const additionalInfoText =
+    typeof rec.additionalInfo === "string" ? rec.additionalInfo : "";
+
+  const normalizedRecruitment = {
+    title: rec.title ?? "",
+    advertisementNumber: rec.advertisementNumber ?? "",
+    organization: {
+      name: org.name ?? "",
+      shortName: org.shortName ?? "",
+      website: org.website ?? org.officialWebsite ?? "",
+      type: org.type ?? "",
+    },
+    importantDates: normalizeImportantDates(rec.importantDates || {}),
+    vacancyDetails: normalizeVacancyDetails(rec.vacancyDetails || {}),
+    applicationFee: normalizeApplicationFee(rec.applicationFee || {}),
+    ageLimit: normalizeAgeLimit(rec.ageLimit || {}),
+    eligibility: normalizeEligibilityRaw(rec.eligibility || {}),
+    physicalStandards:
+      typeof rec.physicalStandards === "object" && rec.physicalStandards !== null
+        ? rec.physicalStandards
+        : { male: {}, female: {} },
+    physicalEfficiencyTest:
+      typeof rec.physicalEfficiencyTest === "object" &&
+      rec.physicalEfficiencyTest !== null
+        ? rec.physicalEfficiencyTest
+        : { male: {}, female: {} },
+    selectionProcess: Array.isArray(rec.selectionProcess)
+      ? rec.selectionProcess
+      : [],
+    importantLinks: normalizeImportantLinks(rec.importantLinks || {}),
+    documentation: Array.isArray(rec.documentation) ? rec.documentation : [],
+    status: rec.status ?? "Active",
+    sourceUrl: rec.sourceUrl ?? payload.sourceUrl ?? payload.url ?? "",
+    additionalInfo:
+      additionalInfoText ||
+      additional.additionalInfo ||
+      additional.noteToCandidates ||
+      "",
+    content: normalizeContent(rec.content || {}),
+  };
 
   return {
     id: payload._id || null,
@@ -127,6 +301,7 @@ export const extractRecruitmentData = (input) => {
       (typeof rec.organization === "string"
         ? rec.organization
         : "Government Organization"),
+    organizationDetails: normalizedRecruitment.organization,
     organizationType: org.type || null,
     website:
       org.officialWebsite ||
@@ -143,20 +318,23 @@ export const extractRecruitmentData = (input) => {
       rec.eligibility?.education ||
       "",
     status: rec.status || "Active",
-    importantDates: rec.importantDates || {},
-    dates: extractDates(rec.importantDates || {}),
-    vacancy: extractVacancy(rec.vacancyDetails || {}),
-    fees: extractFees(rec.applicationFee || {}),
-    age: extractAge(rec.ageLimit || {}, additional.ageRelaxation || additional.age_relaxation),
+    importantDates: normalizedRecruitment.importantDates,
+    dates: extractDates(normalizedRecruitment.importantDates || {}),
+    vacancy: extractVacancy(normalizedRecruitment.vacancyDetails || {}),
+    fees: extractFees(normalizedRecruitment.applicationFee || {}),
+    age: extractAge(normalizedRecruitment.ageLimit || {}, additional.ageRelaxation || additional.age_relaxation),
     eligibility: extractEligibility(rec.eligibility || {}),
-    physicalStandards: extractPhysicalStandards(rec.physicalStandards || {}),
-    physicalTest: extractPhysicalTest(rec.physicalEfficiencyTest || {}),
+    physicalStandards: extractPhysicalStandards(normalizedRecruitment.physicalStandards || {}),
+    physicalTest: extractPhysicalTest(normalizedRecruitment.physicalEfficiencyTest || {}),
     selection: Array.isArray(rec.selectionProcess) ? rec.selectionProcess : [],
-    links: extractLinks(rec.importantLinks || {}),
-    documentation: normalizeDocumentation(rec.documentation || []),
+    links: extractLinks(normalizedRecruitment.importantLinks || {}),
+    documentation: normalizeDocumentation(normalizedRecruitment.documentation || []),
     districtData: normalizeDistricts(
       rec.vacancyDetails?.districtWise || rec.districtWiseData || []
     ),
+    recruitment: normalizedRecruitment,
+    content: normalizedRecruitment.content,
+    additionalInfo: normalizedRecruitment.additionalInfo,
     additionalDetails: additional,
     noteToCandidates:
       additional.noteToCandidates || additional.applicantAdvisory || null,
@@ -252,7 +430,7 @@ export const extractFees = (fees) => {
     const label = formatFeeLabel(key);
     const formattedValue =
       typeof value === "number" && fees.currency
-        ? `₹ ${value}/-`
+        ? `Rs. ${value}/-`
         : value;
 
     result.push({
@@ -445,7 +623,7 @@ export const extractVacancy = (vacancy) => {
   }
 
   return {
-    total: vacancy.totalPosts || vacancy.total || "See Notification",
+    total: vacancy.totalPosts ?? vacancy.total ?? "See Notification",
     positions,
     categoryWise,
   };

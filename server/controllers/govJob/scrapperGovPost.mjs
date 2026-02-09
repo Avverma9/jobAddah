@@ -4,6 +4,7 @@ import govSection from "../../models/govJob/govSection.mjs";
 import { scrapper } from "../scrapper/govScrapper.mjs";
 import Post from "../../models/govJob/govJob.mjs";
 import rephraseTitle from "../../utils/rephraser.js";
+import { withContentDefaults } from "../../utils/contentDefaults.mjs";
 
 const normalizePath = (inputUrl) => {
   if (!inputUrl) return null;
@@ -41,7 +42,10 @@ const getGovPostDetails = async (req, res) => {
       return res.status(404).json({ success: false, error: "Post not found" });
     }
 
-    return res.status(200).json({ success: true, data: getData });
+    return res.status(200).json({
+      success: true,
+      data: withContentDefaults(getData),
+    });
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -170,7 +174,7 @@ const getFavPosts = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: validFavs.length,
-      data: validFavs,
+      data: validFavs.map(withContentDefaults),
     });
   } catch (err) {
     return res.status(500).json({

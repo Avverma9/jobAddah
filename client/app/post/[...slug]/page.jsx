@@ -411,6 +411,22 @@ const TwoColTable = ({ leftTitle, rightTitle, rows }) => (
   </div>
 );
 
+const ContentSection = ({ title, children }) => (
+  <div>
+    <h3 className="text-sm font-extrabold text-slate-900 mb-2 uppercase tracking-wide">
+      {title}
+    </h3>
+    {children}
+  </div>
+);
+
+const renderTextValue = (value, fallback = "Not provided.") => (
+  <p className="text-sm text-slate-700 leading-relaxed">{value || fallback}</p>
+);
+
+const renderListValue = (items, fallback = "Not provided.") =>
+  renderValueList(items) || <p className="text-sm text-slate-500">{fallback}</p>;
+
 /* =========================
    METADATA (SSR)
 ========================= */
@@ -506,6 +522,7 @@ export default async function JobDetailsPage({ params }) {
   const physicalTest = detail.physicalTest || null;
 
   const docs = Array.isArray(detail.documentation) ? detail.documentation : [];
+  const content = detail.content || {};
   const notes =
     detail.additionalDetails?.noteToCandidates ||
     detail.additionalDetails?.additionalInfo ||
@@ -633,7 +650,17 @@ export default async function JobDetailsPage({ params }) {
     : [];
 
   // FAQs
+  const contentFaqs = Array.isArray(content.faq)
+    ? content.faq
+        .map((item) => ({
+          q: item?.q || item?.question || "",
+          a: item?.a || item?.answer || "",
+        }))
+        .filter((item) => item.q && item.a)
+    : [];
+
   const faqs = [
+    ...contentFaqs,
     {
       q: `What is the last date to apply for ${detail.organization || "this recruitment"}?`,
       a: `The last date to apply is ${lastDate || "mentioned in the official notification"}. Always confirm on the official notice before submitting.`,
@@ -977,6 +1004,63 @@ export default async function JobDetailsPage({ params }) {
               {notes ? notes : "Always verify details with official notification before applying."}
             </div>
           </Panel>
+
+          {/* CONTENT (FULL FIELDS) */} 
+          {
+            content?.originalSummary && (
+                 <Panel title="Content Summary" icon={Info} right="From backend content">
+            <div className="p-5 space-y-6">
+              <ContentSection title="Original Summary">
+                {renderTextValue(content.originalSummary)}
+              </ContentSection>
+
+              <ContentSection title="Who Should Apply">
+                {renderListValue(content.whoShouldApply)}
+              </ContentSection>
+
+              <ContentSection title="Key Highlights">
+                {renderListValue(content.keyHighlights)}
+              </ContentSection>
+
+              <ContentSection title="Application Steps">
+                {renderListValue(content.applicationSteps)}
+              </ContentSection>
+
+              <ContentSection title="Selection Process Summary">
+                {renderTextValue(content.selectionProcessSummary)}
+              </ContentSection>
+
+              <ContentSection title="Documents Checklist">
+                {renderListValue(content.documentsChecklist)}
+              </ContentSection>
+
+              <ContentSection title="Fee Summary">
+                {renderTextValue(content.feeSummary)}
+              </ContentSection>
+
+              <ContentSection title="Important Notes">
+                {renderListValue(content.importantNotes)}
+              </ContentSection>
+
+              <ContentSection title="Content FAQs">
+                {contentFaqs.length ? (
+                  <div className="space-y-2">
+                    {contentFaqs.map((faq, i) => (
+                      <div key={i} className="border border-slate-200 rounded-lg p-3">
+                        <div className="text-sm font-extrabold text-slate-800 mb-1">{faq.q}</div>
+                        <div className="text-sm text-slate-600 leading-relaxed">{faq.a}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Not provided.</p>
+                )}
+              </ContentSection>
+            </div>
+          </Panel>
+            )
+          }
+       
 
           {/* IMPORTANT LINKS */}
           <section id="important-links" className="scroll-mt-20">

@@ -19,6 +19,9 @@ const UA_HEADERS = { "User-Agent": "Mozilla/5.0" };
 const cleanText = (t) =>
   (t || "").replace(/\s+/g, " ").replace(/,/g, "").trim();
 
+const cleanSentence = (t) =>
+  (t || "").replace(/\s+/g, " ").trim();
+
 const normalizeSemantic = (v) => cleanText(v).toLowerCase();
 
 const INVALID_VALUES = [
@@ -30,6 +33,90 @@ const INVALID_VALUES = [
   "na",
   "n/a",
 ];
+
+const isNotSpecified = (t) =>
+  INVALID_VALUES.includes((t || "").toLowerCase()) ||
+  (t || "").toLowerCase() === "not specified";
+
+const clampWords = (text, maxWords) => {
+  const t = cleanSentence(text);
+  if (!t) return "";
+  const parts = t.split(/\s+/);
+  if (parts.length <= maxWords) return t;
+  return parts.slice(0, maxWords).join(" ");
+};
+
+const sanitizeList = (list, { maxItems = 10, maxWords = 28 } = {}) => {
+  const arr = Array.isArray(list) ? list : list ? [list] : [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of arr) {
+    const t = clampWords(raw, maxWords);
+    if (!t || isNotSpecified(t)) continue;
+    const key = t.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(t);
+    if (out.length >= maxItems) break;
+  }
+  return out;
+};
+
+const sanitizeFaq = (list, maxItems = 8) => {
+  const arr = Array.isArray(list) ? list : [];
+  const out = [];
+  for (const item of arr) {
+    if (!item || typeof item !== "object") continue;
+    const q = clampWords(item.q, 24);
+    const a = clampWords(item.a, 36);
+    if (!q || !a || isNotSpecified(q) || isNotSpecified(a)) continue;
+    out.push({ q, a });
+    if (out.length >= maxItems) break;
+  }
+  return out;
+};
+
+const sanitizeContentBlock = (content) => {
+  if (!content || typeof content !== "object") return content;
+
+  const isUpdate = Boolean(
+    content.updateSummary || content.keyChanges || content.actionItems
+  );
+
+  const out = {};
+
+  if (isUpdate) {
+    out.updateSummary = clampWords(content.updateSummary, 90);
+    out.keyChanges = sanitizeList(content.keyChanges, { maxItems: 6, maxWords: 24 });
+    out.actionItems = sanitizeList(content.actionItems, { maxItems: 6, maxWords: 24 });
+    out.importantNotes = sanitizeList(content.importantNotes, { maxItems: 6, maxWords: 24 });
+    out.faq = sanitizeFaq(content.faq, 6);
+    return out;
+  }
+
+  out.originalSummary = clampWords(content.originalSummary, 120);
+  out.whoShouldApply = sanitizeList(content.whoShouldApply, { maxItems: 6, maxWords: 20 });
+  out.keyHighlights = sanitizeList(content.keyHighlights, { maxItems: 7, maxWords: 22 });
+  out.applicationSteps = sanitizeList(content.applicationSteps, { maxItems: 10, maxWords: 20 });
+  out.selectionProcessSummary = clampWords(content.selectionProcessSummary, 80);
+  out.documentsChecklist = sanitizeList(content.documentsChecklist, { maxItems: 12, maxWords: 18 });
+  out.feeSummary = clampWords(content.feeSummary, 60);
+  out.importantNotes = sanitizeList(content.importantNotes, { maxItems: 6, maxWords: 24 });
+  out.faq = sanitizeFaq(content.faq, 6);
+
+  return out;
+};
+
+const sanitizeAiData = (data) => {
+  if (!data || typeof data !== "object") return data;
+  if (!data.recruitment || typeof data.recruitment !== "object") {
+    data.recruitment = {};
+  }
+  if (data.recruitment.content) {
+    data.recruitment.content = sanitizeContentBlock(data.recruitment.content);
+  }
+  return data;
+};
 
 // ---------------- URL Canonicalization ----------------
 const normalizePath = (inputUrl) => {
@@ -537,6 +624,9 @@ const scrapper = async (req, res) => {
     } else if (aiData?.title) {
       aiData.title = rephraseTitle(aiData.title);
     }
+
+    // Sanitize AI content block for consistency and safety
+    aiData = sanitizeAiData(aiData);
 
     // Build signatures (hard + soft)
     const contentSignature = buildContentSignature(aiData);

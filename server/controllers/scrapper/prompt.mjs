@@ -24,6 +24,15 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
       '      "answerKey": "",\n' +
       '      "resultLink": "",\n' +
       '      "admitCard": ""\n' +
+      '    },\n' +
+      '    "content": {\n' +
+      '      "updateSummary": "40-70 words, original wording only, no copied sentences",\n' +
+      '      "keyChanges": ["2-5 concise changes in this update"],\n' +
+      '      "actionItems": ["What the applicant should do now"],\n' +
+      '      "importantNotes": ["Critical deadlines or warnings"],\n' +
+      '      "faq": [\n' +
+      '        { "q": "", "a": "" }\n' +
+      '      ]\n' +
       '    }\n' +
       "  }\n" +
       "}\n\n" +
@@ -32,7 +41,8 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
       "2. DATES: Extract ONLY new/changed dates from the update\n" +
       "3. LINKS: Extract ONLY links mentioned in the update\n" +
       "4. EMPTY FIELDS: Leave as empty string if not found\n" +
-      "5. NO OTHER FIELDS: Do not include vacancy, eligibility, fees, or other static data\n\n" +
+      "5. NO OTHER FIELDS: Do not include vacancy, eligibility, fees, or other static data\n" +
+      "6. ORIGINAL CONTENT: Use original wording, no copied sentences, no hype\n\n" +
       "SCRAPED DATA:\n" +
       sd +
       "\n\nRETURN VALID JSON ONLY - NO MARKDOWN, NO EXTRA TEXT."
@@ -65,7 +75,16 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
       '      "documentVerificationNotice": ""\n' +
       '    },\n' +
       '    "status": "Active|Closed|Upcoming",\n' +
-      '    "notes": "Any important updates or status changes"\n' +
+      '    "notes": "Any important updates or status changes",\n' +
+      '    "content": {\n' +
+      '      "updateSummary": "40-70 words, original wording only, no copied sentences",\n' +
+      '      "keyChanges": ["2-6 concise changes in this update"],\n' +
+      '      "actionItems": ["What the applicant should do now"],\n' +
+      '      "importantNotes": ["Critical deadlines or warnings"],\n' +
+      '      "faq": [\n' +
+      '        { "q": "", "a": "" }\n' +
+      '      ]\n' +
+      '    }\n' +
       "  }\n" +
       "}\n\n" +
       "RULES:\n" +
@@ -73,7 +92,8 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
       "2. DATES must be in ISO format (YYYY-MM-DD)\n" +
       "3. STATUS: Set to 'Closed' if application deadline has passed\n" +
       "4. NOTES: Add any critical updates\n" +
-      "5. Ignore all static fields (vacancy, eligibility, fees)\n\n" +
+      "5. Ignore all static fields (vacancy, eligibility, fees)\n" +
+      "6. ORIGINAL CONTENT: Use original wording, no copied sentences, no hype\n\n" +
       "SCRAPED DATA:\n" +
       sd +
       "\n\nRETURN VALID JSON ONLY."
@@ -216,7 +236,20 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
     '    ],\n' +
     '    "status": "Active|Closed|Upcoming",\n' +
     '    "sourceUrl": "URL where data was scraped",\n' +
-    '    "additionalInfo": "Any special notes or important information"\n' +
+    '    "additionalInfo": "Any special notes or important information",\n' +
+    '    "content": {\n' +
+    '      "originalSummary": "60-90 words, original wording only, no copied sentences",\n' +
+    '      "whoShouldApply": ["Who this recruitment is suited for, in your own words"],\n' +
+    '      "keyHighlights": ["3-7 concise, non-duplicate highlights"],\n' +
+    '      "applicationSteps": ["Step-by-step application flow, in order"],\n' +
+    '      "selectionProcessSummary": "Short paragraph summarizing selection stages",\n' +
+    '      "documentsChecklist": ["Only documents explicitly mentioned"],\n' +
+    '      "feeSummary": "Short summary of fees and payment modes",\n' +
+    '      "importantNotes": ["Critical deadlines, corrections, warnings"],\n' +
+    '      "faq": [\n' +
+    '        { "q": "", "a": "" }\n' +
+    '      ]\n' +
+    '    }\n' +
     "  }\n" +
     "}\n\n" +
     "CRITICAL EXTRACTION RULES:\n" +
@@ -254,6 +287,12 @@ const buildPrompt = (scrapedData, hints = {}, mode = "FULL") => {
     "10. OUTPUT FORMAT:\n" +
     "    - Return ONLY valid JSON\n"
     + "    - No markdown, no extra explanations\n\n" +
+    "11. ORIGINAL CONTENT QUALITY:\n" +
+    "    - Write summaries in original wording; do NOT copy sentences from the source\n" +
+    "    - No promotional claims, no guarantees, no clickbait\n" +
+    "    - Base content ONLY on scraped data; do not invent details\n" +
+    "    - If data is missing, use 'Not specified' or empty arrays\n" +
+    "    - Avoid repetition across summary, highlights, and notes\n\n" +
     "SCRAPED DATA:\n" +
     sd +
     "\n\nRETURN VALID JSON ONLY - NO MARKDOWN, NO EXTRA TEXT."

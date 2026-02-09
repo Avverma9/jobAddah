@@ -5,6 +5,17 @@ import { ArrowRight, BellRing } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 
+const formatShortDate = (value) => {
+  if (!value) return "Soon";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Soon";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
+};
+
 export default function ReminderComponent({
   limit = 4,
   initialReminders = null,
@@ -136,7 +147,7 @@ function ReminderCard({ reminder, onClick, index, isMobile = false }) {
         <div className="space-y-0.5">
           <p className="text-[7px] uppercase tracking-[0.1em] text-slate-300 font-black">Final Date</p>
           <div className={`text-[11px] font-black tracking-tight ${isUrgent ? 'text-red-600' : 'text-slate-700'}`}>
-            {reminder.applicationLastDate ? new Date(reminder.applicationLastDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" }) : "Soon"}
+            {formatShortDate(reminder.applicationLastDate)}
           </div>
         </div>
         <div className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all duration-300 ${isUrgent ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-600'} group-hover:bg-slate-900 group-hover:text-white shadow-sm`}>

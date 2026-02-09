@@ -1,11 +1,12 @@
 import crypto from "crypto";
 import Post from "../../models/govJob/govJob.mjs";
 import { notifySubscribersAboutPost } from "../../utils/subscriberNotifier.mjs";
+import { withContentDefaults } from "../../utils/contentDefaults.mjs";
 
 const formatResponse = (data) => ({
   success: true,
   count: data.length,
-  data,
+  data: data.map(withContentDefaults),
 });
 
 const normalizeForHash = (value) => {
@@ -203,9 +204,9 @@ const deleteAllPosts = async (req, res) => {
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
-    const post = await Post.findById(id);
+    const post = await Post.findById(id).lean();
     if (!post) return res.status(404).json({ message: "Not found" });
-    return res.status(200).json(post);
+    return res.status(200).json(withContentDefaults(post));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -228,7 +229,7 @@ const getJobs = async (req, res) => {
       ];
     }
 
-    const posts = await Post.find(query).sort({ createdAt: -1 });
+    const posts = await Post.find(query).sort({ createdAt: -1 }).lean();
     res.json(formatResponse(posts));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -237,8 +238,8 @@ const getJobs = async (req, res) => {
 
 const getallPost = async (req, res) => {
   try {
-    const response = await Post.find().sort({ createdAt: -1 });
-    res.json(response);
+    const response = await Post.find().sort({ createdAt: -1 }).lean();
+    res.json(response.map(withContentDefaults));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -404,7 +405,7 @@ const getJobsSmartByState = async (req, res) => {
         success: true,
         count: allJobs.length,
         state: "ALL",
-        data: allJobs,
+        data: allJobs.map(withContentDefaults),
       });
     }
 
@@ -417,7 +418,7 @@ const getJobsSmartByState = async (req, res) => {
       success: true,
       count: filtered.length,
       state,
-      data: filtered,
+      data: filtered.map(withContentDefaults),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
