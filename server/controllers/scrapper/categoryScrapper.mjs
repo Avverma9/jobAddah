@@ -1,9 +1,9 @@
 import Site from "../../models/govJob/scrapperSite.mjs";
-import govPostList from "../../models/govJob/govPostListBycatUrl.mjs";
 import Section from "../../models/govJob/govSection.mjs";
 import * as cheerio from "cheerio";
 import axios from "axios";
 import { URL } from "node:url";
+import { scrapeCategoryInternal } from "../../utils/runAutomatic.mjs";
 const getCategories = async (req, res) => {
   try {
     const siteUrl = await Site.find();
@@ -67,32 +67,14 @@ const scrapeCategory = async (req, res) => {
   try {
     const categoryUrl = req.body.url;
     if (!categoryUrl) return res.status(400).json({ error: "URL Required" });
-
-    const response = await axios.get(categoryUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
+    const categoryName = req.body.name || "";
+    const result = await scrapeCategoryInternal(categoryUrl, {
+      categoryName,
+      scrapeDetails: false,
+      sendEmail: false,
     });
-
-    const $ = cheerio.load(response.data);
-    let jobs = [];
-
-    $(".post-link, .entry-title a, .post h2 a, ul li a").each((_, el) => {
-      const title = $(el).text().trim();
-      const link = $(el).attr("href");
-      if (title && title.length > 10 && link) {
-        const fullLink = new URL(link, categoryUrl).href;
-        jobs.push({ title, link: fullLink });
-      }
-    });
-
-    const uniqueJobs = [...new Map(jobs.map((i) => [i.link, i])).values()];
-
-    await govPostList.findOneAndUpdate(
-      { url: categoryUrl },
-      { $set: { url: categoryUrl, jobs: uniqueJobs } },
-      { upsert: true, new: true }
-    );
-
-    res.json({ success: true, count: uniqueJobs.length, jobs: uniqueJobs });
+    if (result.success) return res.json(result);
+    return res.status(500).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

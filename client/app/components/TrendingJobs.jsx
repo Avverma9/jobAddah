@@ -67,11 +67,12 @@ function parseDate(value) {
 function formatDate(s) {
   const parsed = parseDate(s);
   if (parsed)
-    return parsed.toLocaleDateString(undefined, {
+    return new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
-    });
+      timeZone: "UTC",
+    }).format(parsed);
   if (!s) return "–";
   return typeof s === "string" ? s.trim() : String(s);
 }
@@ -232,7 +233,10 @@ function TrendingCard({ post, onClick, isMobile = false }) {
   const title = post?.recruitment?.title || "Untitled Job";
   const last = pickLastDate(post);
   const dateStr = formatDate(last);
-  const daysLeft = calculateDaysLeft(last);
+  const [daysLeft, setDaysLeft] = useState(null);
+  useEffect(() => {
+    setDaysLeft(calculateDaysLeft(last));
+  }, [last]);
   const isHighlighted = daysLeft != null && daysLeft <= 2;
   const vacancyCount = formatVacancy(getVacancyCount(post));
   const organization = getOrganization(post);

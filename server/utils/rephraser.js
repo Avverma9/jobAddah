@@ -96,6 +96,7 @@ const mapKeyPhrases = (t) => {
     .replace(/\bAnswer Key\b/gi, "key")
     .replace(/\bCut Off\b/gi, "cutoff")
     .replace(/\bResult\b/gi, "result")
+    .replace(/\bToday is Last Date\b/gi, "Expiring Today")
     .replace(/\bScore Card\b/gi, "score")
     .replace(/\bMerit List\b/gi, "merit")
     .replace(/\bSyllabus\b/gi, "syllabus")

@@ -500,15 +500,17 @@ const detectUpdatesFromHTML = ($, post) => {
 };
 
 // ---------------- Main scrapper (robust) ----------------
-const scrapper = async (req, res) => {
+const scrapeJobUrl = async (inputUrl) => {
   try {
-    let jobUrl = req.body.url;
-    if (!jobUrl) return res.status(400).json({ error: "URL Required" });
+    let jobUrl = inputUrl;
+    if (!jobUrl) return { success: false, status: 400, error: "URL Required" };
 
     // If path-only, attach latest Site base
     if (jobUrl.startsWith("/")) {
       const site = await Site.findOne().sort({ createdAt: -1 }).lean();
-      if (!site?.url) return res.status(400).json({ error: "Base site not configured" });
+      if (!site?.url) {
+        return { success: false, status: 400, error: "Base site not configured" };
+      }
       jobUrl = site.url.replace(/\/$/, "") + jobUrl;
     }
 
@@ -538,9 +540,6 @@ const scrapper = async (req, res) => {
     const existing = await Post.findOne(dedupeFilterBase).lean();
 
     if (existing) {
-      // respond immediately with existing data
-      res.json({ success: true, action: "EXISTING_DATA", data: existing });
-
       // background refresh (safe patch, no new docs)
       setImmediate(async () => {
         try {
@@ -574,7 +573,7 @@ const scrapper = async (req, res) => {
         }
       });
 
-      return;
+      return { success: true, action: "EXISTING_DATA", data: existing };
     }
 
     // 2) Not found by canonicalUrl => scrape + AI
@@ -615,7 +614,7 @@ const scrapper = async (req, res) => {
         { upsert: true, new: true }
       ).lean();
 
-      return res.json({ success: true, action: "CREATED_MINIMAL_AI_FAILED", data: doc });
+      return { success: true, action: "CREATED_MINIMAL_AI_FAILED", data: doc };
     }
 
     // Rephrase title but keep signature stable (title excluded from signature)
@@ -674,17 +673,16 @@ const scrapper = async (req, res) => {
 
     const isNew =
       saved?.createdAt &&
-      Math.abs(now.getTime() - new Date(saved.createdAt).getTime()) < 5000 &&
-      saved._id?.toString() !== existing?._id?.toString();
+      Math.abs(now.getTime() - new Date(saved.createdAt).getTime()) < 5000;
 
     const action = isNew ? "CREATED_NEW" : "PATCHED_EXISTING";
 
-    return res.json({ success: true, action, data: saved });
+    return { success: true, action, data: saved };
   } catch (e) {
     // Duplicate key safety: if unique index triggered, re-fetch and return patched
     if (e?.code === 11000) {
       try {
-        const jobUrl = req.body.url;
+        const jobUrl = inputUrl;
         let full = jobUrl;
         if (jobUrl && jobUrl.startsWith("/")) {
           const site = await Site.findOne().sort({ createdAt: -1 }).lean();
@@ -692,13 +690,22 @@ const scrapper = async (req, res) => {
         }
         const { canonicalUrl } = buildCanonical(full);
         const doc = await Post.findOne({ canonicalUrl }).lean();
-        if (doc) return res.json({ success: true, action: "PATCHED_EXISTING", data: doc });
+        if (doc) {
+          return { success: true, action: "PATCHED_EXISTING", data: doc };
+        }
       } catch {}
     }
 
     console.error("Scrapper Error:", e.message);
-    return res.status(500).json({ success: false, error: e.message });
+    return { success: false, status: 500, error: e.message };
   }
 };
 
-export { scrapper };
+const scrapper = async (req, res) => {
+  const result = await scrapeJobUrl(req.body?.url);
+  if (result?.success) return res.json(result);
+  const status = result?.status || 500;
+  return res.status(status).json(result);
+};
+
+export { scrapper, scrapeJobUrl };

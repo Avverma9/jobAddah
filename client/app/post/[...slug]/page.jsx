@@ -174,6 +174,27 @@ const normalizeItem = (item) => {
   return { label: String(item), value: "" };
 };
 
+const toTitleLabel = (value) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ""))
+    .join(" ");
+
+const isValidLinkUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const findLinkByLabel = (links, pattern) => {
   if (!Array.isArray(links)) return null;
   return (
@@ -530,9 +551,56 @@ export default async function JobDetailsPage({ params }) {
     "";
 
   // Links
-  const applyLink = findLinkByLabel(detail.links, /apply|registration|online/i);
+  const linkLabelMap = {
+    applyOnline: "Apply Online",
+    officialNotification: "Official Notification",
+    officialWebsite: "Official Website",
+    syllabus: "Syllabus",
+    examPattern: "Exam Pattern",
+    admitCard: "Admit Card",
+    resultLink: "Result",
+    answerKey: "Answer Key",
+    documentVerificationNotice: "Document Verification Notice",
+    faq: "FAQ",
+  };
+
+  const importantLinksRaw =
+    detail.recruitment?.importantLinks || recruitment?.importantLinks || {};
+
+  const importantLinksList = Object.entries(linkLabelMap).map(([key, label]) => {
+    const value = importantLinksRaw[key];
+    const url =
+      typeof value === "string"
+        ? value
+        : typeof value === "object" && value !== null
+          ? value.url || value.link || value.href || ""
+          : "";
+    const activationDate =
+      typeof value === "object" && value !== null ? value.activationDate || null : null;
+    const safeUrl = isValidLinkUrl(url) ? sanitizeUrl(url) : null;
+
+    return {
+      label,
+      url: safeUrl,
+      activationDate,
+      isActive: Boolean(safeUrl),
+      isPending: !safeUrl,
+    };
+  });
+
+  if (Array.isArray(detail.links) && detail.links.length) {
+    const seen = new Set(importantLinksList.map((l) => l.url).filter(Boolean));
+    detail.links.forEach((link) => {
+      if (link?.url && !seen.has(link.url)) {
+        seen.add(link.url);
+        importantLinksList.push(link);
+      }
+    });
+  }
+
+  const applyLink = findLinkByLabel(importantLinksList, /apply|registration|online/i);
   const noticeLink = findLinkByLabel(
-    detail.links,
+    importantLinksList,
     /notification|advertisement|official|notice|download/i,
   );
 
@@ -627,14 +695,41 @@ export default async function JobDetailsPage({ params }) {
     .slice(0, 10);
 
   // Tables: Important dates (FULL — not just few)
-  const fullDates = Array.isArray(detail.dates) ? detail.dates : [];
-  const scheduleRows = fullDates
-    .map((d) => {
-      const { label, value } = normalizeItem(d);
-      if (!label && !value) return null;
-      return { label: label || "Date", value: cleanDateValue(value) };
-    })
-    .filter(Boolean);
+  const dateLabelMap = [
+    ["notificationDate", "Notification Date"],
+    ["postDate", "Post Date"],
+    ["applicationStartDate", "Application Start Date"],
+    ["applicationLastDate", "Application Last Date"],
+    ["feePaymentLastDate", "Fee Payment Last Date"],
+    ["correctionDate", "Correction Date"],
+    ["preExamDate", "Pre Exam Date"],
+    ["mainsExamDate", "Mains Exam Date"],
+    ["examDate", "Exam Date"],
+    ["admitCardDate", "Admit Card Date"],
+    ["resultDate", "Result Date"],
+    ["answerKeyReleaseDate", "Answer Key Release Date"],
+    ["finalAnswerKeyDate", "Final Answer Key Date"],
+    ["documentVerificationDate", "Document Verification Date"],
+    ["counsellingDate", "Counselling Date"],
+    ["meritListDate", "Merit List Date"],
+  ];
+
+  const importantDatesRaw =
+    detail.recruitment?.importantDates || recruitment?.importantDates || {};
+
+  const scheduleRows = dateLabelMap.map(([key, label]) => ({
+    label,
+    value: cleanDateValue(importantDatesRaw[key]),
+  }));
+
+  if (importantDatesRaw.other && typeof importantDatesRaw.other === "object") {
+    Object.entries(importantDatesRaw.other).forEach(([key, value]) => {
+      scheduleRows.push({
+        label: toTitleLabel(key),
+        value: cleanDateValue(value),
+      });
+    });
+  }
 
   // Fees rows full
   const feesRows = Array.isArray(detail.fees)
@@ -1073,8 +1168,8 @@ export default async function JobDetailsPage({ params }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {detail.links?.length ? (
-                  detail.links.map((link, i) => {
+                {importantLinksList.length ? (
+                  importantLinksList.map((link, i) => {
                     const { label } = normalizeItem(link);
                     const displayLabel = label || "Official Link";
                     const isApply = /apply|online|registration/i.test(displayLabel);
