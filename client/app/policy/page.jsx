@@ -1,16 +1,17 @@
 import React from 'react';
 import { Shield, Lock, Eye, Server, Cookie, Globe, Mail } from 'lucide-react';
-import SEO from "@/lib/SEO";
+
+export const metadata = {
+  title: "Privacy Policy | JobsAddah - Data Protection & Cookie Policy",
+  description:
+    "Read the Privacy Policy of JobsAddah. Understand how we handle your data, use cookies for AdSense, and protect your privacy while you search for Sarkari Naukri.",
+};
 
 const PrivacyPolicy = () => {
   const currentYear = new Date().getFullYear();
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-gray-700">
-      <SEO 
-        title="Privacy Policy | JobsAddah - Data Protection & Cookie Policy"
-        description="Read the Privacy Policy of JobsAddah. Understand how we handle your data, use cookies for AdSense, and protect your privacy while you search for Sarkari Naukri."
-      />
       <div className="max-w-5xl mx-auto">
         
         {/* --- Header Section --- */}

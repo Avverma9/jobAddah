@@ -1,13 +1,14 @@
 import React from 'react';
-import SEO from "@/lib/SEO";
+
+export const metadata = {
+  title: "About JobsAddah | India's Trusted Employment News & Sarkari Result Portal",
+  description:
+    "JobsAddah is a premier job portal for Sarkari Naukri, Competitive Exams, Admit Cards, and Private Vacancies. Learn about our verification process and mission to help Indian job seekers.",
+};
 
 const AboutPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-700">
-      <SEO 
-        title="About JobsAddah | India's Trusted Employment News & Sarkari Result Portal"
-        description="JobsAddah is a premier job portal for Sarkari Naukri, Competitive Exams, Admit Cards, and Private Vacancies. Learn about our verification process and mission to help Indian job seekers."
-      />
       {/* --- Header Section --- */}
       <div className="bg-blue-700 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">

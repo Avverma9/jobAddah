@@ -717,16 +717,25 @@ export default async function JobDetailsPage({ params }) {
   const importantDatesRaw =
     detail.recruitment?.importantDates || recruitment?.importantDates || {};
 
-  const scheduleRows = dateLabelMap.map(([key, label]) => ({
-    label,
-    value: cleanDateValue(importantDatesRaw[key]),
-  }));
+  const isTbaValue = (value) => {
+    const v = String(value || "").trim().toLowerCase();
+    return v === "tba" || v.includes("to be announced");
+  };
+
+  const scheduleRows = dateLabelMap
+    .map(([key, label]) => ({
+      label,
+      value: cleanDateValue(importantDatesRaw[key]),
+    }))
+    .filter((row) => !isTbaValue(row.value));
 
   if (importantDatesRaw.other && typeof importantDatesRaw.other === "object") {
     Object.entries(importantDatesRaw.other).forEach(([key, value]) => {
+      const cleanedValue = cleanDateValue(value);
+      if (isTbaValue(cleanedValue)) return;
       scheduleRows.push({
         label: toTitleLabel(key),
-        value: cleanDateValue(value),
+        value: cleanedValue,
       });
     });
   }

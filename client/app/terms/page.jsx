@@ -1,16 +1,17 @@
 import React from 'react';
 import { Scale, FileText, AlertTriangle, ExternalLink, ShieldCheck, Gavel, MapPin } from 'lucide-react';
-import SEO from "@/lib/SEO";
+
+export const metadata = {
+  title: "Terms and Conditions | JobsAddah - User Agreement & Liability Disclaimer",
+  description:
+    "Read the Terms and Conditions of JobsAddah. Understand our non-government status, liability limitations regarding Sarkari Naukri updates, and user responsibilities.",
+};
 
 const TermsPage = () => {
   const currentYear = new Date().getFullYear();
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-gray-700">
-      <SEO 
-        title="Terms and Conditions | JobsAddah - User Agreement & Liability Disclaimer"
-        description="Read the Terms and Conditions of JobsAddah. Understand our non-government status, liability limitations regarding Sarkari Naukri updates, and user responsibilities."
-      />
       <div className="max-w-5xl mx-auto">
         
         {/* --- Header Section --- */}
