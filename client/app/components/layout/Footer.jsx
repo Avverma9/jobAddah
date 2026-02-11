@@ -63,6 +63,7 @@ export default function Footer() {
               <FooterLink href="/tools/image">Passport Photo Tools</FooterLink>
               <FooterLink href="/tools/resume">AI Resume Builder</FooterLink>
               <FooterLink href="/tools/typing">Typing Speed Test</FooterLink>
+              <FooterLink href="/mock-test">Mock Test</FooterLink>
               <FooterLink href="/guides/interview-tips">Interview Tips</FooterLink>
               <FooterLink href="/guides/salary-info">Salary Info</FooterLink>
               <FooterLink href="/about">About JobsAddah</FooterLink>

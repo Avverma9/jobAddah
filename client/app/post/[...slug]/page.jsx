@@ -1387,10 +1387,24 @@ export default async function JobDetailsPage({ params }) {
                 ) : (
                   <div className="p-4 text-center text-xs text-slate-400">No recent updates</div>
                 )}
+
               </div>
 
               <Link href="/latest-jobs" className="block p-3 text-center text-[12px] font-extrabold text-indigo-600 bg-slate-50 border-t border-slate-100 hover:underline">
                 View All Jobs
+              </Link>
+            </div>
+
+            {/* Mock Test Card */}
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-5 text-white shadow-md relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 bg-white/10 h-24 w-24 rounded-full group-hover:scale-110 transition-transform"></div>
+              <Timer className="mb-3 relative z-10" size={28} />
+              <h3 className="font-extrabold text-lg mb-1 relative z-10">Mock Test</h3>
+              <p className="text-xs text-emerald-100 mb-4 relative z-10 leading-relaxed opacity-90">
+                Timed practice sets for SSC, Banking, and Railway exams.
+              </p>
+              <Link href="/mock-test" className="inline-flex items-center gap-2 bg-white text-emerald-700 text-xs font-extrabold px-4 py-2.5 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm relative z-10">
+                Start Now <ChevronRight size={14} />
               </Link>
             </div>
 

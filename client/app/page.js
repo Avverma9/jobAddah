@@ -26,7 +26,7 @@ const Home = async () => {
         <TrendingJobs limit={8} initialItems={trending} />
         <section className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm mt-6">
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-3">
-            JobsAddah: Sarkari Result 2026 and Verified Job Updates
+            JobsAddah: Your Ultimate Job Alert & Exam Tracker Portal
           </h1>
           <p className="text-sm md:text-base text-slate-600 mb-4">
             JobsAddah helps candidates track government job notifications,

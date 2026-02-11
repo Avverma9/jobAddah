@@ -61,6 +61,13 @@ const TOOLS_CONFIG = [
     desc: "Test your typing speed",
     color: "indigo",
   },
+  {
+    name: "Mock Test",
+    path: "/mock-test",
+    icon: "LayoutGrid",
+    desc: "Timed practice sets",
+    color: "green",
+  },
  
 ];
 
@@ -80,6 +87,7 @@ const ICON_MAP = {
   Image: ImageIcon,
   Briefcase,
   Keyboard,
+  LayoutGrid,
 };
 
 const COLOR_MAP = {

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connectDB";
 import GovPostList from "@/lib/models/joblist";
 import { getCleanPostUrl } from "@/lib/job-url";
+import { blogPosts } from "@/lib/blog-posts";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
 const STATIC_ROUTES = [
@@ -15,6 +19,7 @@ const STATIC_ROUTES = [
   { path: "/tools/image", priority: "0.4", changefreq: "monthly" },
   { path: "/tools/resume", priority: "0.4", changefreq: "monthly" },
   { path: "/tools/typing", priority: "0.4", changefreq: "monthly" },
+  { path: "/mock-test", priority: "0.5", changefreq: "weekly" },
   { path: "/guides/why-jobsaddah", priority: "0.3", changefreq: "monthly" },
   { path: "/guides", priority: "0.4", changefreq: "weekly" },
   { path: "/guides/interview-tips", priority: "0.3", changefreq: "monthly" },
@@ -22,6 +27,11 @@ const STATIC_ROUTES = [
   { path: "/guides/notification-reading", priority: "0.3", changefreq: "monthly" },
   { path: "/blog", priority: "0.4", changefreq: "weekly" },
 ];
+const BLOG_ROUTES = blogPosts.map((post) => ({
+  path: `/blog/${post.slug}`,
+  priority: "0.4",
+  changefreq: "weekly",
+}));
 const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
 const MIN_INDEXABLE_JOBS = 3;
 
@@ -116,11 +126,25 @@ export async function GET() {
         priority: page.priority,
         lastmod: now,
       })),
+      ...BLOG_ROUTES.map((page) => ({
+        loc: `${SITE_URL}${page.path}`,
+        changefreq: page.changefreq,
+        priority: page.priority,
+        lastmod: now,
+      })),
       ...Array.from(urlMap.values()),
     ];
 
+    const cleanEntries = entries.filter(
+      (entry) =>
+        entry &&
+        typeof entry.loc === "string" &&
+        entry.loc.startsWith(SITE_URL) &&
+        !entry.loc.includes("undefined"),
+    );
+
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${cleanEntries
       .map(buildUrlEntry)
       .join("")}
 </urlset>`;
