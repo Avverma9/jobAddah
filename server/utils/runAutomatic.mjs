@@ -105,6 +105,26 @@ const canonicalizeLink = (url) => {
   }
 };
 
+const normalizeTitleKey = (title) => {
+  if (!title) return "";
+  return cleanText(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const buildJobKey = (job) => {
+  if (!job) return "";
+  const linkKey =
+    job.canonicalLink ||
+    (job.link ? canonicalizeLink(job.link) : null) ||
+    job.link ||
+    "";
+  const titleKey = normalizeTitleKey(job.title);
+  return `${linkKey}::${titleKey}`;
+};
+
 // Ignore obvious junk
 const IGNORE_TITLE_RE =
   /(category|categories|available now|section|home|contact|privacy|disclaimer|about|sitemap)/i;
@@ -339,22 +359,20 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
   }
 
   const uniqueJobs = [
-    ...new Map(all.map((i) => [i.canonicalLink || i.link, i])).values(),
+    ...new Map(all.map((i) => [buildJobKey(i), i])).values(),
   ];
 
   const existing = await govPostList.findOne({ url: categoryUrl }).lean();
   const previousJobs = existing && Array.isArray(existing.jobs) ? existing.jobs : [];
 
-  const prevMap = new Map(
-    previousJobs.map((j) => [j.canonicalLink || canonicalizeLink(j.link), j]),
-  );
+  const prevMap = new Map(previousJobs.map((j) => [buildJobKey(j), j]));
 
   const now = new Date();
-  const newJobs = uniqueJobs.filter((u) => !prevMap.has(u.canonicalLink || u.link));
+  const newJobs = uniqueJobs.filter((u) => !prevMap.has(buildJobKey(u)));
 
   // merge without wiping on failure
   let mergedJobs = uniqueJobs.map((job) => {
-    const key = job.canonicalLink || job.link;
+    const key = buildJobKey(job);
     const prev = prevMap.get(key);
     if (!prev) return { ...job, createdAt: now, updatedAt: now };
     return { ...prev, ...job, updatedAt: now };
