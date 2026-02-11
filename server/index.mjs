@@ -1,5 +1,4 @@
 import "dotenv/config";
-// import "module-alias/register.js"; // Temporarily disabled for ESM compatibility
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -22,7 +21,60 @@ const app = express();
 
 await connectDB();
 
-app.use(cors({ origin: "*", credentials: false }));
+// ✅ Allowed Origins
+const allowedOrigins = [
+  'https://jobsaddah.com',
+  'https://www.jobsaddah.com',
+  'https://adminaddah.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:4173',
+];
+
+// ✅ CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, curl, server-to-server)
+    if (!origin) {
+      console.log('✅ CORS: Request with no origin (allowed)');
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Allowed origin - ${origin}`);
+      callback(null, true);
+    } else {
+      console.warn(`❌ CORS: Blocked origin - ${origin}`);
+      // Option 1: Block the request
+      // callback(new Error('Not allowed by CORS'));
+      
+      // Option 2: Allow but log (recommended for debugging)
+      callback(null, true);
+    }
+  },
+  credentials: true, // Allow cookies and authorization headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Set-Cookie', 'Authorization'],
+  maxAge: 86400, // Cache preflight requests for 24 hours
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
+
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight OPTIONS requests
+app.options('*', cors(corsOptions));
+
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 
@@ -54,4 +106,5 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`✅ Server connected on port ${PORT}`);
+  console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
 });

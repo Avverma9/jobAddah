@@ -7,7 +7,6 @@ import { URL } from "node:url";
 import Section from "../models/govJob/govSection.mjs";
 import Site from "../models/govJob/scrapperSite.mjs";
 import govPostList from "../models/govJob/govPostListBycatUrl.mjs";
-import Post from "../models/govJob/govJob.mjs";
 
 import { sendNewPostsEmail } from "../nodemailer/notify_mailer.mjs";
 import { clearNextJsCache } from "./clear-cache.mjs";
@@ -295,61 +294,6 @@ async function discoverCategoriesFromMenu(siteUrl) {
   return [...new Map(categories.map((c) => [canonicalizeLink(c.link), c])).values()];
 }
 
-// -------------------- Fast DB exists check (bulk) --------------------
-async function filterAlreadySavedPosts(jobLinks = []) {
-  if (!jobLinks.length) return [];
-
-  const canonicals = jobLinks.map((x) => canonicalizeLink(x)).filter(Boolean);
-
-  const paths = canonicals
-    .map((x) => {
-      try {
-        const u = new URL(x);
-        const p = u.pathname.replace(/\/+$/, "") || "/";
-        return p;
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
-
-  // Pull all existing in 1 query
-  const existing = await Post.find({
-    $or: [
-      { canonicalUrl: { $in: canonicals } },
-      { path: { $in: paths } },
-      { url: { $in: paths } },
-      { sourceUrlFull: { $in: jobLinks } },
-      { sourceUrl: { $in: jobLinks } },
-    ],
-  })
-    .select({ canonicalUrl: 1, path: 1, url: 1, sourceUrlFull: 1, sourceUrl: 1 })
-    .lean();
-
-  const existsSet = new Set();
-  for (const d of existing) {
-    if (d.canonicalUrl) existsSet.add(canonicalizeLink(d.canonicalUrl));
-    if (d.path) existsSet.add(canonicalizeLink("https://x.com" + d.path)); // marker
-    if (d.url) existsSet.add(canonicalizeLink("https://x.com" + d.url)); // marker
-    if (d.sourceUrlFull) existsSet.add(canonicalizeLink(d.sourceUrlFull));
-    if (d.sourceUrl) existsSet.add(canonicalizeLink(d.sourceUrl));
-  }
-
-  return jobLinks.filter((lnk) => {
-    const c = canonicalizeLink(lnk);
-    if (!c) return false;
-
-    try {
-      const u = new URL(c);
-      const p = u.pathname.replace(/\/+$/, "") || "/";
-      const pKey = canonicalizeLink("https://x.com" + p);
-      return !existsSet.has(c) && !existsSet.has(pKey);
-    } catch {
-      return !existsSet.has(c);
-    }
-  });
-}
-
 // -------------------- Core category scrape --------------------
 async function scrapeCategoryInternal(categoryUrl, opts = {}) {
   const doDetailScrape = opts.scrapeDetails !== false;
@@ -424,21 +368,17 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
     { upsert: true, new: true },
   );
 
-  // ✅ bulk check for truly new vs Post DB
-  const candidateLinks = newJobs.map((j) => j.link);
-  const dbNewLinks = await filterAlreadySavedPosts(candidateLinks);
-
-  const dbNewJobs = newJobs.filter((j) => dbNewLinks.includes(j.link));
+  const jobsToScrape = newJobs;
 
   console.log(
-    `Category: ${categoryUrl} pages=${visited.size} extracted=${uniqueJobs.length} newList=${newJobs.length} dbNew=${dbNewJobs.length}`,
+    `Category: ${categoryUrl} pages=${visited.size} extracted=${uniqueJobs.length} newList=${newJobs.length}`,
   );
 
   // ✅ scrape details with concurrency
-  if (doDetailScrape && dbNewJobs.length) {
+  if (doDetailScrape && jobsToScrape.length) {
     const limit = pLimit(concurrency);
     await Promise.all(
-      dbNewJobs.map((job) =>
+      jobsToScrape.map((job) =>
         limit(async () => {
           try {
             const r = await scrapeJobUrl(job.link);
@@ -453,9 +393,9 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
   }
 
   // ✅ email
-  if (doEmail && dbNewJobs.length) {
+  if (doEmail && jobsToScrape.length) {
     try {
-      const emailJobs = dbNewJobs.map((j) => ({
+      const emailJobs = jobsToScrape.map((j) => ({
         ...j,
         link: j.link, // keep original
         canonicalLink: j.canonicalLink || j.link,
