@@ -415,8 +415,8 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
     try {
       const emailJobs = jobsToScrape.map((j) => ({
         ...j,
-        link: j.link, // keep original
-        canonicalLink: j.canonicalLink || j.link,
+        link: stripDomainAndReplace(j.link),
+        canonicalLink: stripDomainAndReplace(j.canonicalLink || j.link),
         sourceLink: j.link,
       }));
 
