@@ -6,8 +6,8 @@ import { BellRing, Send, X, Check } from "lucide-react";
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
 export default function FloatingSubscribe() {
-  const [open, setOpen] = useState(true);
-  const [minimized, setMinimized] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(true);
   const [hidden, setHidden] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -68,9 +68,17 @@ export default function FloatingSubscribe() {
     <div className="fixed bottom-4 right-4 z-50">
       {open && !minimized ? (
         <div className="relative">
-          <div className="absolute -top-6 right-0 flex items-center gap-2 bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg animate-bounce">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setMinimized(true);
+            }}
+            className="absolute -top-6 right-0 flex items-center gap-2 bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg hover:bg-emerald-700 transition"
+            aria-label="Minimize subscription widget"
+          >
             <BellRing className="w-4 h-4" /> Subscribe for job notifications
-          </div>
+          </button>
           <div className="w-80 max-w-[90vw] bg-white border border-slate-200 shadow-xl rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 font-bold text-slate-900">
@@ -138,10 +146,11 @@ export default function FloatingSubscribe() {
             setOpen(true);
             setMinimized(false);
           }}
-          className="w-12 h-12 rounded-full bg-emerald-600 text-white shadow-xl flex items-center justify-center hover:bg-emerald-700 transition-transform hover:scale-105"
+          className="flex items-center gap-2 rounded-full bg-emerald-600 text-white shadow-xl px-4 py-2 text-xs font-semibold hover:bg-emerald-700 transition-transform hover:scale-[1.02]"
           aria-label="Open subscription form"
         >
-          <BellRing className="w-6 h-6" />
+          <BellRing className="w-4 h-4" />
+          I have something for you
         </button>
       )}
     </div>

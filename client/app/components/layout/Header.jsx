@@ -77,7 +77,7 @@ const INFO_LINKS = [
   { label: "Terms & Conditions", href: "/terms", desc: "Legal agreements" },
   {
     label: "Privacy Policy",
-    href: "/policy",
+    href: "/privacy-policy",
     desc: "How we protect your data",
   },
 ];
