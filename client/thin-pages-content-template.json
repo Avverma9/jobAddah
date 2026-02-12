@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-02-12T07:56:24.233Z",
+  "generatedAt": "2026-02-12T09:00:15.508Z",
   "source": {
     "urls": "thin-pages-local-urls.txt",
     "report": "thin-pages-local-report.json"
   },
-  "count": 27,
+  "count": 26,
   "missingCount": 0,
   "notes": [
     "Edit only `set` fields you want to improve.",
@@ -13,6 +13,87 @@
     "Run apply in dry-run first, then use --write."
   ],
   "data": [
+    {
+      "url": "https://jobsaddah.com/post/rbi-non-csg-various-post-2026",
+      "currentDocUrl": "/rbi-non-csg-various-post-2026",
+      "score": 5,
+      "reasons": [
+        "missing_identity",
+        "missing_documents_list"
+      ],
+      "missingHints": [
+        "documents_list",
+        "identity_title"
+      ],
+      "set": {
+        "title": "RBI Non CSG 2K26",
+        "organization": "Reserve Bank of India (RBI)",
+        "summary": "The Reserve Bank of India (RBI) has announced recruitment for Non CSG Various Posts, with 21 vacancies available. Applications opened on February 6, 2026, and will close on February 26, 2026. The age requirement ranges from 21 to 40 years as of February 1, 2026, with specific age limits varying by post. Eligibility criteria are post-specific, requiring qualifications such as a Law degree for Legal Officer or Engineering degrees for Manager roles. The application fee is ₹600 for General/OBC/EWS and ₹100 for SC/ST/PwBD categories, plus GST.",
+        "officialNotification": "https://rbidocs.rbi.org.in/rdocs/Content/PDFs/NONCSG06022026D3A77897D23E46AE85686C96BC05207C.PDF",
+        "applyOnline": "https://ibpsreg.ibps.in/rbijan26/basic_details.php",
+        "officialWebsite": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
+        "selectionProcess": [
+          "Prelims Written Exam",
+          "Mains Written Exam",
+          "Language Proficiency Test",
+          "Document Verification",
+          "Medical Examination"
+        ],
+        "documents": [],
+        "dates": {
+          "applicationStartDate": "06-02-2026",
+          "applicationLastDate": "26-02-2026",
+          "examDate": "14-03-2026",
+          "admitCardDate": "Before Exam",
+          "resultDate": "Will Be Updated Here Soon"
+        }
+      }
+    },
+    {
+      "url": "https://jobsaddah.com/post/nta-cmat-answer-key-2026",
+      "currentDocUrl": "/nta-cmat-answer-key-2026",
+      "score": 6,
+      "reasons": [
+        "missing_identity"
+      ],
+      "missingHints": [
+        "rich_summary",
+        "identity_title"
+      ],
+      "set": {
+        "title": "NTA CMAT Key 2K26",
+        "organization": "National Testing Agency",
+        "summary": "",
+        "officialNotification": "https://cdnbbsr.s3waas.gov.in/s3a381c2c35c9157f6b67fd07d5a200ae1/uploads/2025/10/202510171164648496.pdf",
+        "applyOnline": "https://examinationservices.nic.in/ExamSys2026/Root/Home.aspx?enc=Ei4cajBkK1gZSfgr53ImFU3Rihn/LCw46teQC5bcj4p4xovgNlTakiqik+puV5Y3",
+        "officialWebsite": "https://cmat.nta.nic.in/",
+        "selectionProcess": [
+          "Answer Key",
+          "Exam City Details",
+          "Admit Card",
+          "Written Exam",
+          "Result"
+        ],
+        "documents": [
+          "Application Number / Form Number",
+          "Date of Birth / Password",
+          "Name",
+          "Roll number",
+          "Exam date & time",
+          "Exam centre",
+          "Instructions",
+          "Photograph",
+          "Signature"
+        ],
+        "dates": {
+          "applicationStartDate": "2025-10-17",
+          "applicationLastDate": "to submit the application form was 17 November 2025. Candidates can check their Answer Key using their Enrollment Number Registration Number or Date of Birth by logging into the portal. The direct link is provided below.",
+          "examDate": "25 January 2026",
+          "admitCardDate": "2026-01-21",
+          "resultDate": ""
+        }
+      }
+    },
     {
       "url": "https://jobsaddah.com/post/rssb-forester-2026",
       "currentDocUrl": "/rssb-forester-2026",
@@ -48,42 +129,6 @@
           "examDate": "",
           "admitCardDate": "",
           "resultDate": ""
-        }
-      }
-    },
-    {
-      "url": "https://jobsaddah.com/post/rbi-non-csg-various-post-2026",
-      "currentDocUrl": "/rbi-non-csg-various-post-2026",
-      "score": 5,
-      "reasons": [
-        "missing_identity",
-        "missing_documents_list"
-      ],
-      "missingHints": [
-        "documents_list",
-        "identity_title"
-      ],
-      "set": {
-        "title": "RBI Non CSG 2K26",
-        "organization": "Reserve Bank of India (RBI)",
-        "summary": "The Reserve Bank of India (RBI) has announced recruitment for Non CSG Various Posts, with 21 vacancies available. Applications opened on February 6, 2026, and will close on February 26, 2026. The age requirement ranges from 21 to 40 years as of February 1, 2026, with specific age limits varying by post. Eligibility criteria are post-specific, requiring qualifications such as a Law degree for Legal Officer or Engineering degrees for Manager roles. The application fee is ₹600 for General/OBC/EWS and ₹100 for SC/ST/PwBD categories, plus GST.",
-        "officialNotification": "https://rbidocs.rbi.org.in/rdocs/Content/PDFs/NONCSG06022026D3A77897D23E46AE85686C96BC05207C.PDF",
-        "applyOnline": "https://ibpsreg.ibps.in/rbijan26/basic_details.php",
-        "officialWebsite": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
-        "selectionProcess": [
-          "Prelims Written Exam",
-          "Mains Written Exam",
-          "Language Proficiency Test",
-          "Document Verification",
-          "Medical Examination"
-        ],
-        "documents": [],
-        "dates": {
-          "applicationStartDate": "06-02-2026",
-          "applicationLastDate": "26-02-2026",
-          "examDate": "14-03-2026",
-          "admitCardDate": "Before Exam",
-          "resultDate": "Will Be Updated Here Soon"
         }
       }
     },
@@ -407,51 +452,6 @@
       }
     },
     {
-      "url": "https://jobsaddah.com/post/nta-cmat-answer-key-2026",
-      "currentDocUrl": "/nta-cmat-answer-key-2026",
-      "score": 6,
-      "reasons": [
-        "missing_identity"
-      ],
-      "missingHints": [
-        "rich_summary",
-        "identity_title"
-      ],
-      "set": {
-        "title": "NTA CMAT Key 2K26",
-        "organization": "National Testing Agency",
-        "summary": "",
-        "officialNotification": "https://cdnbbsr.s3waas.gov.in/s3a381c2c35c9157f6b67fd07d5a200ae1/uploads/2025/10/202510171164648496.pdf",
-        "applyOnline": "https://examinationservices.nic.in/ExamSys2026/Root/Home.aspx?enc=Ei4cajBkK1gZSfgr53ImFU3Rihn/LCw46teQC5bcj4p4xovgNlTakiqik+puV5Y3",
-        "officialWebsite": "https://cmat.nta.nic.in/",
-        "selectionProcess": [
-          "Answer Key",
-          "Exam City Details",
-          "Admit Card",
-          "Written Exam",
-          "Result"
-        ],
-        "documents": [
-          "Application Number / Form Number",
-          "Date of Birth / Password",
-          "Name",
-          "Roll number",
-          "Exam date & time",
-          "Exam centre",
-          "Instructions",
-          "Photograph",
-          "Signature"
-        ],
-        "dates": {
-          "applicationStartDate": "2025-10-17",
-          "applicationLastDate": "to submit the application form was 17 November 2025. Candidates can check their Answer Key using their Enrollment Number Registration Number or Date of Birth by logging into the portal. The direct link is provided below.",
-          "examDate": "25 January 2026",
-          "admitCardDate": "2026-01-21",
-          "resultDate": ""
-        }
-      }
-    },
-    {
       "url": "https://jobsaddah.com/post/rssb-driver-2026",
       "currentDocUrl": "/rssb-driver-2026",
       "score": 6,
@@ -688,41 +688,6 @@
       }
     },
     {
-      "url": "https://jobsaddah.com/post/bpsc-71th-mains-online-form-2025-last-date",
-      "currentDocUrl": "/bpsc-71th-mains-online-form-2025-last-date/",
-      "score": 4,
-      "reasons": [
-        "missing_trusted_source_links",
-        "missing_rich_summary",
-        "missing_documents_list"
-      ],
-      "missingHints": [
-        "trusted_source_links",
-        "rich_summary",
-        "documents_list"
-      ],
-      "set": {
-        "title": "Bihar Public Service Commission (BPSC) 71st Mains Examination Application Window 2025",
-        "organization": "Bihar Public Service Commission",
-        "summary": "",
-        "officialNotification": "",
-        "applyOnline": "",
-        "officialWebsite": "",
-        "selectionProcess": [
-          "Pre Exam",
-          "Mains Exam"
-        ],
-        "documents": [],
-        "dates": {
-          "applicationStartDate": "03 December 2025",
-          "applicationLastDate": "24 December 2025",
-          "examDate": "",
-          "admitCardDate": "",
-          "resultDate": ""
-        }
-      }
-    },
-    {
       "url": "https://jobsaddah.com/post/jharkhand-eligibility-test-jet-online-form-2025-extend",
       "currentDocUrl": "/jharkhand-eligibility-test-jet-online-form-2025-extend/",
       "score": 2,
@@ -800,40 +765,6 @@
       }
     },
     {
-      "url": "https://jobsaddah.com/post/clat-answer-key-2026",
-      "currentDocUrl": "/clat-answer-key-2026/",
-      "score": 3,
-      "reasons": [
-        "missing_rich_summary",
-        "missing_selection_details",
-        "missing_documents_list",
-        "quality_score_below_threshold"
-      ],
-      "missingHints": [
-        "trusted_source_links",
-        "rich_summary",
-        "documents_list",
-        "selection_process"
-      ],
-      "set": {
-        "title": "CLAT Answer Key 2026",
-        "organization": "Consortium of National Law Universities",
-        "summary": "",
-        "officialNotification": "",
-        "applyOnline": "",
-        "officialWebsite": "",
-        "selectionProcess": [],
-        "documents": [],
-        "dates": {
-          "applicationStartDate": "01 August 2025",
-          "applicationLastDate": "31 October 2025",
-          "examDate": "07 December 2025",
-          "admitCardDate": "22 November 2025",
-          "resultDate": ""
-        }
-      }
-    },
-    {
       "url": "https://jobsaddah.com/post/bihar-bseb-deled-online-counselling-2025-27",
       "currentDocUrl": "/bihar-bseb-deled-online-counselling-2025-27/",
       "score": 4,
@@ -865,6 +796,40 @@
           "applicationLastDate": "",
           "examDate": "",
           "admitCardDate": "",
+          "resultDate": ""
+        }
+      }
+    },
+    {
+      "url": "https://jobsaddah.com/post/clat-answer-key-2026",
+      "currentDocUrl": "/clat-answer-key-2026/",
+      "score": 3,
+      "reasons": [
+        "missing_rich_summary",
+        "missing_selection_details",
+        "missing_documents_list",
+        "quality_score_below_threshold"
+      ],
+      "missingHints": [
+        "trusted_source_links",
+        "rich_summary",
+        "documents_list",
+        "selection_process"
+      ],
+      "set": {
+        "title": "CLAT Answer Key 2026",
+        "organization": "Consortium of National Law Universities",
+        "summary": "",
+        "officialNotification": "",
+        "applyOnline": "",
+        "officialWebsite": "",
+        "selectionProcess": [],
+        "documents": [],
+        "dates": {
+          "applicationStartDate": "01 August 2025",
+          "applicationLastDate": "31 October 2025",
+          "examDate": "07 December 2025",
+          "admitCardDate": "22 November 2025",
           "resultDate": ""
         }
       }

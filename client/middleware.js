@@ -1,5 +1,27 @@
 import { NextResponse } from "next/server";
 
+const LEGACY_STATIC_REDIRECTS = {
+  "/post/about-us": "/about",
+  "/post/privacy-policy": "/privacy-policy",
+};
+
+const LEGACY_VIEW_ALL_REDIRECTS = {
+  "/post/admit-card": { name: "Admit Card", category: "admit-card" },
+};
+
+const normalizePathname = (value) => {
+  const pathname = String(value || "/");
+  if (pathname === "/") return "/";
+  return pathname.replace(/\/+$/, "") || "/";
+};
+
+const buildViewAllRedirectUrl = (origin, target) => {
+  const url = new URL("/view-all", origin);
+  if (target?.name) url.searchParams.set("name", target.name);
+  if (target?.category) url.searchParams.set("category", target.category);
+  return url;
+};
+
 const toCanonicalPostPath = (value) => {
   if (!value) return null;
   try {
@@ -16,23 +38,22 @@ const toCanonicalPostPath = (value) => {
 
 export async function middleware(request) {
   const { pathname, searchParams, origin } = request.nextUrl;
-  if (pathname === "/view-all") {
-    const linkParam = searchParams.get("link");
-    if (linkParam) {
-      const cleaned = request.nextUrl.clone();
-      cleaned.searchParams.delete("link");
-      const res = NextResponse.redirect(cleaned, 302);
-      res.cookies.set("view_all_link", linkParam, {
-        path: "/",
-        maxAge: 300,
-      });
-      return res;
-    }
-    return NextResponse.next();
+  const normalizedPathname = normalizePathname(pathname);
+
+  const legacyStaticTarget = LEGACY_STATIC_REDIRECTS[normalizedPathname];
+  if (legacyStaticTarget) {
+    return NextResponse.redirect(new URL(legacyStaticTarget, origin), 301);
   }
 
+  const legacyViewAllTarget = LEGACY_VIEW_ALL_REDIRECTS[normalizedPathname];
+  if (legacyViewAllTarget) {
+    return NextResponse.redirect(
+      buildViewAllRedirectUrl(origin, legacyViewAllTarget),
+      301,
+    );
+  }
 
-  if (pathname !== "/post") return NextResponse.next();
+  if (normalizedPathname !== "/post") return NextResponse.next();
 
   const urlParam = searchParams.get("url");
   if (urlParam) {
@@ -74,5 +95,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/post", "/view-all"],
+  matcher: ["/post", "/post/:path*"],
 };

@@ -26,6 +26,7 @@ const STATIC_ROUTES = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/about", priority: "0.7", changefreq: "weekly" },
   { path: "/contact", priority: "0.6", changefreq: "weekly" },
+  { path: "/editorial-policy", priority: "0.5", changefreq: "monthly" },
   { path: "/privacy-policy", priority: "0.4", changefreq: "monthly" },
   { path: "/terms", priority: "0.4", changefreq: "monthly" },
   { path: "/view-all", priority: "0.6", changefreq: "weekly" },
@@ -46,6 +47,11 @@ const BLOG_ROUTES = blogPosts.map((post) => ({
   priority: "0.4",
   changefreq: "weekly",
 }));
+const BLOCKED_POST_PATHS = new Set([
+  "/post/about-us",
+  "/post/privacy-policy",
+  "/post/admit-card",
+]);
 const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
 const GENERIC_TITLE_PATTERN =
   /^(sarkari result|latest jobs?|job alert|jobs?|results?|notification)$/i;
@@ -97,6 +103,7 @@ const buildIndexablePostEntry = (doc) => {
 
   const candidatePath = normalizePath(doc.url || doc.link || doc.sourceUrl || detail.sourceUrl);
   if (!candidatePath) return null;
+  if (BLOCKED_POST_PATHS.has(candidatePath.toLowerCase())) return null;
 
   return {
     loc: `${SITE_URL}${candidatePath}`,

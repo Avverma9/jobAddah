@@ -176,12 +176,6 @@ export default function InterviewTips() {
               Blog posts →
             </Link>
             <Link
-              href="/vlogs"
-              className="text-sm underline text-slate-700 hover:text-slate-900"
-            >
-              Vlogs →
-            </Link>
-            <Link
               href="/guides"
               className="text-sm underline text-slate-700 hover:text-slate-900"
             >

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { cache } from "react";
 import { connectDB } from "@/lib/db/connectDB";
@@ -75,6 +75,34 @@ const sanitizeLinks = (links) => {
 const sanitizeUrl = (url) => {
   if (!url || typeof url !== "string") return "";
   return isCompetitorUrl(url) ? "https://jobsaddah.com" : url;
+};
+
+const LEGACY_VIEW_ALL_SLUG_MAP = {
+  "admit-card": { name: "Admit Card", category: "admit-card" },
+};
+
+const LEGACY_STATIC_SLUG_REDIRECTS = {
+  "about-us": "/about",
+  "privacy-policy": "/privacy-policy",
+};
+
+const normalizeSlugPath = (slug) =>
+  (Array.isArray(slug) ? slug.join("/") : String(slug || ""))
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
+
+const getLegacyStaticTargetFromSlug = (slug) =>
+  LEGACY_STATIC_SLUG_REDIRECTS[normalizeSlugPath(slug)] || null;
+
+const getLegacyViewAllTargetFromSlug = (slug) =>
+  LEGACY_VIEW_ALL_SLUG_MAP[normalizeSlugPath(slug)] || null;
+
+const buildViewAllCategoryHref = (target) => {
+  const params = new URLSearchParams();
+  if (target?.name) params.set("name", target.name);
+  if (target?.category) params.set("category", target.category);
+  const query = params.toString();
+  return query ? `/view-all?${query}` : "/view-all";
 };
 
 /* =========================
@@ -459,6 +487,26 @@ const renderListValue = (items, fallback = "Not provided.") =>
 ========================= */
 export async function generateMetadata({ params }) {
   const resolvedParams = await params;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
+  const legacyStaticTarget = getLegacyStaticTargetFromSlug(resolvedParams.slug);
+  if (legacyStaticTarget) {
+    return {
+      alternates: { canonical: `${siteUrl}${legacyStaticTarget}` },
+      robots: "noindex,follow",
+    };
+  }
+
+  const legacyTarget = getLegacyViewAllTargetFromSlug(resolvedParams.slug);
+  if (legacyTarget) {
+    const canonicalPath = buildViewAllCategoryHref(legacyTarget);
+    return {
+      title: `View All ${legacyTarget.name} - Latest Govt Jobs 2026 | JobsAddah`,
+      description: `Browse all latest ${legacyTarget.name} notifications. Find your dream government job with JobsAddah.`,
+      alternates: { canonical: `${siteUrl}${canonicalPath}` },
+      robots: "noindex,follow",
+    };
+  }
+
   const rawData = await getJobDetails(resolvedParams.slug);
 
   if (!rawData) return { title: "Job Details - JobsAddah" };
@@ -491,7 +539,6 @@ export async function generateMetadata({ params }) {
     ? resolvedParams.slug.join("/")
     : resolvedParams.slug;
 
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/post/${slugPath}`;
   const indexable = isIndexableRecruitmentPage(qualityDetail);
 
@@ -513,6 +560,15 @@ export default async function JobDetailsPage({ params }) {
   const resolvedParams = await params;
   const slug = resolvedParams.slug;
   if (!slug) notFound();
+  const legacyStaticTarget = getLegacyStaticTargetFromSlug(slug);
+  if (legacyStaticTarget) {
+    redirect(legacyStaticTarget);
+  }
+
+  const legacyTarget = getLegacyViewAllTargetFromSlug(slug);
+  if (legacyTarget) {
+    redirect(buildViewAllCategoryHref(legacyTarget));
+  }
 
   const [rawData, relatedPosts] = await Promise.all([
     getJobDetails(slug),

@@ -1,11 +1,11 @@
 {
   "success": true,
-  "generatedAt": "2026-02-12T07:56:07.368Z",
+  "generatedAt": "2026-02-12T08:58:09.991Z",
   "source": "db_scan",
-  "totalScanned": 732,
-  "uniquePostUrls": 702,
-  "thinCount": 27,
-  "indexableCount": 675,
+  "totalScanned": 733,
+  "uniquePostUrls": 704,
+  "thinCount": 26,
+  "indexableCount": 678,
   "filters": {
     "limit": 5000,
     "includeSignals": false,
@@ -13,14 +13,43 @@
   },
   "reasonCounts": {
     "missing_identity": 13,
-    "missing_documents_list": 18,
-    "missing_rich_summary": 18,
+    "missing_documents_list": 17,
+    "missing_rich_summary": 17,
     "missing_selection_details": 13,
     "quality_score_below_threshold": 16,
     "missing_actionable_info": 3,
-    "missing_trusted_source_links": 5
+    "missing_trusted_source_links": 4
   },
   "data": [
+    {
+      "path": "/post/rbi-non-csg-various-post-2026",
+      "url": "https://jobsaddah.com/post/rbi-non-csg-various-post-2026",
+      "title": "RBI Non CSG 2K26",
+      "organization": "Reserve Bank of India (RBI)",
+      "score": 5,
+      "robots": "noindex,follow",
+      "thin": true,
+      "reasons": [
+        "missing_identity",
+        "missing_documents_list"
+      ],
+      "updatedAt": "2026-02-12T08:31:34.388Z",
+      "createdAt": "2026-02-12T06:52:56.990Z"
+    },
+    {
+      "path": "/post/nta-cmat-answer-key-2026",
+      "url": "https://jobsaddah.com/post/nta-cmat-answer-key-2026",
+      "title": "NTA CMAT Key 2K26",
+      "organization": "National Testing Agency",
+      "score": 6,
+      "robots": "noindex,follow",
+      "thin": true,
+      "reasons": [
+        "missing_identity"
+      ],
+      "updatedAt": "2026-02-12T08:21:02.676Z",
+      "createdAt": "2026-02-01T18:51:06.915Z"
+    },
     {
       "path": "/post/rssb-forester-2026",
       "url": "https://jobsaddah.com/post/rssb-forester-2026",
@@ -34,21 +63,6 @@
       ],
       "updatedAt": "2026-02-12T07:43:57.454Z",
       "createdAt": "2026-01-21T04:58:33.117Z"
-    },
-    {
-      "path": "/post/rbi-non-csg-various-post-2026",
-      "url": "https://jobsaddah.com/post/rbi-non-csg-various-post-2026",
-      "title": "RBI Non CSG 2K26",
-      "organization": "Reserve Bank of India (RBI)",
-      "score": 5,
-      "robots": "noindex,follow",
-      "thin": true,
-      "reasons": [
-        "missing_identity",
-        "missing_documents_list"
-      ],
-      "updatedAt": "2026-02-12T07:04:21.954Z",
-      "createdAt": "2026-02-12T06:52:56.990Z"
     },
     {
       "path": "/post/pnb-apprentice-2026",
@@ -190,20 +204,6 @@
       "createdAt": "2025-12-23T05:18:22.276Z"
     },
     {
-      "path": "/post/nta-cmat-answer-key-2026",
-      "url": "https://jobsaddah.com/post/nta-cmat-answer-key-2026",
-      "title": "NTA CMAT Key 2K26",
-      "organization": "National Testing Agency",
-      "score": 6,
-      "robots": "noindex,follow",
-      "thin": true,
-      "reasons": [
-        "missing_identity"
-      ],
-      "updatedAt": "2026-02-12T07:03:23.813Z",
-      "createdAt": "2026-02-01T18:51:06.915Z"
-    },
-    {
       "path": "/post/rssb-driver-2026",
       "url": "https://jobsaddah.com/post/rssb-driver-2026",
       "title": "RSSB Driver 2K25",
@@ -320,22 +320,6 @@
       "createdAt": "2025-12-25T17:27:39.874Z"
     },
     {
-      "path": "/post/bpsc-71th-mains-online-form-2025-last-date",
-      "url": "https://jobsaddah.com/post/bpsc-71th-mains-online-form-2025-last-date",
-      "title": "Bihar Public Service Commission (BPSC) 71st Mains Examination Application Window 2025",
-      "organization": "Bihar Public Service Commission",
-      "score": 4,
-      "robots": "noindex,follow",
-      "thin": true,
-      "reasons": [
-        "missing_trusted_source_links",
-        "missing_rich_summary",
-        "missing_documents_list"
-      ],
-      "updatedAt": "2026-01-31T13:45:54.827Z",
-      "createdAt": "2025-12-24T11:53:11.201Z"
-    },
-    {
       "path": "/post/jharkhand-eligibility-test-jet-online-form-2025-extend",
       "url": "https://jobsaddah.com/post/jharkhand-eligibility-test-jet-online-form-2025-extend",
       "title": "Jharkhand Eligibility Test JET Online Form 2025 | Apply Now",
@@ -372,6 +356,22 @@
       "createdAt": "2025-12-09T09:51:55.381Z"
     },
     {
+      "path": "/post/bihar-bseb-deled-online-counselling-2025-27",
+      "url": "https://jobsaddah.com/post/bihar-bseb-deled-online-counselling-2025-27",
+      "title": "Bihar BSEB DELED Online Counselling 2025-27 -Link Active",
+      "organization": null,
+      "score": 4,
+      "robots": "noindex,follow",
+      "thin": true,
+      "reasons": [
+        "missing_identity",
+        "missing_rich_summary",
+        "missing_documents_list"
+      ],
+      "updatedAt": "2026-01-31T13:45:54.827Z",
+      "createdAt": "2025-12-08T17:26:14.104Z"
+    },
+    {
       "path": "/post/clat-answer-key-2026",
       "url": "https://jobsaddah.com/post/clat-answer-key-2026",
       "title": "CLAT Answer Key 2026",
@@ -387,22 +387,6 @@
       ],
       "updatedAt": "2026-01-31T13:45:54.827Z",
       "createdAt": "2025-12-10T14:57:34.769Z"
-    },
-    {
-      "path": "/post/bihar-bseb-deled-online-counselling-2025-27",
-      "url": "https://jobsaddah.com/post/bihar-bseb-deled-online-counselling-2025-27",
-      "title": "Bihar BSEB DELED Online Counselling 2025-27 -Link Active",
-      "organization": null,
-      "score": 4,
-      "robots": "noindex,follow",
-      "thin": true,
-      "reasons": [
-        "missing_identity",
-        "missing_rich_summary",
-        "missing_documents_list"
-      ],
-      "updatedAt": "2026-01-31T13:45:54.827Z",
-      "createdAt": "2025-12-08T17:26:14.104Z"
     },
     {
       "path": "/post/about-us",

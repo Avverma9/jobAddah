@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 import { Search, ExternalLink, Briefcase } from "lucide-react";
@@ -90,11 +91,6 @@ export default function SearchClient({
     router.push(`/search?q=${encodeURIComponent(next)}`);
   };
 
-  const handleOpen = (job) => {
-    const url = getCleanPostUrl(job.url || job.link || "");
-    if (url) router.push(url);
-  };
-
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-slate-900">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -130,7 +126,7 @@ export default function SearchClient({
           </form>
 
           <div className="mt-6 text-xs text-slate-500">
-            Tip: Try keywords like "admit card", "result", "syllabus", or the
+            Tip: Try keywords like &quot;admit card&quot;, &quot;result&quot;, &quot;syllabus&quot;, or the
             board name.
           </div>
         </div>
@@ -138,7 +134,7 @@ export default function SearchClient({
         <div className="mt-8">
           {isSearching && (
             <div className="bg-white rounded-xl border border-slate-200 p-6 text-sm text-slate-500">
-              Searching for "{trimmedQuery}"...
+              Searching for &quot;{trimmedQuery}&quot;...
             </div>
           )}
 
@@ -156,27 +152,49 @@ export default function SearchClient({
               <ul className="divide-y divide-slate-100">
                 {results.map((job, index) => (
                   <li key={`${job._id || "job"}-${index}`} className="group">
-                    <button
-                      onClick={() => handleOpen(job)}
-                      className="w-full text-left px-5 py-4 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="mt-1 w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                          <Briefcase className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-[15px] font-semibold text-slate-800 group-hover:text-blue-700 leading-snug">
-                            {job.title || "Untitled Post"}
-                          </h3>
-                          {job.organization && (
-                            <p className="text-[12px] text-slate-500 mt-1">
-                              {job.organization}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
-                    </button>
+                    {(() => {
+                      const href = getCleanPostUrl(job.url || job.link || "");
+                      if (!href || href === "#") {
+                        return (
+                          <div className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 opacity-70">
+                            <div className="flex items-start gap-4">
+                              <div className="mt-1 w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                <Briefcase className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h3 className="text-[15px] font-semibold text-slate-800 leading-snug">
+                                  {job.title || "Untitled Post"}
+                                </h3>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          href={href}
+                          className="w-full text-left px-5 py-4 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-4"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="mt-1 w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                              <Briefcase className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-[15px] font-semibold text-slate-800 group-hover:text-blue-700 leading-snug">
+                                {job.title || "Untitled Post"}
+                              </h3>
+                              {job.organization && (
+                                <p className="text-[12px] text-slate-500 mt-1">
+                                  {job.organization}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
+                        </Link>
+                      );
+                    })()}
                   </li>
                 ))}
               </ul>
@@ -195,7 +213,7 @@ export default function SearchClient({
           </p>
           <p>
             Looking for a complete list? Visit the main Sarkari Result sections
-            or browse the "View All" pages for each category.
+            or browse the &quot;View All&quot; pages for each category.
           </p>
         </div>
       </div>

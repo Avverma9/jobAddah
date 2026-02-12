@@ -32,7 +32,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-slate-600 text-sm leading-relaxed">
-              India's most trusted portal for <strong>Sarkari Naukri</strong>, Competitive Exam Results, Admit Cards, and Private Job vacancies. We provide fast, accurate, and verified recruitment updates.
+              India&apos;s most trusted portal for <strong>Sarkari Naukri</strong>, Competitive Exam Results, Admit Cards, and Private Job vacancies. We provide fast, accurate, and verified recruitment updates.
             </p>
             <div className="flex gap-4 pt-2">
               <SocialLink href="#" icon={<Twitter size={18} />} label="Twitter" />
@@ -77,6 +77,7 @@ export default function Footer() {
             <ul className="space-y-3">
               <FooterLink href="/about">About Us</FooterLink>
               <FooterLink href="/contact">Contact Support</FooterLink>
+              <FooterLink href="/editorial-policy">Editorial Policy</FooterLink>
               <FooterLink href="/privacy-policy">Privacy Policy</FooterLink>
               <FooterLink href="/terms">Terms & Conditions</FooterLink>
             </ul>

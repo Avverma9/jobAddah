@@ -1,51 +1,89 @@
+import Link from "next/link";
+
 export const metadata = {
-  title: "Guides & Tips | JobsAddah",
+  title: "Guides and Exam Strategy | JobsAddah",
   description:
-    "Job preparation guides, salary insights, interview tips, and application help.",
+    "In-depth guides for job notifications, interview prep, salary structure, and application mistakes. Built for serious exam aspirants.",
 };
 
 const guideCards = [
   {
     title: "Interview Tips for Govt Jobs",
-    desc: "Practical tips for written + interview stages, document prep, and verification.",
+    desc: "Structured prep for panel questions, communication style, and document verification.",
     href: "/guides/interview-tips",
+    focus: "Interview + DV",
   },
   {
-    title: "Salary & Pay Scale Basics",
-    desc: "Understand pay levels, grade pay, allowances, and take‑home estimates.",
+    title: "Salary and Pay Scale Basics",
+    desc: "Understand pay levels, DA/HRA, gross vs in-hand, and practical salary comparison.",
     href: "/guides/salary-info",
+    focus: "Salary clarity",
   },
   {
     title: "How to Read a Notification",
-    desc: "Break down eligibility, dates, fees, and selection process quickly.",
+    desc: "Step-by-step framework to verify eligibility, dates, fee, and official links correctly.",
     href: "/guides/notification-reading",
+    focus: "Form accuracy",
   },
+  {
+    title: "Why JobsAddah Reliability Guide",
+    desc: "Editorial process, source-verification policy, and correction workflow used on job pages.",
+    href: "/guides/why-jobsaddah",
+    focus: "Trust and policy",
+  },
+];
+
+const principles = [
+  "Official PDF first: every critical field should map to a source notice.",
+  "Post-wise clarity: eligibility and dates must not be mixed across posts.",
+  "Correction-first workflow: user-reported errors get prioritized quickly.",
+  "Actionable formatting: guides should help users complete real tasks, not only read theory.",
 ];
 
 export default function GuidesIndex() {
   return (
     <div className="min-h-screen bg-slate-50 py-10">
-      <div className="max-w-6xl mx-auto px-4">
-        <header className="mb-8">
-          <h1 className="text-3xl font-extrabold text-slate-900">Guides</h1>
-          <p className="text-sm text-slate-600 mt-2">
-            Practical help for preparation, application, and career planning.
+      <div className="max-w-6xl mx-auto px-4 space-y-8">
+        <header className="space-y-3">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900">
+            Guides for Serious Aspirants
+          </h1>
+          <p className="text-sm text-slate-700 leading-relaxed max-w-3xl">
+            These guides are written for practical execution: filling forms
+            correctly, preparing interviews, and avoiding common mistakes that
+            cost attempts. Use them as a weekly checklist, not one-time reading.
           </p>
         </header>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {guideCards.map((card) => (
-            <a
+            <Link
               key={card.href}
               href={card.href}
               className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow"
             >
-              <h2 className="text-lg font-bold text-slate-900 mb-2">
-                {card.title}
-              </h2>
-              <p className="text-sm text-slate-600">{card.desc}</p>
-            </a>
+              <div className="text-xs uppercase tracking-wider text-blue-700 font-bold mb-2">
+                {card.focus}
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 mb-2">{card.title}</h2>
+              <p className="text-sm text-slate-600 leading-relaxed">{card.desc}</p>
+              <div className="mt-4 text-sm font-semibold text-blue-700">
+                Read guide
+              </div>
+            </Link>
           ))}
-        </div>
+        </section>
+
+        <section className="bg-white border border-slate-200 rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-3">
+            Editorial quality principles
+          </h2>
+          <ul className="list-disc pl-5 space-y-2 text-sm text-slate-700">
+            {principles.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
       </div>
     </div>
   );

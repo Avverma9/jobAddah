@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Briefcase,
   FileText,
@@ -11,7 +12,6 @@ import {
   ChevronRight,
   GripHorizontal,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { getCleanPostUrl } from "@/lib/job-url";
 
 // Clean, professional color accents for top borders
@@ -107,7 +107,6 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
   const [categoryOrder, setCategoryOrder] = useState([]);
   const [draggingCategory, setDraggingCategory] = useState(null);
   const [dragOverCategory, setDragOverCategory] = useState(null);
-  const router = useRouter();
 
   const getRecentTag = (isoDate) => {
     if (!isoDate) return null;
@@ -128,14 +127,6 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
       year: "numeric",
     });
   };
-
-  const handleJobSelect = useCallback(
-    (job) => {
-      const url = getCleanPostUrl(job.link);
-      router.push(url);
-    },
-    [router],
-  );
 
   useEffect(() => {
     if (initialData) return;
@@ -340,37 +331,50 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                 </div>
 
                 <ul className="flex-1 py-1">
-                  {filteredJobs.slice(0, 20).map((job, index) => (
-                    <li key={index}>
-                      <button
-                        type="button"
-                        onClick={() => handleJobSelect(job)}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onDragStart={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                        className="group flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-blue-500 w-full text-left"
-                        aria-label={`View details for ${job.title}`}
-                      >
-                        <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-blue-500 transition-colors flex-shrink-0"></div>
+                  {filteredJobs.slice(0, 20).map((job, index) => {
+                    const href = getCleanPostUrl(job.link || job.url || "");
+                    return (
+                      <li key={index}>
+                        {href && href !== "#" ? (
+                          <Link
+                            href={href}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onDragStart={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            className="group flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors border-l-2 border-transparent hover:border-blue-500 w-full text-left"
+                            aria-label={`View details for ${job.title}`}
+                          >
+                            <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-blue-500 transition-colors flex-shrink-0"></div>
 
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-[13px] leading-5 font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
-                            {job.title}
-                          </h3>
-                        </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-[13px] leading-5 font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
+                                {job.title}
+                              </h3>
+                            </div>
 
-                        {getRecentTag(job.createdAt) && (
-                          <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            {getRecentTag(job.createdAt)}
-                          </span>
+                            {getRecentTag(job.createdAt) && (
+                              <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                {getRecentTag(job.createdAt)}
+                              </span>
+                            )}
+
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
+                          </Link>
+                        ) : (
+                          <div className="group flex items-start gap-3 px-4 py-2.5 border-l-2 border-transparent w-full text-left opacity-70">
+                            <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-[13px] leading-5 font-medium text-slate-700">
+                                {job.title}
+                              </h3>
+                            </div>
+                          </div>
                         )}
-
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
-                      </button>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
 
                   {filteredJobs.length === 0 && (
                     <li className="py-8 text-center text-sm text-slate-400">
@@ -379,28 +383,10 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                   )}
                 </ul>
 
-                {filteredJobs.length >= 15 && category.link && (
+                {filteredJobs.length >= 15 && category.key && (
                   <div className="px-4 py-2 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          try {
-                            window.sessionStorage.setItem(
-                              `view-all:link:${category.name}`,
-                              category.link,
-                            );
-                          } catch {
-                            // ignore storage errors
-                          }
-                        }
-                        const linkParam = category.link
-                          ? `&link=${encodeURIComponent(category.link)}`
-                          : "";
-                        router.push(
-                          `/view-all?name=${encodeURIComponent(category.name)}${linkParam}`,
-                        );
-                      }}
+                    <Link
+                      href={`/view-all?name=${encodeURIComponent(category.name)}&category=${encodeURIComponent(category.key)}`}
                       onDragStart={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -409,7 +395,7 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                       onMouseDown={(e) => e.stopPropagation()}
                     >
                       View More {category.name}
-                    </button>
+                    </Link>
                   </div>
                 )}
               </div>
