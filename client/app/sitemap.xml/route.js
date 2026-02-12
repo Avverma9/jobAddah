@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connectDB";
-import GovPostList from "@/lib/models/joblist";
+import Post from "@/lib/models/job";
 import { getCleanPostUrl } from "@/lib/job-url";
 import { blogPosts } from "@/lib/blog-posts";
+import { buildRecruitmentQualityDetail } from "@/lib/recruitment-quality-input";
+import { isIndexableRecruitmentPage } from "@/lib/recruitment-quality";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
+const DEFAULT_SITE_URL = "https://jobsaddah.com";
+const resolveSiteUrl = () => {
+  const raw = String(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL).trim();
+  try {
+    const parsed = new URL(raw);
+    return parsed.origin.replace(/\/$/, "");
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+};
+
+const SITE_URL = resolveSiteUrl();
+const SITEMAP_CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
 const STATIC_ROUTES = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/about", priority: "0.7", changefreq: "weekly" },
@@ -33,7 +47,8 @@ const BLOG_ROUTES = blogPosts.map((post) => ({
   changefreq: "weekly",
 }));
 const BLOCKED_TITLES = new Set(["Privacy Policy", "Sarkari Result"]);
-const MIN_INDEXABLE_JOBS = 3;
+const GENERIC_TITLE_PATTERN =
+  /^(sarkari result|latest jobs?|job alert|jobs?|results?|notification)$/i;
 
 const escapeXml = (value) =>
   String(value ?? "")
@@ -57,39 +72,91 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
+const hasUsefulTitle = (title) => {
+  const cleaned = String(title || "").trim();
+  if (!cleaned) return false;
+  if (cleaned.length < 12) return false;
+  if (BLOCKED_TITLES.has(cleaned)) return false;
+  if (GENERIC_TITLE_PATTERN.test(cleaned)) return false;
+  return true;
+};
+
 const normalizePath = (rawUrl) => {
   if (!rawUrl) return null;
-  const cleanPath = getCleanPostUrl(rawUrl);
+  const cleanPath = getCleanPostUrl(String(rawUrl).trim());
   if (!cleanPath || cleanPath === "#" || cleanPath === "/post") return null;
   if (!cleanPath.startsWith("/post/")) return null;
-  return cleanPath;
+  return cleanPath.replace(/\/+$/, "");
 };
 
-const collectIndexablePaths = (post) => {
-  const found = new Set();
-  if (!post || !Array.isArray(post.jobs)) return found;
+const buildIndexablePostEntry = (doc) => {
+  if (!doc) return null;
+  const detail = buildRecruitmentQualityDetail(doc);
+  if (!isIndexableRecruitmentPage(detail)) return null;
+  if (!hasUsefulTitle(detail.title)) return null;
 
-  post.jobs.forEach((job) => {
-    if (!job) return;
-    const title = (job.title || "").trim();
-    if (!title || BLOCKED_TITLES.has(title)) return;
+  const candidatePath = normalizePath(doc.url || doc.link || doc.sourceUrl || detail.sourceUrl);
+  if (!candidatePath) return null;
 
-    const candidate = normalizePath(job.link || job.url || post.url || post.link);
-    if (!candidate) return;
+  return {
+    loc: `${SITE_URL}${candidatePath}`,
+    lastmod: formatDate(doc.updatedAt) || formatDate(doc.createdAt),
+    changefreq: "weekly",
+    priority: "0.6",
+  };
+};
 
-    found.add(candidate);
+const buildBaseEntries = (timestamp) => [
+  ...STATIC_ROUTES.map((page) => ({
+    loc: `${SITE_URL}${page.path}`,
+    changefreq: page.changefreq,
+    priority: page.priority,
+    lastmod: timestamp,
+  })),
+  ...BLOG_ROUTES.map((page) => ({
+    loc: `${SITE_URL}${page.path}`,
+    changefreq: page.changefreq,
+    priority: page.priority,
+    lastmod: timestamp,
+  })),
+];
+
+const buildSitemapXml = (entries) => {
+  const cleanEntries = entries.filter(
+    (entry) =>
+      entry &&
+      typeof entry.loc === "string" &&
+      entry.loc.startsWith(SITE_URL) &&
+      !entry.loc.includes("undefined"),
+  );
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${cleanEntries
+    .map(buildUrlEntry)
+    .join("")}
+</urlset>`;
+};
+
+const createResponse = (xml, fallback = false) =>
+  new NextResponse(xml, {
+    headers: {
+      "Content-Type": "application/xml",
+      "Cache-Control": SITEMAP_CACHE_CONTROL,
+      ...(fallback ? { "X-Sitemap-Fallback": "1" } : {}),
+    },
   });
 
-  return found;
-};
-
 export async function GET() {
+  const timestamp = new Date().toISOString();
+  const baseEntries = buildBaseEntries(timestamp);
+
   try {
     let posts = [];
     try {
       await connectDB();
-      posts = await GovPostList.find({})
-        .select("jobs updatedAt createdAt")
+      posts = await Post.find({})
+        .sort({ updatedAt: -1 })
+        .select("url link sourceUrl recruitment updatedAt createdAt")
         .lean();
     } catch (dbError) {
       console.error("Sitemap DB fetch failed, serving static routes only.", dbError);
@@ -99,64 +166,31 @@ export async function GET() {
     const urlMap = new Map();
 
     posts.forEach((post) => {
-      const lastmod = formatDate(post.updatedAt) || formatDate(post.createdAt);
-      const candidatePaths = collectIndexablePaths(post);
-
-      if (candidatePaths.size < MIN_INDEXABLE_JOBS) return;
-
-      candidatePaths.forEach((path) => {
-        const loc = `${SITE_URL}${path}`;
-        const existing = urlMap.get(loc);
-        if (!existing || (lastmod && (!existing.lastmod || lastmod > existing.lastmod))) {
-          urlMap.set(loc, {
-            loc,
-            lastmod,
-            changefreq: "weekly",
-            priority: "0.6",
-          });
-        }
-      });
+      const entry = buildIndexablePostEntry(post);
+      if (!entry) return;
+      const existing = urlMap.get(entry.loc);
+      if (
+        !existing ||
+        (entry.lastmod && (!existing.lastmod || entry.lastmod > existing.lastmod))
+      ) {
+        urlMap.set(entry.loc, entry);
+      }
     });
 
-    const now = new Date().toISOString();
-    const entries = [
-      ...STATIC_ROUTES.map((page) => ({
-        loc: `${SITE_URL}${page.path}`,
-        changefreq: page.changefreq,
-        priority: page.priority,
-        lastmod: now,
-      })),
-      ...BLOG_ROUTES.map((page) => ({
-        loc: `${SITE_URL}${page.path}`,
-        changefreq: page.changefreq,
-        priority: page.priority,
-        lastmod: now,
-      })),
-      ...Array.from(urlMap.values()),
-    ];
-
-    const cleanEntries = entries.filter(
-      (entry) =>
-        entry &&
-        typeof entry.loc === "string" &&
-        entry.loc.startsWith(SITE_URL) &&
-        !entry.loc.includes("undefined"),
-    );
-
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${cleanEntries
-      .map(buildUrlEntry)
-      .join("")}
-</urlset>`;
-
-    return new NextResponse(sitemap, {
-      headers: {
-        "Content-Type": "application/xml",
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
-      },
-    });
+    const sitemap = buildSitemapXml([...baseEntries, ...Array.from(urlMap.values())]);
+    return createResponse(sitemap);
   } catch (error) {
     console.error("Unable to build sitemap", error);
-    return new NextResponse("", { status: 500 });
+    const fallbackSitemap = buildSitemapXml(baseEntries);
+    return createResponse(fallbackSitemap, true);
   }
+}
+
+export function HEAD() {
+  return new NextResponse(null, {
+    headers: {
+      "Content-Type": "application/xml",
+      "Cache-Control": SITEMAP_CACHE_CONTROL,
+    },
+  });
 }

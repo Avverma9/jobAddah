@@ -37,8 +37,14 @@ import {
 } from "lucide-react";
 import {
   generateBreadcrumbSchema,
+  generateFAQSchema,
   generateJobPostingSchema,
 } from "@/lib/seo-schemas";
+import {
+  getIndexabilitySignals,
+  isIndexableRecruitmentPage,
+} from "@/lib/recruitment-quality";
+import { buildRecruitmentQualityDetail } from "@/lib/recruitment-quality-input";
 
 /* =========================
    CONFIG + SANITIZERS
@@ -458,11 +464,28 @@ export async function generateMetadata({ params }) {
   if (!rawData) return { title: "Job Details - JobsAddah" };
 
   const detail = extractRecruitmentData(rawData);
+  const qualityDetail = buildRecruitmentQualityDetail(rawData);
+  const recruitment = rawData.recruitment || {};
   const safeTitle = detail.title || "Government Job Opportunity";
   const organization = detail.organization || "The Recruitment Board";
   const vacancyTotal = detail.vacancy?.total || "various";
+  const startDate = findDateValue(detail, ["application start", "start date"]);
+  const lastDate =
+    sanitizeDateValue(recruitment.importantDates?.applicationLastDate) ||
+    findLastDate(detail, recruitment) ||
+    null;
+  const examDate = findDateValue(detail, ["exam date", "exam"]);
+
   const title = `${safeTitle} - Apply Online, Syllabus, Exam Date`;
-  const desc = `Latest Update: ${organization} has released a notification for ${vacancyTotal} posts. Check dates, eligibility, fees, and direct apply link.`;
+  const desc = [
+    `${organization} recruitment update for ${vacancyTotal} posts.`,
+    startDate ? `Start: ${startDate}.` : null,
+    lastDate ? `Last date: ${lastDate}.` : null,
+    examDate ? `Exam: ${examDate}.` : null,
+    "Check eligibility, fee, and official apply/notice links.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const slugPath = Array.isArray(resolvedParams.slug)
     ? resolvedParams.slug.join("/")
@@ -470,13 +493,16 @@ export async function generateMetadata({ params }) {
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
   const canonicalUrl = `${siteUrl}/post/${slugPath}`;
+  const indexable = isIndexableRecruitmentPage(qualityDetail);
 
   return {
     title: title.slice(0, 60),
     description: desc.slice(0, 160),
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description: desc, type: "article", url: canonicalUrl },
-    robots: "index,follow",
+    robots: indexable
+      ? "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
+      : "noindex,follow",
   };
 }
 
@@ -496,6 +522,9 @@ export default async function JobDetailsPage({ params }) {
   if (!rawData) notFound();
 
   const detail0 = extractRecruitmentData(rawData);
+  const qualityDetail = buildRecruitmentQualityDetail(rawData);
+  const indexabilitySignals = getIndexabilitySignals(qualityDetail);
+  const isIndexable = isIndexableRecruitmentPage(qualityDetail);
   const detail = { ...detail0, links: sanitizeLinks(detail0.links) };
   const recruitment = rawData.recruitment || {};
 
@@ -785,6 +814,13 @@ export default async function JobDetailsPage({ params }) {
     },
   ];
 
+  const faqSchema = generateFAQSchema(
+    faqs.slice(0, 8).map((faq) => ({
+      question: faq.q,
+      answer: faq.a,
+    })),
+  );
+
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: "Home", url: "https://jobsaddah.com" },
     { name: "Jobs", url: "https://jobsaddah.com/post" },
@@ -802,6 +838,12 @@ export default async function JobDetailsPage({ params }) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        />
+      ) : null}
+      {faqSchema ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       ) : null}
 
@@ -897,6 +939,19 @@ export default async function JobDetailsPage({ params }) {
               </div>
             </div>
           </header>
+
+          {!isIndexable ? (
+            <section className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-900">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 text-amber-600" size={18} />
+                <p className="leading-relaxed">
+                  This page is under verification and may be excluded from search temporarily.
+                  We publish full indexing once official dates/eligibility/links are complete
+                  (quality score: {indexabilitySignals.score}/7).
+                </p>
+              </div>
+            </section>
+          ) : null}
 
           {/* TABLE-FIRST: Schedule + Fees */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
