@@ -105,6 +105,25 @@ const buildViewAllCategoryHref = (target) => {
   return query ? `/view-all?${query}` : "/view-all";
 };
 
+const escapeRegex = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizePostPath = (value) => {
+  if (!value) return null;
+  try {
+    const parsed = new URL(String(value), "https://jobsaddah.com");
+    let path = (parsed.pathname || "").replace(/^\/+|\/+$/g, "");
+    if (!path) return null;
+    if (path.toLowerCase().startsWith("post/")) {
+      path = path.slice(5);
+    }
+    if (!path) return null;
+    return `/post/${path.toLowerCase()}`;
+  } catch {
+    return null;
+  }
+};
+
 /* =========================
    DATE HELPERS (SAFE)
 ========================= */
@@ -369,13 +388,52 @@ function generateOverview(detail) {
    SSR DATA FETCHING
 ========================= */
 const getJobDetails = cache(async (slug) => {
-  let targetPath = Array.isArray(slug) ? slug.join("/") : slug;
-  if (!targetPath) return null;
+  const slugPath = Array.isArray(slug) ? slug.join("/") : slug;
+  if (!slugPath) return null;
+
+  let targetPath = slugPath;
   if (!targetPath.startsWith("/")) targetPath = "/" + targetPath;
-  if (!targetPath.endsWith("/")) targetPath = targetPath + "/";
+  if (!targetPath.endsWith("/")) targetPath = `${targetPath}/`;
+  const canonicalPostPath = normalizePostPath(targetPath);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return null;
+  const getDbFallback = async () => {
+    if (!canonicalPostPath) return null;
+    try {
+      await connectDB();
+      const slugToken = canonicalPostPath.replace(/^\/post\//, "");
+      if (!slugToken) return null;
+      const slugPattern = new RegExp(escapeRegex(slugToken), "i");
+      const docs = await Post.find({
+        $or: [
+          { url: { $regex: slugPattern } },
+          { link: { $regex: slugPattern } },
+          { sourceUrl: { $regex: slugPattern } },
+        ],
+      })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      const match =
+        docs.find((doc) => {
+          const candidates = [
+            normalizePostPath(doc?.url),
+            normalizePostPath(doc?.link),
+            normalizePostPath(doc?.sourceUrl),
+          ].filter(Boolean);
+          return candidates.includes(canonicalPostPath);
+        }) || docs[0];
+
+      return match || null;
+    } catch {
+      return null;
+    }
+  };
+
+  if (!apiUrl) {
+    return getDbFallback();
+  }
 
   try {
     const res = await fetch(`${apiUrl}/scrapper/scrape-complete`, {
@@ -386,13 +444,20 @@ const getJobDetails = cache(async (slug) => {
     });
 
     const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("text/html")) return null;
-    if (!res.ok) return null;
+    if (contentType.includes("text/html")) {
+      return getDbFallback();
+    }
+    if (!res.ok) {
+      return getDbFallback();
+    }
 
     const json = await res.json();
-    return json?.success ? json.data : null;
+    if (json?.success && json.data) {
+      return json.data;
+    }
+    return getDbFallback();
   } catch {
-    return null;
+    return getDbFallback();
   }
 });
 

@@ -23,12 +23,16 @@ export function getCleanPostUrl(link) {
   if (!link) return "#";
   try {
     const url = new URL(link, "https://example.com");
-    let path = url.pathname;
-    
-    // Remove leading/trailing slashes for clean slug
-    path = path.replace(/^\/+|\/+$/g, "");
-    
-    return `/post/${path}`;
+    const idParam = url.searchParams.get("id");
+    const source = idParam || url.pathname;
+    let path = String(source || "").replace(/^\/+|\/+$/g, "");
+    if (!path) return "#";
+
+    if (path.toLowerCase().startsWith("post/")) {
+      return `/${path}`.replace(/\/+$/, "");
+    }
+
+    return `/post/${path}`.replace(/\/+$/, "");
   } catch (e) {
     return "#";
   }

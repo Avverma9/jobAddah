@@ -21,6 +21,35 @@ const Icons = {
   Edit: () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
 }
 
+const SAMPLE_RESUME_DATA = {
+  name: "Aarav Kumar",
+  title: "Junior Data Analyst",
+  email: "aarav.kumar@example.com",
+  phone: "+91 98765 43210",
+  website: "linkedin.com/in/aaravkumar",
+  city: "Patna",
+  country: "Bihar",
+  summary:
+    "Detail-oriented graduate with internship experience in dashboards, reporting, and data cleaning. Comfortable with Excel, SQL, and presentation of insights for operations teams.",
+  skills: "Excel, SQL, Power BI, Data Cleaning, Reporting, Pivot Tables",
+  languages: "Hindi (Native), English (Professional)",
+  experiences: [
+    {
+      role: "Data Analyst Intern",
+      company: "Insight Labs",
+      duration: "2024 - 2025",
+      desc: "Prepared weekly performance dashboards and automated repetitive reporting tasks using Excel and SQL queries.",
+    },
+  ],
+  educations: [
+    {
+      degree: "B.Sc. (Computer Science)",
+      institute: "Patliputra University",
+      year: "2021 - 2024",
+    },
+  ],
+};
+
 export default function ResumeBuilderPage() {
   const previewRef = useRef()
   const containerRef = useRef()
@@ -33,24 +62,38 @@ export default function ResumeBuilderPage() {
   const [themeColor, setThemeColor] = useState("#2a41e8") 
   const [profileImage, setProfileImage] = useState(null)
 
-  const [name, setName] = useState("Alex Morgan")
-  const [title, setTitle] = useState("Senior Product Designer")
-  const [email, setEmail] = useState("alex.morgan@example.com")
-  const [phone, setPhone] = useState("+1 (555) 123-4567")
-  const [website, setWebsite] = useState("linkedin.com/in/alexmorgan")
-  const [city, setCity] = useState("San Francisco")
-  const [country, setCountry] = useState("CA")
-  const [summary, setSummary] = useState("Creative and detail-oriented Product Designer with over 6 years of experience in building user-centric digital products. Proficient in UI/UX design, prototyping, and design systems.")
-  const [skills, setSkills] = useState("Figma, Adobe XD, React, CSS3, Design Systems, Prototyping, User Research")
-  const [languages, setLanguages] = useState("English (Native), Spanish (Intermediate), French (Basic)")
+  const [name, setName] = useState("")
+  const [title, setTitle] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [website, setWebsite] = useState("")
+  const [city, setCity] = useState("")
+  const [country, setCountry] = useState("")
+  const [summary, setSummary] = useState("")
+  const [skills, setSkills] = useState("")
+  const [languages, setLanguages] = useState("")
 
   const [experiences, setExperiences] = useState([
-    { role: "Senior Product Designer", company: "TechFlow Inc.", duration: "2021 - Present", desc: "Led the redesign of the core product dashboard, resulting in a 20% increase in user engagement. Mentored junior designers and established a comprehensive design system." },
-    { role: "UI/UX Designer", company: "Creative Solutions", duration: "2018 - 2021", desc: "Collaborated with cross-functional teams to deliver high-quality web and mobile applications. Conducted user research and usability testing to iterate on design concepts." }
+    { role: "", company: "", duration: "", desc: "" }
   ])
   const [educations, setEducations] = useState([
-    { degree: "Bachelor of Fine Arts in Interaction Design", institute: "California College of the Arts", year: "2014 - 2018" }
+    { degree: "", institute: "", year: "" }
   ])
+
+  const applySampleData = () => {
+    setName(SAMPLE_RESUME_DATA.name)
+    setTitle(SAMPLE_RESUME_DATA.title)
+    setEmail(SAMPLE_RESUME_DATA.email)
+    setPhone(SAMPLE_RESUME_DATA.phone)
+    setWebsite(SAMPLE_RESUME_DATA.website)
+    setCity(SAMPLE_RESUME_DATA.city)
+    setCountry(SAMPLE_RESUME_DATA.country)
+    setSummary(SAMPLE_RESUME_DATA.summary)
+    setSkills(SAMPLE_RESUME_DATA.skills)
+    setLanguages(SAMPLE_RESUME_DATA.languages)
+    setExperiences(SAMPLE_RESUME_DATA.experiences)
+    setEducations(SAMPLE_RESUME_DATA.educations)
+  }
 
   // Improved Logic for Scaling on Mobile
   useEffect(() => {
@@ -465,6 +508,7 @@ export default function ResumeBuilderPage() {
          <div className="desktop-actions">
             <button className={`btn btn-outline ${template === 'naukri' ? 'active' : ''}`} onClick={() => setTemplate('naukri')}>Naukri</button>
             <button className={`btn btn-outline ${template === 'clean' ? 'active' : ''}`} onClick={() => setTemplate('clean')}>Clean</button>
+            <button className="btn btn-outline" onClick={applySampleData}>Load Sample</button>
             <div style={{width: 1, height: 24, background: '#cbd5e1', margin: '0 4px'}}></div>
             <div style={{display: 'flex', alignItems: 'center', gap: 8, background: '#f1f5f9', padding: '4px 8px', borderRadius: 6}}>
                <span style={{fontSize: 11, fontWeight: 700, color: '#64748b'}}>THEME</span>

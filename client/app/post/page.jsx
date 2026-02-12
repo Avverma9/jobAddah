@@ -2,10 +2,11 @@ import JobSectionsClient from "./JobSectionsClient";
 import { getJobSections } from "@/lib/server/getJobSections";
 
 export async function generateMetadata({ searchParams } = {}) {
+  const resolvedSearchParams = await searchParams;
   const data = await getJobSections();
   const hasCategories = Boolean(data?.categories?.length);
   const hasQueryParams =
-    searchParams && Object.keys(searchParams).length > 0;
+    resolvedSearchParams && Object.keys(resolvedSearchParams).length > 0;
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
 
   return {
