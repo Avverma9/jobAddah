@@ -1,7 +1,5 @@
 import cron from "node-cron";
 import axios from "axios";
-import * as cheerio from "cheerio";
-import pLimit from "p-limit";
 import { URL } from "node:url";
 
 import Section from "../models/govJob/govSection.mjs";
@@ -10,34 +8,8 @@ import govPostList from "../models/govJob/govPostListBycatUrl.mjs";
 
 import { sendNewPostsEmail } from "../nodemailer/notify_mailer.mjs";
 import { clearNextJsCache } from "./clear-cache.mjs";
-import { scrapeJobUrl } from "../controllers/scrapper/govScrapper.mjs";
-
-// -------------------- HTTP (fast + safe) --------------------
-const http = axios.create({
-  timeout: 20000,
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (compatible; JobsAddahBot/1.0; +https://jobsaddah.com)",
-    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  },
-  maxRedirects: 5,
-});
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function fetchHtml(url, retry = 2) {
-  let lastErr = null;
-  for (let i = 0; i <= retry; i++) {
-    try {
-      const res = await http.get(url);
-      return res.data;
-    } catch (e) {
-      lastErr = e;
-      await sleep(400 * (i + 1));
-    }
-  }
-  throw lastErr;
-}
 
 // -------------------- Helpers --------------------
 const cleanText = (text) => {
@@ -105,6 +77,18 @@ const canonicalizeLink = (url) => {
   }
 };
 
+const stripDomainAndReplace = (inputUrl) => {
+  if (!inputUrl) return inputUrl;
+  try {
+    const parsed = new URL(inputUrl);
+    let path = parsed.pathname || "/";
+    path = path.replace(/\/+$/, "");
+    return path || "/";
+  } catch {
+    return inputUrl;
+  }
+};
+
 const normalizeTitleKey = (title) => {
   if (!title) return "";
   return cleanText(title)
@@ -125,295 +109,250 @@ const buildJobKey = (job) => {
   return `${linkKey}::${titleKey}`;
 };
 
-// Ignore obvious junk
-const IGNORE_TITLE_RE =
-  /(category|categories|available now|section|home|contact|privacy|disclaimer|about|sitemap)/i;
-const IGNORE_PATH_RE =
-  /(\/tag\/|\/author\/|\/page\/\d+\/?$|\/search\/|\/wp-admin\/|\/feed\/?$)/i;
+const INTERNAL_API_BASE = (
+  process.env.INTERNAL_API_BASE_URL ||
+  `http://127.0.0.1:${process.env.PORT || 5000}`
+).replace(/\/+$/, "");
 
-// ✅ post link heuristics (this is IMPORTANT)
-const looksLikePostUrl = (fullUrl, baseHost) => {
+const SCRAPE_CATEGORY_API_PATH = "/api/v1/scrapper/scrape-category";
+
+const buildInternalApiUrl = (path) =>
+  `${INTERNAL_API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+
+const normalizeCategoryForSection = (rawCategory, siteUrl) => {
+  const linkValue =
+    typeof rawCategory === "string" ? rawCategory : rawCategory?.link;
+  if (!linkValue) return null;
+
   try {
-    const u = new URL(fullUrl);
-    const hostOk = normalizeHost(u.host) === normalizeHost(baseHost);
-    if (!hostOk) return false;
+    const full = new URL(linkValue, siteUrl).href;
+    const parsed = new URL(full);
+    if (normalizeHost(parsed.host) !== normalizeHost(new URL(siteUrl).host)) {
+      return null;
+    }
 
-    const path = (u.pathname || "").toLowerCase();
+    const canonical = canonicalizeLink(full);
+    if (!canonical) return null;
 
-    // reject obvious non-post paths
-    if (IGNORE_PATH_RE.test(path)) return false;
+    const safeName = cleanText(
+      typeof rawCategory === "string" ? "" : rawCategory?.name
+    );
 
-    // accept patterns:
-    // - /2025/02/...
-    // - /post/slug
-    // - /jobs/slug
-    // - /latest-jobs/slug
-    // - ?p=123 (WP)
-    if (/\/\d{4}\/\d{1,2}\//.test(path)) return true;
-    if (/\/post\//.test(path)) return true;
-    if (/\/job(s)?\//.test(path)) return true;
-    if (/\/vacancy\//.test(path)) return true;
-    if (u.search && /(^|[?&])p=\d+/.test(u.search)) return true;
-
-    // generic slug: at least 2 segments and long enough
-    const segs = path.split("/").filter(Boolean);
-    if (segs.length >= 2 && segs[segs.length - 1].length >= 8) return true;
-
-    return false;
+    return {
+      name: safeName || "Auto",
+      link: canonical,
+    };
   } catch {
-    return false;
+    return null;
   }
 };
 
-// -------------------- Pagination discovery (better) --------------------
-const discoverPaginationLinks = ($, currentUrl, baseHost) => {
-  const found = new Set();
-  const selectors =
-    "a[rel=next], .nav-links a, .pagination a, .page-numbers a, a.next, a.older-posts, .next a";
+const loadAndCleanupSiteSection = async (siteUrl) => {
+  const siteHost = normalizeHost(new URL(siteUrl).host);
+  const allSections = await Section.find()
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
 
-  $(selectors).each((_, el) => {
-    const href = $(el).attr("href");
-    if (!href) return;
-
+  const siteSections = allSections.filter((doc) => {
     try {
-      const full = new URL(href, currentUrl).href;
-      const u = new URL(full);
-
-      if (normalizeHost(u.host) !== normalizeHost(baseHost)) return;
-
-      const text = cleanText($(el).text()).toLowerCase();
-      const isNextLike =
-        $(el).attr("rel") === "next" ||
-        /next|older|›|»/.test(text) ||
-        /page\/\d+|paged=\d+/i.test(full);
-
-      if (isNextLike) found.add(full);
-    } catch {}
+      const sectionUrl = ensureProtocol(String(doc?.url || ""));
+      if (!sectionUrl) return false;
+      return normalizeHost(new URL(sectionUrl).host) === siteHost;
+    } catch {
+      return false;
+    }
   });
 
-  // ALSO detect numeric pagination links (page 2,3...)
-  $("a").each((_, el) => {
-    const href = $(el).attr("href");
-    if (!href) return;
-    const txt = cleanText($(el).text()).trim();
-    if (!/^\d+$/.test(txt)) return;
+  if (!siteSections.length) {
+    return {
+      categories: [],
+      removedDuplicateSections: 0,
+      sectionId: null,
+    };
+  }
 
-    try {
-      const full = new URL(href, currentUrl).href;
-      const u = new URL(full);
-      if (normalizeHost(u.host) !== normalizeHost(baseHost)) return;
+  const primary = siteSections[0];
+  const duplicateIds = siteSections
+    .slice(1)
+    .map((d) => d?._id)
+    .filter(Boolean);
 
-      if (/page\/\d+\/?$/.test(u.pathname) || /[?&]paged=\d+/.test(u.search)) {
-        found.add(full);
+  const categoriesMap = new Map();
+  siteSections.forEach((doc) => {
+    const categories = Array.isArray(doc?.categories) ? doc.categories : [];
+    categories.forEach((category) => {
+      const normalized = normalizeCategoryForSection(category, siteUrl);
+      if (!normalized) return;
+      const key = canonicalizeLink(normalized.link);
+      if (!key) return;
+
+      const existing = categoriesMap.get(key);
+      if (!existing) {
+        categoriesMap.set(key, normalized);
+      } else if (existing.name === "Auto" && normalized.name !== "Auto") {
+        categoriesMap.set(key, normalized);
       }
-    } catch {}
+    });
   });
 
-  return [...found];
-};
+  const mergedCategories = [...categoriesMap.values()];
 
-// -------------------- Extract jobs from a page (strict) --------------------
-const extractJobsFromPage = ($, pageUrl, baseHost) => {
-  // prefer article titles & entry headings
-  const selectors = [
-    "article h1 a",
-    "article h2 a",
-    "article h3 a",
-    ".entry-title a",
-    ".post-title a",
-    ".post h2 a",
-    ".post h3 a",
-    "h2 a",
-    "h3 a",
-  ].join(",");
+  await Section.updateOne(
+    { _id: primary._id },
+    {
+      $set: {
+        url: siteUrl,
+        categories: mergedCategories,
+        lastSynced: new Date(),
+      },
+    }
+  );
 
-  const jobs = [];
-  const baseCanonical = canonicalizeLink(pageUrl);
-
-  $(selectors).each((_, el) => {
-    const rawTitle = cleanText($(el).text());
-    const href = $(el).attr("href");
-    if (!rawTitle || rawTitle.length < 8 || !href) return;
-    if (IGNORE_TITLE_RE.test(rawTitle)) return;
-
-    try {
-      const full = new URL(href, pageUrl).href;
-      const canonical = canonicalizeLink(full);
-      if (!canonical || canonical === baseCanonical) return;
-
-      if (!looksLikePostUrl(full, baseHost)) return;
-
-      jobs.push({
-        title: rawTitle, // ✅ raw title (fast)
-        link: full,
-        canonicalLink: canonical,
-      });
-    } catch {}
-  });
-
-  return jobs;
-};
-
-// -------------------- Discover Categories (strong) --------------------
-async function tryDiscoverFromSitemap(siteUrl) {
-  try {
-    const u = new URL(siteUrl);
-    const sitemap = `${u.protocol}//${u.host}/sitemap.xml`;
-    const xml = await fetchHtml(sitemap, 1);
-
-    // basic extraction (no XML parser needed)
-    const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)]
-      .map((m) => m[1])
-      .filter(Boolean)
-      .slice(0, 2000);
-
-    // keep category-like + main listing pages
-    const cat = locs.filter((x) => /\/category\/|\/tag\/|latest|job|vacancy/i.test(x));
-    const unique = [...new Map(cat.map((l) => [canonicalizeLink(l), l])).values()];
-
-    return unique.slice(0, 50).map((link) => ({ name: "Auto", link }));
-  } catch {
-    return [];
+  if (duplicateIds.length) {
+    await Section.deleteMany({ _id: { $in: duplicateIds } });
   }
-}
 
-async function discoverCategoriesFromMenu(siteUrl) {
-  const html = await fetchHtml(siteUrl, 1);
-  const $ = cheerio.load(html);
+  return {
+    categories: mergedCategories,
+    removedDuplicateSections: duplicateIds.length,
+    sectionId: String(primary._id),
+  };
+};
 
-  const menuSelectors =
-    "nav a, .menu a, ul.navigation a, .nav-menu a, #primary-menu a, .header-menu a, .menubar a";
+const callScrapeCategoryApi = async ({ categoryUrl, categoryName = "", maxPages = 3 }) => {
+  const endpoint = buildInternalApiUrl(SCRAPE_CATEGORY_API_PATH);
+  try {
+    const response = await axios.post(
+      endpoint,
+      {
+        url: categoryUrl,
+        name: categoryName,
+        maxPages,
+      },
+      {
+        timeout: Number(process.env.SCRAPE_CATEGORY_TIMEOUT_MS || 180000),
+      }
+    );
+    return response.data;
+  } catch (error) {
+    const details = error?.response?.data?.error || error?.message || "Unknown error";
+    throw new Error(`scrape-category API failed for ${categoryUrl}: ${details}`);
+  }
+};
 
-  const ignore = new Set([
-    "Home",
-    "Contact Us",
-    "Privacy Policy",
-    "Disclaimer",
-    "More",
-    "About Us",
-    "Sitemap",
-  ]);
+const sectionFromCategoryUrl = (categoryUrl) => {
+  try {
+    const parsed = new URL(categoryUrl);
+    let path = parsed.pathname || "/";
+    path = path.replace(/\/+$/, "");
+    return path || "/";
+  } catch {
+    return "/";
+  }
+};
 
-  const baseHost = new URL(siteUrl).host;
-  const categories = [];
+const normalizeJobForPostList = (job) => {
+  if (!job || typeof job !== "object") return null;
+  const title = cleanText(job.title);
+  const link = cleanText(job.link);
+  if (!title || !link) return null;
 
-  $(menuSelectors).each((_, el) => {
-    const name = cleanText($(el).text());
-    const href = $(el).attr("href");
-    if (!name || !href || href === "#" || href === "/") return;
-    if (ignore.has(name)) return;
+  const canonicalLink = canonicalizeLink(job.canonicalLink || link);
+  if (!canonicalLink) return null;
 
-    try {
-      const full = new URL(href, siteUrl).href;
-      const u = new URL(full);
-      if (normalizeHost(u.host) !== normalizeHost(baseHost)) return;
-      categories.push({ name, link: full });
-    } catch {}
+  return {
+    title,
+    link,
+    canonicalLink,
+    createdAt: job.createdAt ? new Date(job.createdAt) : new Date(),
+    updatedAt: new Date(),
+  };
+};
+
+const persistGovPostList = async ({ categoryUrl, categoryName = "", apiResult }) => {
+  const safeCategoryUrl = canonicalizeLink(categoryUrl) || categoryUrl;
+  const incomingJobsRaw = Array.isArray(apiResult?.jobs)
+    ? apiResult.jobs
+    : Array.isArray(apiResult?.newJobs)
+      ? apiResult.newJobs
+      : [];
+
+  const incomingJobs = incomingJobsRaw
+    .map((job) => normalizeJobForPostList(job))
+    .filter(Boolean);
+
+  const existing = await govPostList.findOne({ url: safeCategoryUrl }).lean();
+  const isNewPostList = !existing;
+  const existingJobs = Array.isArray(existing?.jobs) ? existing.jobs : [];
+  const existingMap = new Map(
+    existingJobs
+      .map((job) => normalizeJobForPostList(job))
+      .filter(Boolean)
+      .map((job) => [buildJobKey(job), job])
+  );
+
+  incomingJobs.forEach((job) => {
+    const key = buildJobKey(job);
+    const prev = existingMap.get(key);
+    existingMap.set(key, {
+      ...job,
+      createdAt: prev?.createdAt || job.createdAt || new Date(),
+      updatedAt: new Date(),
+    });
   });
 
-  return [...new Map(categories.map((c) => [canonicalizeLink(c.link), c])).values()];
-}
+  const mergedJobs = [...existingMap.values()];
+
+  const saved = await govPostList.findOneAndUpdate(
+    { url: safeCategoryUrl },
+    {
+      $set: {
+        url: safeCategoryUrl,
+        section: sectionFromCategoryUrl(safeCategoryUrl),
+        categoryName: cleanText(categoryName) || safeCategoryUrl,
+        jobs: mergedJobs,
+        lastScraped: new Date(),
+      },
+    },
+    { upsert: true, new: true, runValidators: true }
+  );
+
+  return { saved, isNewPostList };
+};
 
 // -------------------- Core category scrape --------------------
 async function scrapeCategoryInternal(categoryUrl, opts = {}) {
-  const doDetailScrape = opts.scrapeDetails !== false;
+  if (!categoryUrl) {
+    return { success: false, error: "Category URL is required" };
+  }
+
   const doEmail = opts.sendEmail !== false;
+  const categoryName = cleanText(opts.categoryName || "");
+  const maxPages = Math.max(1, Math.min(Number(opts.maxPages || 3), 20));
 
-  const maxPages = Math.max(1, Math.min(Number(opts.maxPages || 20), 80)); // ✅ higher
-  const concurrency = Math.max(1, Math.min(Number(opts.concurrency || 4), 8)); // safe
-
-  const visited = new Set();
-  const queue = [categoryUrl];
-  const all = [];
-
-  let baseHost;
-  try {
-    baseHost = new URL(categoryUrl).host;
-  } catch {
-    baseHost = null;
-  }
-
-  while (queue.length && visited.size < maxPages) {
-    const url = queue.shift();
-    if (!url || visited.has(url)) continue;
-    visited.add(url);
-
-    let html;
-    try {
-      html = await fetchHtml(url, 2);
-    } catch (e) {
-      console.error("Page fetch failed:", url, e?.message);
-      continue;
-    }
-
-    const $ = cheerio.load(html);
-
-    const jobs = extractJobsFromPage($, url, baseHost);
-    all.push(...jobs);
-
-    const nextLinks = discoverPaginationLinks($, url, baseHost);
-    for (const n of nextLinks) {
-      const c = canonicalizeLink(n);
-      if (c && !visited.has(c)) queue.push(c);
-    }
-  }
-
-  const uniqueJobs = [
-    ...new Map(all.map((i) => [buildJobKey(i), i])).values(),
-  ];
-
-  const existing = await govPostList.findOne({ url: categoryUrl }).lean();
-  const previousJobs = existing && Array.isArray(existing.jobs) ? existing.jobs : [];
-
-  const prevMap = new Map(previousJobs.map((j) => [buildJobKey(j), j]));
-
-  const now = new Date();
-  const newJobs = uniqueJobs.filter((u) => !prevMap.has(buildJobKey(u)));
-
-  // merge without wiping on failure
-  let mergedJobs = uniqueJobs.map((job) => {
-    const key = buildJobKey(job);
-    const prev = prevMap.get(key);
-    if (!prev) return { ...job, createdAt: now, updatedAt: now };
-    return { ...prev, ...job, updatedAt: now };
+  const apiResult = await callScrapeCategoryApi({
+    categoryUrl,
+    categoryName,
+    maxPages,
   });
 
-  if (!uniqueJobs.length && previousJobs.length) mergedJobs = previousJobs;
-
-  await govPostList.findOneAndUpdate(
-    { url: categoryUrl },
-    { $set: { url: categoryUrl, jobs: mergedJobs, lastScraped: new Date() } },
-    { upsert: true, new: true },
-  );
-
-  const jobsToScrape = newJobs;
-
-  console.log(
-    `Category: ${categoryUrl} pages=${visited.size} extracted=${uniqueJobs.length} newList=${newJobs.length}`,
-  );
-
-  // ✅ scrape details with concurrency
-  if (doDetailScrape && jobsToScrape.length) {
-    const limit = pLimit(concurrency);
-    await Promise.all(
-      jobsToScrape.map((job) =>
-        limit(async () => {
-          try {
-            const r = await scrapeJobUrl(job.link);
-            if (!r?.success) console.error("Detail scrape failed:", job.link, r?.error);
-          } catch (e) {
-            console.error("Detail scrape crashed:", job.link, e?.message);
-          }
-          await sleep(600);
-        }),
-      ),
-    );
+  if (!apiResult?.success) {
+    return {
+      success: false,
+      error: apiResult?.error || "scrape-category API returned failure",
+    };
   }
 
-  // ✅ email
-  if (doEmail && jobsToScrape.length) {
+  const newJobs = Array.isArray(apiResult.newJobs) ? apiResult.newJobs : [];
+  const { saved: savedDoc, isNewPostList } = await persistGovPostList({
+    categoryUrl,
+    categoryName,
+    apiResult,
+  });
+
+  if (doEmail && newJobs.length) {
     try {
-      const emailJobs = jobsToScrape.map((j) => ({
+      const emailJobs = newJobs.map((j) => ({
         ...j,
         link: stripDomainAndReplace(j.link),
         canonicalLink: stripDomainAndReplace(j.canonicalLink || j.link),
@@ -421,7 +360,6 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
       }));
 
       await sendNewPostsEmail({
-        categoryUrl,
         newJobs: emailJobs,
       });
     } catch (e) {
@@ -429,78 +367,98 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
     }
   }
 
-  return { success: true, count: mergedJobs.length, jobs: mergedJobs };
+  return {
+    success: true,
+    categoryUrl,
+    categoryName,
+    isNewPostList,
+    count: savedDoc?.jobs?.length || apiResult?.count || 0,
+    totalInDB: savedDoc?.jobs?.length || apiResult?.totalInDB || 0,
+    newJobsCount: apiResult?.newJobsCount || newJobs.length,
+    jobs: apiResult?.jobs || [],
+    newJobs,
+    mode: apiResult?.mode,
+    speed: apiResult?.speed,
+  };
 }
-
 // -------------------- Full site sync (better category discovery) --------------------
 async function syncCategoriesAndJobs(req, res) {
   const start = Date.now();
 
   try {
-    const siteUrlDocs = await Site.find().sort({ createdAt: -1 }).lean();
-    if (!siteUrlDocs?.length) throw new Error("No site URL configured");
+    const siteDoc = await Site.findOne().sort({ createdAt: -1 }).lean();
+    if (!siteDoc?.url) throw new Error("No site URL configured");
 
-    const targetUrl = ensureProtocol(siteUrlDocs[0].url);
+    const targetUrl = ensureProtocol(siteDoc.url);
     if (!targetUrl) throw new Error("Invalid site URL");
 
-    // 1) sitemap categories
-    const sitemapCats = await tryDiscoverFromSitemap(targetUrl);
+    const sectionInfo = await loadAndCleanupSiteSection(targetUrl);
+    const categories = Array.isArray(sectionInfo.categories)
+      ? sectionInfo.categories
+      : [];
 
-    // 2) menu categories
-    const menuCats = await discoverCategoriesFromMenu(targetUrl);
-
-    // 3) stored categories
-    const storedSection = await Section.findOne({ url: targetUrl }).lean();
-    const storedCats = Array.isArray(storedSection?.categories) ? storedSection.categories : [];
-
-    let uniqueCategories = [
-      ...new Map([...sitemapCats, ...menuCats, ...storedCats].map((i) => [canonicalizeLink(i.link), i])).values(),
-    ].filter(Boolean);
-
-    if (!uniqueCategories.length) uniqueCategories = [{ name: "Home", link: targetUrl }];
-
-    await Section.findOneAndUpdate(
-      { url: targetUrl },
-      { $set: { url: targetUrl, categories: uniqueCategories, lastSynced: new Date() } },
-      { upsert: true, new: true },
-    );
-
-    let totalJobsFound = 0;
-    let successCount = 0;
-    let failCount = 0;
-
-    // ✅ category concurrency
-    const limit = pLimit(2); // safe
-    const results = await Promise.all(
-      uniqueCategories.map((cat) =>
-        limit(() =>
-          scrapeCategoryInternal(cat.link, {
-            categoryName: cat.name,
-            maxPages: 30, // tune per site
-            concurrency: 5,
-          }),
-        ),
-      ),
-    );
-
-    for (const r of results) {
-      if (r?.success) {
-        totalJobsFound += r.count || 0;
-        successCount++;
-      } else {
-        failCount++;
-      }
+    if (!categories.length) {
+      throw new Error(
+        "No categories found in Section. Run /api/v1/scrapper/get-categories first."
+      );
     }
 
-    await clearNextJsCache();
+    const maxPages = Math.max(1, Math.min(Number(process.env.CATEGORY_MAX_PAGES || 3), 20));
+    const delayMs = Math.max(100, Math.min(Number(process.env.CATEGORY_STEP_DELAY_MS || 500), 5000));
+
+    let totalNewJobs = 0;
+    let totalNewPostLists = 0;
+    let totalJobsInDb = 0;
+    let successCount = 0;
+    let failCount = 0;
+    const failures = [];
+
+    const results = [];
+    for (const cat of categories) {
+      const result = await scrapeCategoryInternal(cat.link, {
+        categoryName: cat.name,
+        maxPages,
+        sendEmail: true,
+      });
+      results.push(result);
+      await sleep(delayMs);
+    }
+
+    results.forEach((result, idx) => {
+      if (result?.success) {
+        successCount += 1;
+        totalNewJobs += Number(result.newJobsCount || 0);
+        if (result.isNewPostList) totalNewPostLists += 1;
+        totalJobsInDb += Number(result.totalInDB || 0);
+      } else {
+        failCount += 1;
+        failures.push({
+          category: categories[idx]?.link,
+          error: result?.error || "Unknown error",
+        });
+      }
+    });
+
+    const shouldClearCache = totalNewJobs > 0 || totalNewPostLists > 0;
+    let cacheCleared = false;
+    if (shouldClearCache) {
+      const cacheResult = await clearNextJsCache();
+      cacheCleared = Boolean(cacheResult?.success);
+    }
 
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     const payload = {
       success: true,
-      categories: uniqueCategories.length,
-      jobs: totalJobsFound,
+      site: targetUrl,
+      categories: categories.length,
+      removedDuplicateSections: sectionInfo.removedDuplicateSections || 0,
+      newJobs: totalNewJobs,
+      newPostLists: totalNewPostLists,
+      jobsInDb: totalJobsInDb,
+      cacheCleared,
       successCount,
       failCount,
+      failures,
       duration,
     };
 
@@ -513,14 +471,17 @@ async function syncCategoriesAndJobs(req, res) {
     return payload;
   }
 }
-
 // -------------------- Single category API --------------------
 async function scrapeCategory(req, res) {
   try {
-    const { url } = req.body;
+    const { url, name, maxPages } = req.body;
     if (!url) return res.status(400).json({ error: "Category URL is required" });
 
-    const result = await scrapeCategoryInternal(url, { maxPages: 30, concurrency: 5 });
+    const result = await scrapeCategoryInternal(url, {
+      categoryName: name,
+      maxPages: Number(maxPages) || 3,
+      sendEmail: req.body?.sendEmail !== false,
+    });
     if (result.success) return res.json(result);
     return res.status(500).json(result);
   } catch (e) {
@@ -531,7 +492,7 @@ async function scrapeCategory(req, res) {
 // -------------------- CRON --------------------
 function initCategoryCron() {
   cron.schedule(
-    "*/5 * * * *", // ✅ every 5 minutes (1 minute too aggressive)
+    "0 */2 * * *",
     async () => {
       const startedAt = new Date();
       console.log(`Cron: syncCategoriesAndJobs started at ${startedAt.toISOString()}`);
@@ -540,7 +501,7 @@ function initCategoryCron() {
         const finishedAt = new Date();
         if (result?.success) {
           console.log(
-            `Cron: finished ${finishedAt.toISOString()} categories=${result.categories} jobs=${result.jobs} duration=${result.duration}s`,
+            `Cron: finished ${finishedAt.toISOString()} categories=${result.categories} newJobs=${result.newJobs} jobsInDb=${result.jobsInDb} duration=${result.duration}s`,
           );
         } else {
           console.error(
@@ -554,7 +515,7 @@ function initCategoryCron() {
     { scheduled: true, timezone: "Asia/Kolkata" },
   );
 
-  console.log("Cron: category sync scheduled (every 5 minutes, Asia/Kolkata)");
+  console.log("Cron: category sync scheduled (every 2 hours, Asia/Kolkata)");
 }
 
 export { initCategoryCron, syncCategoriesAndJobs, scrapeCategory, scrapeCategoryInternal };

@@ -72,11 +72,32 @@ const getGovJobSections = async (req, res) => {
 
 const getGovPostListBySection = async (req, res) => {
   try {
-    const url = req.params.url;
+    const raw = req.body?.url || req.query?.url || req.params?.url || "";
+    const url = String(raw).trim();
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: "Section/category URL is required",
+      });
+    }
 
-    // lean() returns plain JS objects, much faster for read-only APIs
+    let sectionPath = url;
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+      sectionPath = parsed.pathname.replace(/\/+$/, "") || "/";
+    } catch {
+      sectionPath = url.replace(/\/+$/, "") || "/";
+    }
+
     const getData = await govPostList
-      .find({ section: url })
+      .find({
+        $or: [
+          { section: sectionPath },
+          { url },
+          { url: url.replace(/\/+$/, "") },
+          { url: `${url.replace(/\/+$/, "")}/` },
+        ],
+      })
       .sort({ createdAt: -1 })
       .lean();
 

@@ -14,6 +14,9 @@ const jobSchema = new mongoose.Schema(
 const postListSchema = new mongoose.Schema(
   {
     url: { type: String, required: true, unique: true, index: true },
+    section: { type: String, index: true },
+    categoryName: { type: String, default: "" },
+    lastScraped: { type: Date },
     jobs: { type: [jobSchema], default: [] },
   },
   { timestamps: true }
@@ -23,4 +26,3 @@ const govPostList = mongoose.model("postList", postListSchema);
 
 export default govPostList;
  
-
