@@ -22,6 +22,8 @@ const parseRecipients = (raw) =>
     .map((v) => v.trim())
     .filter(Boolean);
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+
 const NOTIFY_RECIPIENTS = parseRecipients(process.env.NOTIFY_TO);
 
 const mergeUniqueRecipients = (...groups) => {
@@ -140,6 +142,65 @@ router.post("/new-message", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error sending message" });
+  }
+});
+
+router.post("/send-email", async (req, res) => {
+  try {
+    await ensureMailerReady();
+
+    const { to, subject, text, html, from } = req.body || {};
+    const recipients = Array.isArray(to) ? to : parseRecipients(to);
+
+    if (!recipients.length) {
+      return res.status(400).json({ success: false, message: "'to' is required" });
+    }
+
+    const invalidRecipients = recipients.filter((email) => !isValidEmail(email));
+    if (invalidRecipients.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid recipient email(s)",
+        invalidRecipients,
+      });
+    }
+
+    if (!subject || !String(subject).trim()) {
+      return res.status(400).json({ success: false, message: "'subject' is required" });
+    }
+
+    if (!text && !html) {
+      return res.status(400).json({
+        success: false,
+        message: "Either 'text' or 'html' is required",
+      });
+    }
+
+    if (from && !isValidEmail(from)) {
+      return res.status(400).json({ success: false, message: "Invalid 'from' email" });
+    }
+
+    const info = await transporter.sendMail({
+      from: from || EMAIL_FROM,
+      to: recipients.join(","),
+      subject: String(subject).trim(),
+      text: text ? String(text) : undefined,
+      html: html ? String(html) : undefined,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+      messageId: info?.messageId,
+      accepted: info?.accepted || [],
+      rejected: info?.rejected || [],
+    });
+  } catch (error) {
+    console.error("Send email API failed:", error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Error sending email",
+    });
   }
 });
 
