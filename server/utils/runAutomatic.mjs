@@ -77,18 +77,6 @@ const canonicalizeLink = (url) => {
   }
 };
 
-const stripDomainAndReplace = (inputUrl) => {
-  if (!inputUrl) return inputUrl;
-  try {
-    const parsed = new URL(inputUrl);
-    let path = parsed.pathname || "/";
-    path = path.replace(/\/+$/, "");
-    return path || "/";
-  } catch {
-    return inputUrl;
-  }
-};
-
 const normalizeTitleKey = (title) => {
   if (!title) return "";
   return cleanText(title)
@@ -352,15 +340,10 @@ async function scrapeCategoryInternal(categoryUrl, opts = {}) {
 
   if (doEmail && newJobs.length) {
     try {
-      const emailJobs = newJobs.map((j) => ({
-        ...j,
-        link: stripDomainAndReplace(j.link),
-        canonicalLink: stripDomainAndReplace(j.canonicalLink || j.link),
-        sourceLink: j.link,
-      }));
-
       await sendNewPostsEmail({
-        newJobs: emailJobs,
+        newJobs,
+        categoryName,
+        categoryUrl,
       });
     } catch (e) {
       console.error("Notifier error:", e?.message);

@@ -15,6 +15,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM
 const SMTP_HOST = process.env.SMTP_HOST ? process.env.SMTP_HOST.trim() : "smtp.hostinger.com";
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_SECURE = String(process.env.SMTP_SECURE || "true").toLowerCase() === "true";
+const PUBLIC_SITE_URL = (process.env.NEXTJS_APP_URL || "https://jobsaddah.com").replace(/\/+$/, "");
 
 const parseRecipients = (raw) =>
   String(raw || "")
@@ -38,6 +39,43 @@ const mergeUniqueRecipients = (...groups) => {
   });
 
   return out;
+};
+
+const escapeHtml = (value) =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const resolvePublicLink = (rawUrl) => {
+  const value = String(rawUrl || "").trim();
+  if (!value) return "";
+
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return `${PUBLIC_SITE_URL}${value}`;
+
+  try {
+    return new URL(value, `${PUBLIC_SITE_URL}/`).toString();
+  } catch {
+    return `${PUBLIC_SITE_URL}/${value.replace(/^\/+/, "")}`;
+  }
+};
+
+const detectUpdateType = ({ categoryName, categoryUrl, jobs = [] }) => {
+  const bag = [
+    categoryName,
+    categoryUrl,
+    ...jobs.map((j) => j?.title),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/\badmit\b|\bcard\b/.test(bag)) return "Admit Card";
+  if (/\bresult\b|\bmerit\b|\bscore\b/.test(bag)) return "Result";
+  return "Job";
 };
 
 export const transporter = nodemailer.createTransport({
@@ -69,7 +107,7 @@ const ensureMailerReady = async () => {
   }
 };
 
-export async function sendNewPostsEmail({ newJobs }) {
+export async function sendNewPostsEmail({ newJobs, categoryName = "", categoryUrl = "" }) {
   if (!Array.isArray(newJobs) || newJobs.length === 0) {
     return { skipped: true, reason: "No new jobs to mail" };
   }
@@ -88,14 +126,90 @@ export async function sendNewPostsEmail({ newJobs }) {
     throw new Error("No recipients found (subscribers and NOTIFY_TO are empty)");
   }
 
-  const subject = `New Govt Job Posts (${newJobs.length})`;
-  const text = newJobs.map((j, i) => `${i + 1}. ${j.title}\n${j.link}`).join("\n\n");
+  const updateType = detectUpdateType({ categoryName, categoryUrl, jobs: newJobs });
+  const safeCategoryName = String(categoryName || "").trim() || "General";
+  const resolvedCategoryUrl = resolvePublicLink(categoryUrl);
+  const subject = `${updateType} Update: ${safeCategoryName} (${newJobs.length})`;
+
+  const textHeader = [
+    `Update Type: ${updateType}`,
+    `Category: ${safeCategoryName}`,
+    resolvedCategoryUrl ? `Category URL: ${resolvedCategoryUrl}` : "",
+    "",
+    `Total New Posts: ${newJobs.length}`,
+    "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const textList = newJobs
+    .map((j, i) => {
+      const title = String(j?.title || "Untitled").trim();
+      const link = resolvePublicLink(j?.sourceLink || j?.canonicalLink || j?.link);
+      return `${i + 1}. ${title}\n${link}`;
+    })
+    .join("\n\n");
+
+  const htmlList = newJobs
+    .map((j) => {
+      const title = escapeHtml(String(j?.title || "Untitled").trim());
+      const link = resolvePublicLink(j?.sourceLink || j?.canonicalLink || j?.link);
+      const safeLink = escapeHtml(link);
+      return `<li style="margin:0 0 10px;"><a href="${safeLink}" target="_blank" rel="noopener noreferrer">${title}</a></li>`;
+    })
+    .join("");
+
+const html = `
+  <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; padding: 20px; color: #333333;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;">
+      
+      <div style="background-color: #0056b3; padding: 20px; text-align: center;">
+        <h2 style="margin: 0; color: #ffffff; font-size: 20px; letter-spacing: 0.5px;">Jobsaddah Update</h2>
+      </div>
+
+      <div style="padding: 24px;">
+        
+        <div style="background-color: #f8f9fa; border-left: 4px solid #0056b3; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+          <p style="margin: 0 0 8px; font-size: 14px;">
+            <strong style="color: #555;">Type:</strong> <span style="color: #111; font-weight: 600;">${escapeHtml(updateType)}</span>
+          </p>
+          <p style="margin: 0 0 8px; font-size: 14px;">
+            <strong style="color: #555;">Category:</strong> <span style="color: #111; font-weight: 600;">${escapeHtml(safeCategoryName)}</span>
+          </p>
+          
+          ${resolvedCategoryUrl ? `
+          <p style="margin: 0 0 8px; font-size: 14px;">
+            <strong style="color: #555;">Link:</strong> 
+            <a href="${escapeHtml(resolvedCategoryUrl)}" style="color: #0056b3; text-decoration: none; font-weight: bold;">View Category &rarr;</a>
+          </p>` : ""}
+          
+          <p style="margin: 0; font-size: 14px;">
+            <strong style="color: #555;">New Posts:</strong> <span style="background-color: #e2e6ea; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold;">${newJobs.length}</span>
+          </p>
+        </div>
+
+        <div style="border-top: 1px solid #eee; padding-top: 15px;">
+          <h3 style="margin: 0 0 15px; font-size: 16px; color: #444;">Latest Listings</h3>
+          <ol style="padding-left: 20px; margin: 0; color: #444; line-height: 1.6;">
+            ${htmlList}
+          </ol>
+        </div>
+
+      </div>
+      
+      <div style="background-color: #fafafa; padding: 15px; text-align: center; border-top: 1px solid #eaeaea; font-size: 12px; color: #888;">
+        &copy; Jobsaddah Automated Alert
+      </div>
+    </div>
+  </div>
+`;
 
   return transporter.sendMail({
     from: EMAIL_FROM,
     to: recipients.join(","),
     subject,
-    text,
+    text: `${textHeader}${textList}`,
+    html,
   });
 }
 
