@@ -3,7 +3,7 @@ import axios from "axios";
 const clearNextJsCache = async () => {
   try {
     await axios.post(
-      `${process.env.NEXTJS_APP_URL || "https://jobsaddah.com"}/api/admin/clear-cache`,
+      `${process.env.NEXTJS_AAP_URL || process.env.NEXTJS_APP_URL || "https://jobsaddah.com"}/api/admin/clear-cache`,
       {},
       { timeout: 5000 }
     );

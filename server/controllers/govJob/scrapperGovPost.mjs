@@ -22,6 +22,34 @@ const normalizePath = (inputUrl) => {
   return url;
 };
 
+const normalizeDate = (value) => {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const cleanUrlValue = (value) => String(value || "").trim().split("#")[0];
+
+const buildPostLookupKeys = (job) => {
+  const rawFull = cleanUrlValue(job?.canonicalLink || job?.link);
+  const fullUrl = /^https?:\/\//i.test(rawFull) ? rawFull : "";
+  const path = normalizePath(rawFull);
+  const pathWithSlash = path && path !== "/" ? `${path}/` : path;
+
+  return {
+    fullUrl,
+    path,
+    pathWithSlash,
+  };
+};
+
+const normalizeTitleKey = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const getGovPostDetails = async (req, res) => {
   try {
     let url = req.query.url;
@@ -45,22 +73,6 @@ const getGovPostDetails = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: withContentDefaults(getData),
-    });
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message || "Internal server error",
-    });
-  }
-};
-
-const getGovJobSections = async (req, res) => {
-  try {
-    const getData = await govSection.find().sort({ createdAt: -1 }).lean();
-    return res.status(200).json({
-      success: true,
-      count: getData.length,
-      data: getData,
     });
   } catch (err) {
     return res.status(500).json({
@@ -101,10 +113,75 @@ const getGovPostListBySection = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const allJobs = getData.flatMap((doc) => (Array.isArray(doc.jobs) ? doc.jobs : []));
+    const fullUrls = [...new Set(allJobs.map((job) => buildPostLookupKeys(job).fullUrl).filter(Boolean))];
+    const titleKeys = [...new Set(allJobs.map((job) => normalizeTitleKey(job?.title)).filter(Boolean))];
+    const paths = [...new Set(
+      allJobs
+        .flatMap((job) => {
+          const keys = buildPostLookupKeys(job);
+          return [keys.path, keys.pathWithSlash];
+        })
+        .filter(Boolean),
+    )];
+
+    let matchedPosts = [];
+    if (fullUrls.length || paths.length) {
+      matchedPosts = await Post.find({
+        $or: [
+          ...(fullUrls.length ? [{ canonicalUrl: { $in: fullUrls } }] : []),
+          ...(fullUrls.length ? [{ sourceUrlFull: { $in: fullUrls } }] : []),
+          ...(paths.length ? [{ url: { $in: paths } }] : []),
+          ...(paths.length ? [{ path: { $in: paths } }] : []),
+          ...(titleKeys.length ? [{ "recruitment.title": { $in: allJobs.map((j) => j?.title).filter(Boolean) } }] : []),
+        ],
+      })
+        .select("canonicalUrl sourceUrlFull url path recruitment.title updatedAt")
+        .lean();
+    }
+
+    const postMap = new Map();
+    const postTitleMap = new Map();
+    matchedPosts.forEach((p) => {
+      const keys = [p?.canonicalUrl, p?.sourceUrlFull, p?.url, p?.path]
+        .map((v) => cleanUrlValue(v))
+        .filter(Boolean);
+      keys.forEach((k) => {
+        if (!postMap.has(k)) postMap.set(k, p);
+      });
+
+      const tKey = normalizeTitleKey(p?.recruitment?.title);
+      if (tKey && !postTitleMap.has(tKey)) postTitleMap.set(tKey, p);
+    });
+
+    const normalized = getData.map((doc) => {
+      const jobs = Array.isArray(doc.jobs)
+        ? doc.jobs.map((job) => {
+            const lookup = buildPostLookupKeys(job);
+            const matchedPost =
+              postMap.get(lookup.fullUrl) ||
+              postMap.get(lookup.path) ||
+              postMap.get(lookup.pathWithSlash) ||
+              postTitleMap.get(normalizeTitleKey(job?.title));
+            const createdAt = normalizeDate(job?.createdAt) || normalizeDate(job?.updatedAt);
+            const publishDate =
+              normalizeDate(matchedPost?.updatedAt) ||
+              normalizeDate(job?.publishDate) ||
+              createdAt;
+            return {
+              ...job,
+              createdAt,
+              publishDate,
+            };
+          })
+        : [];
+      return { ...doc, jobs };
+    });
+
     return res.status(200).json({
       success: true,
-      count: getData.length,
-      data: getData,
+      count: normalized.length,
+      data: normalized,
     });
   } catch (err) {
     return res.status(500).json({
@@ -476,7 +553,6 @@ const rephraseAllGovPostListTitles = async (req, res) => {
 
 export {
   getGovPostDetails,
-  getGovJobSections,
   getGovPostListBySection,
   markFav,
   getFavPosts,

@@ -8,7 +8,7 @@ export async function getReminders(days = 5) {
     const res = await fetch(
       `${baseUrl}/api/gov-post/reminder?days=${encodeURIComponent(days)}`,
       {
-        next: { revalidate: 600 },
+        cache: "no-store",
         signal: controller.signal,
       },
     );

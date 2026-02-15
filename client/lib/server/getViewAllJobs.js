@@ -7,7 +7,7 @@ export async function getViewAllJobs(category = "") {
     const timer = setTimeout(() => controller.abort(), 10000);
     const qs = category ? `?category=${encodeURIComponent(category)}` : "";
     const res = await fetch(`${baseUrl}/api/gov-post/view-all${qs}`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
       signal: controller.signal,
     });
     clearTimeout(timer);

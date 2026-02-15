@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { cache } from "react";
 import { connectDB } from "@/lib/db/connectDB";
 import Post from "@/lib/models/job";
 import {
@@ -387,7 +386,7 @@ function generateOverview(detail) {
 /* =========================
    SSR DATA FETCHING
 ========================= */
-const getJobDetails = cache(async (slug) => {
+const getJobDetails = async (slug) => {
   const slugPath = Array.isArray(slug) ? slug.join("/") : slug;
   if (!slugPath) return null;
 
@@ -440,7 +439,7 @@ const getJobDetails = cache(async (slug) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: targetPath }),
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
 
     const contentType = res.headers.get("content-type") || "";
@@ -459,9 +458,9 @@ const getJobDetails = cache(async (slug) => {
   } catch {
     return getDbFallback();
   }
-});
+};
 
-const getRelatedPosts = cache(async () => {
+const getRelatedPosts = async () => {
   try {
     await connectDB();
     const posts = await Post.aggregate([
@@ -473,7 +472,7 @@ const getRelatedPosts = cache(async () => {
   } catch {
     return [];
   }
-});
+};
 
 /* =========================
    UI HELPERS

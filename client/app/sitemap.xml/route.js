@@ -21,7 +21,7 @@ const resolveSiteUrl = () => {
 };
 
 const SITE_URL = resolveSiteUrl();
-const SITEMAP_CACHE_CONTROL = "public, max-age=3600, stale-while-revalidate=86400";
+const SITEMAP_CACHE_CONTROL = "no-store, no-cache, must-revalidate";
 const STATIC_ROUTES = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/about", priority: "0.7", changefreq: "weekly" },

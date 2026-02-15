@@ -6,7 +6,7 @@ export async function getJobSections() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(`${baseUrl}/api/gov-post/job-section`, {
-      next: { revalidate: 600 },
+      cache: "no-store",
       signal: controller.signal,
     });
     clearTimeout(timer);

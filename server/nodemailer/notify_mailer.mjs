@@ -15,7 +15,11 @@ const EMAIL_FROM = process.env.EMAIL_FROM
 const SMTP_HOST = process.env.SMTP_HOST ? process.env.SMTP_HOST.trim() : "smtp.hostinger.com";
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_SECURE = String(process.env.SMTP_SECURE || "true").toLowerCase() === "true";
-const PUBLIC_SITE_URL = (process.env.NEXTJS_APP_URL || "https://jobsaddah.com").replace(/\/+$/, "");
+const PUBLIC_SITE_URL = (
+  process.env.NEXTJS_AAP_URL ||
+  process.env.NEXTJS_APP_URL ||
+  "https://jobsaddah.com"
+).replace(/\/+$/, "");
 
 const parseRecipients = (raw) =>
   String(raw || "")

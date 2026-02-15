@@ -6,7 +6,7 @@ export async function getTrendingJobs() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(`${baseUrl}/api/gov-post/fav-post`, {
-      next: { revalidate: 600 },
+      cache: "no-store",
       signal: controller.signal,
     });
     clearTimeout(timer);

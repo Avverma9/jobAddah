@@ -30,6 +30,16 @@ const normalizeHost = (host) =>
     .replace(/^www\./, "")
     .trim();
 
+const normalizeOptionalDate = (value) => {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  if (d.getFullYear() < 2000 || d.getFullYear() > new Date().getFullYear() + 1) {
+    return null;
+  }
+  return d;
+};
+
 const canonicalizeLink = (url) => {
   if (!url) return null;
   try {
@@ -247,12 +257,21 @@ const normalizeJobForPostList = (job) => {
 
   const canonicalLink = canonicalizeLink(job.canonicalLink || link);
   if (!canonicalLink) return null;
+  const normalizedCreatedAt =
+    normalizeOptionalDate(job.createdAt) ||
+    normalizeOptionalDate(job.updatedAt) ||
+    new Date();
+  const normalizedPublishDate =
+    normalizeOptionalDate(job.publishDate) ||
+    normalizeOptionalDate(job.updatedAt) ||
+    normalizedCreatedAt;
 
   return {
     title,
     link,
     canonicalLink,
-    createdAt: job.createdAt ? new Date(job.createdAt) : new Date(),
+    publishDate: normalizedPublishDate,
+    createdAt: normalizedCreatedAt,
     updatedAt: new Date(),
   };
 };
@@ -282,9 +301,25 @@ const persistGovPostList = async ({ categoryUrl, categoryName = "", apiResult })
   incomingJobs.forEach((job) => {
     const key = buildJobKey(job);
     const prev = existingMap.get(key);
+    const publishDate =
+      normalizeOptionalDate(job.publishDate) ||
+      normalizeOptionalDate(job.updatedAt) ||
+      normalizeOptionalDate(job.createdAt) ||
+      normalizeOptionalDate(prev?.publishDate) ||
+      normalizeOptionalDate(prev?.updatedAt) ||
+      normalizeOptionalDate(prev?.createdAt) ||
+      null;
+
+    const createdAt =
+      normalizeOptionalDate(prev?.createdAt) ||
+      normalizeOptionalDate(prev?.updatedAt) ||
+      normalizeOptionalDate(job.updatedAt) ||
+      normalizeOptionalDate(job.createdAt) ||
+      new Date();
     existingMap.set(key, {
       ...job,
-      createdAt: prev?.createdAt || job.createdAt || new Date(),
+      publishDate: publishDate || createdAt,
+      createdAt,
       updatedAt: new Date(),
     });
   });

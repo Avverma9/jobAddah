@@ -9,7 +9,6 @@ import {
   backfillPageHash,
 } from "../controllers/govJob/govJob.mjs";
 import {
-  getGovJobSections,
   getGovPostListBySection,
   getGovPostDetails,
   markFav,
@@ -29,7 +28,6 @@ router.get("/get-all", getallPost);
 router.post("/add-job", createPost);
 router.patch("/update-job/:id", updatePost);
 
-router.get("/get-sections", getGovJobSections);
 router.post("/get-postlist", getGovPostListBySection);
 router.get("/get-post/details", getGovPostDetails);
 router.put(

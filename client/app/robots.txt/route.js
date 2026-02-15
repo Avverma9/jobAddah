@@ -16,7 +16,7 @@ export function GET() {
   return new NextResponse(ROBOTS, {
     headers: {
       "Content-Type": "text/plain",
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
     },
   });
 }
