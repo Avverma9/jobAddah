@@ -46,8 +46,6 @@ verifyMailer();
 
 app.use("/api/v1", router);
 // expose mailer routes both at /mailer and under the API prefix
-app.use("/mailer", notifyMailerRouter);
-app.use("/api/v1", notifyMailerRouter);
 app.use("/test-cron", syncCategoriesAndJobs);
 
 const PORT = process.env.PORT || 5000;

@@ -147,6 +147,7 @@ const normalizeCategoryForSection = (rawCategory, siteUrl) => {
 
 const loadAndCleanupSiteSection = async (siteUrl) => {
   const siteHost = normalizeHost(new URL(siteUrl).host);
+  const normalizedSiteUrl = canonicalizeLink(siteUrl) || siteUrl;
   const allSections = await Section.find()
     .sort({ updatedAt: -1, createdAt: -1 })
     .lean();
@@ -169,9 +170,15 @@ const loadAndCleanupSiteSection = async (siteUrl) => {
     };
   }
 
-  const primary = siteSections[0];
+  const primary =
+    siteSections.find((doc) => {
+      const sectionUrl = ensureProtocol(String(doc?.url || ""));
+      if (!sectionUrl) return false;
+      return (canonicalizeLink(sectionUrl) || sectionUrl) === normalizedSiteUrl;
+    }) || siteSections[0];
+
   const duplicateIds = siteSections
-    .slice(1)
+    .filter((doc) => String(doc?._id) !== String(primary?._id))
     .map((d) => d?._id)
     .filter(Boolean);
 
@@ -195,20 +202,21 @@ const loadAndCleanupSiteSection = async (siteUrl) => {
 
   const mergedCategories = [...categoriesMap.values()];
 
+  // Remove same-host duplicate rows before updating URL to avoid unique-index collisions.
+  if (duplicateIds.length) {
+    await Section.deleteMany({ _id: { $in: duplicateIds } });
+  }
+
   await Section.updateOne(
     { _id: primary._id },
     {
       $set: {
-        url: siteUrl,
+        url: normalizedSiteUrl,
         categories: mergedCategories,
         lastSynced: new Date(),
       },
     }
   );
-
-  if (duplicateIds.length) {
-    await Section.deleteMany({ _id: { $in: duplicateIds } });
-  }
 
   return {
     categories: mergedCategories,
