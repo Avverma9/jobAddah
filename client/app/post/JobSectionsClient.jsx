@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Briefcase,
@@ -49,9 +49,159 @@ const CATEGORY_THEME = {
 };
 
 const ORDER_STORAGE_KEY = "gov-job-sections-order-v3";
+const SECTION_TO_MEGA_TITLE = {
+  "latest job": "Latest Gov Jobs",
+  "latest jobs": "Latest Gov Jobs",
+  "admit card": "Admit Cards",
+  "admit cards": "Admit Cards",
+  result: "Recent Results",
+  results: "Recent Results",
+  admission: "Admission Form",
+  admissions: "Admission Form",
+  "answer key": "Answer Keys",
+  "answer keys": "Answer Keys",
+  syllabus: "Syllabus",
+};
+
+const toText = (value) => String(value || "").trim();
+
+const toSlug = (value) =>
+  toText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const resolveMegaTitle = (sectionTitle) => {
+  const key = toText(sectionTitle).toLowerCase();
+  return SECTION_TO_MEGA_TITLE[key] || toText(sectionTitle);
+};
+
+const normalizeCategory = (category, fallbackSite = {}) => {
+  const name =
+    toText(category?.name) ||
+    toText(category?.sectionTitle) ||
+    toText(category?.title);
+  if (!name) return null;
+
+  const megaTitle = toText(category?.megaTitle) || resolveMegaTitle(name);
+  const key =
+    toText(category?.key) || toText(category?.slug) || toSlug(megaTitle || name);
+  const firstData =
+    Array.isArray(category?.data) &&
+    category.data[0] &&
+    typeof category.data[0] === "object"
+      ? category.data[0]
+      : {};
+  const jobs = Array.isArray(firstData?.jobs)
+    ? firstData.jobs
+    : Array.isArray(category?.jobs)
+      ? category.jobs
+      : [];
+
+  return {
+    ...category,
+    name,
+    key,
+    megaTitle,
+    sectionTitle: toText(category?.sectionTitle) || name,
+    sectionUrl: toText(category?.sectionUrl) || toText(category?.url),
+    siteName: toText(category?.siteName) || toText(fallbackSite?.name),
+    siteUrl: toText(category?.siteUrl) || toText(fallbackSite?.url),
+    data: [{ ...firstData, jobs }],
+  };
+};
+
+const dedupeCategories = (categories) => {
+  const seen = new Set();
+  return categories.filter((category) => {
+    const key =
+      `${toText(category?.key).toLowerCase()}|` +
+      `${toText(category?.sectionUrl).toLowerCase()}|` +
+      `${toText(category?.name).toLowerCase()}`;
+    if (!key.trim()) return false;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const normalizeJobSectionsData = (input) => {
+  if (!input) return null;
+
+  if (Array.isArray(input?.categories)) {
+    const categories = dedupeCategories(
+      input.categories
+        .map((category) => normalizeCategory(category, input))
+        .filter(Boolean),
+    );
+    if (!categories.length) return null;
+    return { ...input, categories };
+  }
+
+  const items = Array.isArray(input) ? input : [input];
+  const categories = [];
+  for (const item of items) {
+    if (Array.isArray(item?.sections)) {
+      for (const section of item.sections) {
+        const normalized = normalizeCategory(section, item);
+        if (normalized) categories.push(normalized);
+      }
+      continue;
+    }
+
+    const normalized = normalizeCategory(item);
+    if (normalized) categories.push(normalized);
+  }
+
+  const deduped = dedupeCategories(categories);
+  if (!deduped.length) return null;
+
+  const first = items[0] || {};
+  return {
+    siteId: toText(first?.siteId),
+    name: toText(first?.name),
+    url: toText(first?.url),
+    categories: deduped,
+  };
+};
+
+const normalizeJobSectionsPayload = (payload) => {
+  if (!payload?.success) return null;
+  return normalizeJobSectionsData(payload?.data);
+};
+
+const normalizeSectionPost = (item) => {
+  const canonicalKey = toText(item?.canonicalKey);
+  const title = toText(item?.title);
+  if (!canonicalKey || !title) return null;
+
+  const postDate = item?.postDate || item?.createdAt || item?.updatedAt || null;
+  return {
+    ...item,
+    title,
+    canonicalKey,
+    postDate,
+    createdAt: postDate,
+    updatedAt: postDate,
+    url: canonicalKey,
+  };
+};
+
+const normalizeSectionPostsPayload = (payload) => {
+  const items = Array.isArray(payload?.data) ? payload.data : [];
+  return items.map(normalizeSectionPost).filter(Boolean);
+};
+
+const getJobHref = (job) => {
+  const canonicalKey = toText(job?.canonicalKey);
+  if (canonicalKey) return `/post/${encodeURIComponent(canonicalKey)}`;
+  return getCleanPostUrl(job?.link || job?.url || "");
+};
 
 const buildJobKey = (job) => {
   if (!job) return "job:empty";
+  const canonicalKey = (job.canonicalKey || "").trim().toLowerCase();
+  if (canonicalKey) return `job:canonical:${canonicalKey}`;
   const id = job._id || job.id || "";
   if (id) return `job:id:${id}`;
   const title = (job.title || "").trim().toLowerCase();
@@ -100,13 +250,17 @@ const CardSkeleton = () => (
 );
 
 const JobSectionsClient = ({ initialData = null, className = "" }) => {
-  const [data, setData] = useState(initialData);
-  const [loading, setLoading] = useState(!initialData);
+  const [data, setData] = useState(() => normalizeJobSectionsData(initialData));
+  const [loading, setLoading] = useState(
+    () => !normalizeJobSectionsData(initialData),
+  );
   const [selectedCategory] = useState("all");
   const [searchQuery] = useState("");
   const [categoryOrder, setCategoryOrder] = useState([]);
   const [draggingCategory, setDraggingCategory] = useState(null);
   const [dragOverCategory, setDragOverCategory] = useState(null);
+  const [categoryLoadingMap, setCategoryLoadingMap] = useState({});
+  const loadedCategoryKeysRef = useRef(new Set());
 
   const getRecentTag = (isoDate) => {
     if (!isoDate) return null;
@@ -129,14 +283,15 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
   };
 
   useEffect(() => {
-    if (initialData) return;
+    if (normalizeJobSectionsData(initialData)) return;
     let isMounted = true;
     fetch("/api/gov-post/job-section")
       .then((res) => res.json())
       .then((payload) => {
         if (isMounted) {
-          if (payload.success && payload.data.length > 0) {
-            setData(payload.data[0]);
+          const normalized = normalizeJobSectionsPayload(payload);
+          if (normalized) {
+            setData(normalized);
           }
           setLoading(false);
         }
@@ -177,6 +332,120 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
     // Use a timer to avoid synchronous state update warning
     const timer = setTimeout(initializeOrder, 0);
     return () => clearTimeout(timer);
+  }, [data]);
+
+  useEffect(() => {
+    if (!data?.categories?.length) return;
+    let active = true;
+
+    const categoriesToFetch = data.categories.filter((category) => {
+      const key = toText(category?.key) || toText(category?.name);
+      if (!key) return false;
+      if (loadedCategoryKeysRef.current.has(key)) return false;
+
+      const existingJobs = Array.isArray(category?.data?.[0]?.jobs)
+        ? category.data[0].jobs
+        : [];
+      if (existingJobs.length > 0) return false;
+
+      const megaTitle = toText(category?.megaTitle) || resolveMegaTitle(category?.name);
+      return Boolean(megaTitle);
+    });
+
+    if (!categoriesToFetch.length) return;
+
+    const loadingKeys = [];
+    for (const category of categoriesToFetch) {
+      const key = toText(category?.key) || toText(category?.name);
+      if (!key) continue;
+      loadedCategoryKeysRef.current.add(key);
+      loadingKeys.push(key);
+    }
+    if (!loadingKeys.length) return;
+
+    const loadingTimer = setTimeout(() => {
+      if (!active) return;
+      setCategoryLoadingMap((prev) => {
+        const next = { ...prev };
+        for (const key of loadingKeys) {
+          next[key] = true;
+        }
+        return next;
+      });
+    }, 0);
+
+    Promise.allSettled(
+      categoriesToFetch.map(async (category) => {
+        const categoryKey = toText(category?.key) || toText(category?.name);
+        const megaTitle = toText(category?.megaTitle) || resolveMegaTitle(category?.name);
+        const qs = new URLSearchParams({
+          megaTitle,
+          page: "1",
+          limit: "20",
+        });
+
+        const res = await fetch(`/api/gov-post/section-with-post?${qs.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          return { categoryKey, jobs: [] };
+        }
+
+        const payload = await res.json().catch(() => null);
+        const jobs = dedupeJobs(normalizeSectionPostsPayload(payload));
+        return { categoryKey, jobs };
+      }),
+    )
+      .then((results) => {
+        if (!active) return;
+
+        const jobsByCategory = new Map();
+        for (const result of results) {
+          if (result.status !== "fulfilled") continue;
+          if (!result.value?.categoryKey) continue;
+          jobsByCategory.set(result.value.categoryKey, result.value.jobs || []);
+        }
+
+        if (jobsByCategory.size > 0) {
+          setData((prev) => {
+            if (!prev?.categories?.length) return prev;
+
+            const categories = prev.categories.map((category) => {
+              const key = toText(category?.key) || toText(category?.name);
+              if (!jobsByCategory.has(key)) return category;
+
+              const firstData =
+                Array.isArray(category?.data) &&
+                category.data[0] &&
+                typeof category.data[0] === "object"
+                  ? category.data[0]
+                  : {};
+
+              return {
+                ...category,
+                data: [{ ...firstData, jobs: jobsByCategory.get(key) || [] }],
+              };
+            });
+
+            return { ...prev, categories };
+          });
+        }
+      })
+      .finally(() => {
+        if (!active) return;
+        setCategoryLoadingMap((prev) => {
+          const next = { ...prev };
+          for (const key of loadingKeys) {
+            delete next[key];
+          }
+          return next;
+        });
+      });
+
+    return () => {
+      active = false;
+      clearTimeout(loadingTimer);
+    };
   }, [data]);
 
   const persistOrder = (newOrder) => {
@@ -283,6 +552,8 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
               CATEGORY_THEME[category.name] || CATEGORY_THEME["Latest Job"];
             const Icon = theme.icon;
             const jobs = dedupeJobs(category.data?.[0]?.jobs || []);
+            const categoryKey = category.key || category.name;
+            const isCategoryLoading = Boolean(categoryLoadingMap[categoryKey]);
             const filteredJobs = searchQuery
               ? jobs.filter((job) =>
                   (job.title || "")
@@ -297,7 +568,7 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
 
             return (
               <div
-                key={category.name}
+                key={categoryKey}
                 draggable
                 onDragStart={handleDragStart(category.name)}
                 onDragOver={handleDragOver(category.name)}
@@ -332,9 +603,9 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
 
                 <ul className="flex-1 py-1">
                   {filteredJobs.slice(0, 20).map((job, index) => {
-                    const href = getCleanPostUrl(job.link || job.url || "");
+                    const href = getJobHref(job);
                     return (
-                      <li key={index}>
+                      <li key={job.canonicalKey || job.postId || index}>
                         {href && href !== "#" ? (
                           <Link
                             href={href}
@@ -377,8 +648,26 @@ const JobSectionsClient = ({ initialData = null, className = "" }) => {
                   })}
 
                   {filteredJobs.length === 0 && (
-                    <li className="py-8 text-center text-sm text-slate-400">
-                      No posts found.
+                    <li className="px-4 py-8 text-center text-sm text-slate-400">
+                      {isCategoryLoading ? (
+                        "Loading posts..."
+                      ) : category.sectionUrl ? (
+                        <a
+                          href={category.sectionUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onDragStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                        >
+                          Open {category.name} Section
+                        </a>
+                      ) : (
+                        "No posts found."
+                      )}
                     </li>
                   )}
                 </ul>

@@ -1,162 +1,262 @@
-import Section from "../../../../lib/models/section";
-import GovPostList from "../../../../lib/models/joblist";
-import { connectDB } from "../../../../lib/db/connectDB";
+import { baseUrl } from "@/lib/baseUrl";
 import { NextResponse } from "next/server";
-import { matchesCategory, toCategoryKey } from "@/lib/category-utils";
 
-const cleanJobsList = (jobs) => {
-  if (!Array.isArray(jobs)) return [];
-  return jobs.filter(
-    (j) => j && j.title !== "Privacy Policy" && j.title !== "Sarkari Result",
-  );
+const SECTION_TO_MEGA_TITLE = {
+  "latest job": "Latest Gov Jobs",
+  "latest jobs": "Latest Gov Jobs",
+  "admit card": "Admit Cards",
+  "admit cards": "Admit Cards",
+  result: "Recent Results",
+  results: "Recent Results",
+  admission: "Admission Form",
+  admissions: "Admission Form",
+  "answer key": "Answer Keys",
+  "answer keys": "Answer Keys",
+  syllabus: "Syllabus",
+  "previous year paper": "Previous Year Paper",
+  "previous year papers": "Previous Year Paper",
 };
 
-const flattenUniqueJobs = (posts) => {
-  let allJobs = [];
-  posts.forEach((post) => {
-    allJobs = allJobs.concat(cleanJobsList(post.jobs));
-  });
-  return Array.from(
-    new Set(allJobs.map((j) => JSON.stringify({ title: j.title, link: j.link }))),
-  ).map((s) => JSON.parse(s));
-};
+function toText(value) {
+  return String(value || "").trim();
+}
 
-const queryPostsBySourceLink = async (sourceLink, limit = 0) => {
-  if (!sourceLink) return [];
-  const safeLink = sourceLink.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const query = GovPostList.find({ url: { $regex: "^" + safeLink, $options: "i" } })
-    .sort({ createdAt: -1 })
-    .select("url jobs updatedAt createdAt")
-    .lean();
+function toSlug(value) {
+  return toText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-  if (limit > 0) query.limit(limit);
-  return query;
-};
+function resolveMegaTitle(sectionTitle) {
+  const key = toText(sectionTitle).toLowerCase();
+  return SECTION_TO_MEGA_TITLE[key] || toText(sectionTitle);
+}
 
-const resolveCategoryFromSections = (sections, categoryQuery) => {
-  if (!Array.isArray(sections) || !categoryQuery) return null;
-  const query = String(categoryQuery).trim();
-  if (!query) return null;
+function buildCategory({
+  name,
+  key,
+  megaTitle,
+  sectionTitle,
+  sectionUrl,
+  siteName,
+  siteUrl,
+}) {
+  const safeName = toText(name) || toText(sectionTitle) || toText(megaTitle);
+  const safeMegaTitle = toText(megaTitle) || resolveMegaTitle(safeName);
+  const safeKey = toText(key) || toSlug(safeMegaTitle || safeName);
 
-  for (const section of sections) {
-    for (const cat of section.categories || []) {
-      if (matchesCategory(cat?.name, query)) {
-        return {
-          name: cat.name,
-          key: toCategoryKey(cat.name),
-          link: String(cat.link || "").trim(),
-        };
-      }
+  return {
+    name: safeName,
+    key: safeKey,
+    megaTitle: safeMegaTitle,
+    sectionTitle: toText(sectionTitle) || safeName,
+    sectionUrl: toText(sectionUrl),
+    siteName: toText(siteName),
+    siteUrl: toText(siteUrl),
+    data: [{ jobs: [] }],
+  };
+}
+
+function dedupeCategories(categories) {
+  const byKey = new Map();
+
+  for (const category of categories) {
+    const key = toText(category?.key);
+    if (!key) continue;
+
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, category);
+      continue;
+    }
+
+    if (!existing.sectionUrl && category.sectionUrl) {
+      existing.sectionUrl = category.sectionUrl;
+    }
+    if (!existing.siteName && category.siteName) {
+      existing.siteName = category.siteName;
+    }
+    if (!existing.siteUrl && category.siteUrl) {
+      existing.siteUrl = category.siteUrl;
+    }
+    if (!existing.name && category.name) {
+      existing.name = category.name;
+    }
+    if (!existing.sectionTitle && category.sectionTitle) {
+      existing.sectionTitle = category.sectionTitle;
     }
   }
-  return null;
-};
 
-export const getSectionsWithPosts = async () => {
-  try {
-    await connectDB();
+  return Array.from(byKey.values());
+}
 
-    const sections = await Section.find()
-      .select("url categories createdAt updatedAt")
-      .lean();
+function normalizeMegaSectionsPayload(payload) {
+  const data = Array.isArray(payload?.data) ? payload.data : [];
+  const categories = [];
+  const siteInfo = { siteId: "", name: "", url: "" };
 
-    if (!sections.length) {
-      return NextResponse.json({ success: true, count: 0, data: [] });
+  for (const item of data) {
+    const megaTitle = toText(item?.title);
+    const key = toText(item?.slug) || toSlug(megaTitle);
+    const sources = Array.isArray(item?.sources) ? item.sources : [];
+
+    if (sources.length === 0) {
+      if (!megaTitle) continue;
+      categories.push(
+        buildCategory({
+          name: megaTitle,
+          key,
+          megaTitle,
+          sectionTitle: megaTitle,
+          sectionUrl: "",
+          siteName: "",
+          siteUrl: "",
+        }),
+      );
+      continue;
     }
 
-    const result = await Promise.all(
-      sections.map(async (sec) => {
-        const categoriesWithData = await Promise.all(
-          (sec.categories || []).map(async (cat) => {
-            const sourceLink = String(cat?.link || "").trim();
-            if (!sourceLink) {
-              return {
-                name: cat?.name || "Category",
-                key: toCategoryKey(cat?.name),
-                count: 0,
-                data: [],
-              };
-            }
+    for (const source of sources) {
+      const sectionTitle = toText(source?.sectionTitle) || megaTitle;
+      if (!sectionTitle && !megaTitle) continue;
 
-            const posts = await queryPostsBySourceLink(sourceLink, 10);
-            const cleanedPosts = posts.map((post) => ({
-              ...post,
-              jobs: cleanJobsList(post.jobs),
-            }));
+      const category = buildCategory({
+        name: sectionTitle,
+        key,
+        megaTitle: megaTitle || resolveMegaTitle(sectionTitle),
+        sectionTitle,
+        sectionUrl: toText(source?.sectionUrl),
+        siteName: toText(source?.siteName),
+        siteUrl: toText(source?.siteUrl),
+      });
+      categories.push(category);
 
-            return {
-              name: cat.name,
-              key: toCategoryKey(cat.name),
-              count: cleanedPosts.length,
-              data: cleanedPosts,
-            };
-          }),
-        );
-
-        return {
-          _id: sec._id,
-          url: sec.url,
-          createdAt: sec.createdAt,
-          updatedAt: sec.updatedAt,
-          categories: categoriesWithData,
-        };
-      }),
-    );
-
-    return NextResponse.json(
-      { success: true, count: result.length, data: result },
-      { status: 200 },
-    );
-  } catch (err) {
-    console.error("getSectionsWithPosts error", err);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 },
-    );
+      if (!siteInfo.siteId) siteInfo.siteId = toText(source?.siteId);
+      if (!siteInfo.name) siteInfo.name = toText(source?.siteName);
+      if (!siteInfo.url) siteInfo.url = toText(source?.siteUrl);
+    }
   }
-};
 
-const getFullCategoryPosts = async (categoryQuery) => {
-  try {
-    await connectDB();
+  return {
+    siteInfo,
+    categories: dedupeCategories(categories),
+  };
+}
 
-    const sections = await Section.find().select("categories").lean();
-    const resolvedCategory = resolveCategoryFromSections(sections, categoryQuery);
+function normalizeSiteSectionsPayload(payload) {
+  const data = Array.isArray(payload?.data) ? payload.data : [];
+  const categories = [];
+  const firstSite = data[0] || {};
 
-    if (!resolvedCategory?.link) {
-      return NextResponse.json(
-        { success: true, category: null, data: [] },
-        { status: 200 },
+  for (const site of data) {
+    const sections = Array.isArray(site?.sections) ? site.sections : [];
+    for (const section of sections) {
+      const sectionTitle = toText(section?.title);
+      if (!sectionTitle) continue;
+
+      const megaTitle = resolveMegaTitle(sectionTitle);
+      categories.push(
+        buildCategory({
+          name: sectionTitle,
+          key: toSlug(megaTitle),
+          megaTitle,
+          sectionTitle,
+          sectionUrl: toText(section?.url),
+          siteName: toText(site?.name),
+          siteUrl: toText(site?.url),
+        }),
       );
     }
+  }
 
-    const posts = await queryPostsBySourceLink(resolvedCategory.link);
-    const uniqueJobs = flattenUniqueJobs(posts);
+  return {
+    siteInfo: {
+      siteId: toText(firstSite?.siteId),
+      name: toText(firstSite?.name),
+      url: toText(firstSite?.url),
+    },
+    categories: dedupeCategories(categories),
+  };
+}
+
+function normalizeSectionsPayload(payload) {
+  const data = Array.isArray(payload?.data) ? payload.data : [];
+  if (data.length === 0) return null;
+
+  const hasSources = data.some((item) => Array.isArray(item?.sources));
+  if (hasSources) return normalizeMegaSectionsPayload(payload);
+
+  const hasSections = data.some((item) => Array.isArray(item?.sections));
+  if (hasSections) return normalizeSiteSectionsPayload(payload);
+
+  return null;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  const payload = await response.json().catch(() => null);
+  return { response, payload };
+}
+
+function buildResponse(normalized, status) {
+  const categories = Array.isArray(normalized?.categories)
+    ? normalized.categories
+    : [];
+
+  return NextResponse.json(
+    {
+      success: true,
+      count: categories.length,
+      data: [
+        {
+          siteId: toText(normalized?.siteInfo?.siteId),
+          name: toText(normalized?.siteInfo?.name),
+          url: toText(normalized?.siteInfo?.url),
+          categories,
+        },
+      ],
+    },
+    { status },
+  );
+}
+
+export async function GET() {
+  const primaryUrl = `${baseUrl}/site/mega-sections`;
+  const fallbackUrl = `${baseUrl}/sections/get-sections`;
+
+  try {
+    const primary = await fetchJson(primaryUrl);
+    const normalizedPrimary = normalizeSectionsPayload(primary.payload);
+    if (normalizedPrimary?.categories?.length) {
+      return buildResponse(normalizedPrimary, primary.response.status);
+    }
+
+    const fallback = await fetchJson(fallbackUrl);
+    const normalizedFallback = normalizeSectionsPayload(fallback.payload);
+    if (normalizedFallback?.categories?.length) {
+      return buildResponse(normalizedFallback, fallback.response.status);
+    }
 
     return NextResponse.json(
       {
-        success: true,
-        category: { name: resolvedCategory.name, key: resolvedCategory.key },
-        data: uniqueJobs,
+        success: false,
+        message: "Invalid response from upstream service",
       },
-      { status: 200 },
+      { status: 502 },
     );
-  } catch (err) {
-    console.error("getFullCategoryPosts error", err);
+  } catch (error) {
+    console.error("job-section route error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 },
+      {
+        success: false,
+        message: "Failed to connect to upstream service",
+      },
+      { status: 502 },
     );
   }
-};
-
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category") || searchParams.get("name");
-
-  if (category) {
-    return getFullCategoryPosts(category);
-  }
-
-  return getSectionsWithPosts();
 }

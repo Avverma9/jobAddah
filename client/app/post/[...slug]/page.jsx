@@ -8,6 +8,7 @@ import {
   isLinkClickable,
 } from "@/util/post-helper";
 import { getCleanPostUrl } from "@/lib/job-url";
+import { baseUrl } from "@/lib/baseUrl";
 import {
   CalendarDays,
   CheckCircle2,
@@ -389,6 +390,10 @@ function generateOverview(detail) {
 const getJobDetails = async (slug) => {
   const slugPath = Array.isArray(slug) ? slug.join("/") : slug;
   if (!slugPath) return null;
+  const normalizedSlug = normalizeSlugPath(slugPath);
+  const canonicalKeyCandidate = normalizedSlug.includes("/")
+    ? ""
+    : normalizedSlug;
 
   let targetPath = slugPath;
   if (!targetPath.startsWith("/")) targetPath = "/" + targetPath;
@@ -431,10 +436,47 @@ const getJobDetails = async (slug) => {
   };
 
   if (!apiUrl) {
+    try {
+      if (canonicalKeyCandidate) {
+        const res = await fetch(`${baseUrl}/post/scrape`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ canonicalKey: canonicalKeyCandidate }),
+          cache: "no-store",
+        });
+
+        const contentType = res.headers.get("content-type") || "";
+        if (res.ok && !contentType.includes("text/html")) {
+          const json = await res.json().catch(() => null);
+          if (json?.success && json?.data) {
+            return json.data;
+          }
+        }
+      }
+    } catch {
+      // fall through to DB fallback
+    }
+
     return getDbFallback();
   }
 
   try {
+    if (canonicalKeyCandidate) {
+      const canonicalRes = await fetch(`${baseUrl}/post/scrape`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ canonicalKey: canonicalKeyCandidate }),
+        cache: "no-store",
+      });
+      const canonicalContentType = canonicalRes.headers.get("content-type") || "";
+      if (canonicalRes.ok && !canonicalContentType.includes("text/html")) {
+        const canonicalJson = await canonicalRes.json().catch(() => null);
+        if (canonicalJson?.success && canonicalJson?.data) {
+          return canonicalJson.data;
+        }
+      }
+    }
+
     const res = await fetch(`${apiUrl}/scrapper/scrape-complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,60 +1,127 @@
-import { NextResponse } from 'next/server';
+import { baseUrl } from "@/lib/baseUrl";
+import { NextResponse } from "next/server";
 
-export const getGovPostDetails = async (request) => {
+function toText(value) {
+  return String(value || "").trim();
+}
+
+async function safeParseJson(response) {
   try {
-    const sp = request.nextUrl.searchParams;
-    const url = sp.get('url');
-    const id = sp.get('id');
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
 
-    if (!url && !id) {
-      return NextResponse.json(
-        { success: false, error: 'URL or ID is required' },
-        { status: 400 }
-      );
-    }
+async function fetchByCanonicalKey(canonicalKey) {
+  const response = await fetch(`${baseUrl}/post/scrape`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ canonicalKey }),
+    cache: "no-store",
+  });
+  const payload = await safeParseJson(response);
+  return { response, payload };
+}
 
-    const scrapeResp = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/scrapper/scrape-complete`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url, id }),
-        cache: 'no-store',
-      }
-    );
+async function fetchLegacyByUrlOrId({ url, id }) {
+  const legacyApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!legacyApiUrl) return { response: null, payload: null };
 
-    let scrapeJson = null;
-    try {
-      scrapeJson = await scrapeResp.json();
-    } catch (e) {
-      scrapeJson = null;
-    }
+  const response = await fetch(`${legacyApiUrl}/scrapper/scrape-complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, id }),
+    cache: "no-store",
+  });
+  const payload = await safeParseJson(response);
+  return { response, payload };
+}
 
-    if (scrapeJson && scrapeJson.success && scrapeJson.data) {
-      return NextResponse.json({ success: true, data: scrapeJson.data }, { status: 200 });
-    }
+function buildProcessingResponse() {
+  return NextResponse.json(
+    {
+      success: false,
+      status: "PROCESSING",
+      error: "Scraping started, try again shortly.",
+    },
+    { status: 202 },
+  );
+}
 
-    if (scrapeJson) {
-      const status = scrapeJson.status === 'PROCESSING' ? 202 : 200;
-      return NextResponse.json(scrapeJson, { status });
-    }
+async function handleRequestPayload({ canonicalKey, url, id }) {
+  const safeCanonicalKey = toText(canonicalKey);
+  const safeUrl = toText(url);
+  const safeId = toText(id);
 
+  if (!safeCanonicalKey && !safeUrl && !safeId) {
     return NextResponse.json(
       {
         success: false,
-        status: 'PROCESSING',
-        error: 'Scraping started, try again shortly.',
+        error: "canonicalKey is required (or provide URL/ID for legacy flow)",
       },
-      { status: 202 }
-    );
-  } catch (err) {
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Internal server error' },
-      { status: 500 }
+      { status: 400 },
     );
   }
-};
+
+  try {
+    if (safeCanonicalKey) {
+      const { response, payload } = await fetchByCanonicalKey(safeCanonicalKey);
+
+      if (payload?.success && payload?.data) {
+        return NextResponse.json(
+          { success: true, data: payload.data },
+          { status: response.status || 200 },
+        );
+      }
+
+      if (payload) {
+        const status = payload?.status === "PROCESSING" ? 202 : response.status;
+        return NextResponse.json(payload, { status });
+      }
+
+      return buildProcessingResponse();
+    }
+
+    const legacy = await fetchLegacyByUrlOrId({ url: safeUrl, id: safeId });
+    if (legacy?.payload?.success && legacy?.payload?.data) {
+      return NextResponse.json(
+        { success: true, data: legacy.payload.data },
+        { status: legacy.response?.status || 200 },
+      );
+    }
+
+    if (legacy?.payload) {
+      const status =
+        legacy.payload?.status === "PROCESSING"
+          ? 202
+          : legacy.response?.status || 200;
+      return NextResponse.json(legacy.payload, { status });
+    }
+
+    return buildProcessingResponse();
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error?.message || "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
 
 export async function GET(request) {
-  return getGovPostDetails(request);
+  const searchParams = request?.nextUrl?.searchParams;
+  return handleRequestPayload({
+    canonicalKey: searchParams?.get("canonicalKey") || searchParams?.get("key"),
+    url: searchParams?.get("url"),
+    id: searchParams?.get("id"),
+  });
+}
+
+export async function POST(request) {
+  const body = await request.json().catch(() => ({}));
+  return handleRequestPayload({
+    canonicalKey: body?.canonicalKey || body?.key,
+    url: body?.url,
+    id: body?.id,
+  });
 }
