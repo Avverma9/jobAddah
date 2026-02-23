@@ -1,11 +1,15 @@
 import React from 'react';
 import { Mail, MapPin, Phone, Clock, ShieldAlert, Megaphone, FileQuestion, ExternalLink } from 'lucide-react';
+import { buildMetadata } from "../lib/seo";
 
-export const metadata = {
-  title: "Contact JobsAddah | Support & Office Location",
+export const metadata = buildMetadata({
+  title: "Contact SarkariAfsar Support",
   description:
-    "Contact JobsAddah Support in Bakhtiyarpur, Patna. Call us at +91-9153630507 for advertising, job notification corrections, or Sarkari Naukri queries.",
-};
+    "Contact SarkariAfsar for support, correction requests, and advertising queries.",
+  path: "/contact",
+  type: "ContactPage",
+  keywords: ["contact sarkariafsar", "sarkari update support", "job notification correction"],
+});
 
 const ContactPage = () => {
   return (
@@ -90,7 +94,7 @@ const ContactPage = () => {
                 style={{ border: 0 }} 
                 allowFullScreen="" 
                 loading="lazy"
-                title="JobsAddah Office Location"
+                title="SarkariAfsar Office Location"
                 className="opacity-80 group-hover:opacity-100 transition-opacity"
               ></iframe>
               <div className="absolute bottom-4 left-4">
@@ -226,3 +230,4 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
+

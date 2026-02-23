@@ -1,24 +1,32 @@
-import JobSectionsClient from "./JobSectionsClient";
-import { getJobSections } from "@/lib/server/getJobSections";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { buildMetadata } from "../lib/seo";
 
-export async function generateMetadata({ searchParams } = {}) {
+export const metadata = buildMetadata({
+  title: "Post Redirect",
+  description: "Legacy route used for redirecting to canonical post URLs.",
+  path: "/post",
+  noIndex: true,
+});
+
+export default async function LegacyPostPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
-  const data = await getJobSections();
-  const hasCategories = Boolean(data?.categories?.length);
-  const hasQueryParams =
-    resolvedSearchParams && Object.keys(resolvedSearchParams).length > 0;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://jobsaddah.com").replace(/\/$/, "");
+  const rawCanonical = resolvedSearchParams?.canonicalKey;
+  const canonicalKey = String(Array.isArray(rawCanonical) ? rawCanonical[0] : rawCanonical || "").trim();
 
-  return {
-    title: "Sarkari Result 2026 | JobsAddah - Latest Govt Jobs, Admit Card",
-    description:
-      "Official JobsAddah Sarkari Result portal. Get latest government job updates, admit cards, results, and answer keys in one place.",
-    robots: hasQueryParams ? "noindex,follow" : hasCategories ? "index,follow" : "noindex,follow",
-    alternates: { canonical: `${siteUrl}/post` },
-  };
-}
+  if (canonicalKey) {
+    redirect(`/post/${encodeURIComponent(canonicalKey)}`);
+  }
 
-export default async function JobSectionsPage() {
-  const data = await getJobSections();
-  return <JobSectionsClient initialData={data} />;
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        <p className="text-sm font-semibold">Post URL is missing canonical key.</p>
+        <p className="mt-1 text-sm">Use route format: /post/&lt;canonicalKey&gt;</p>
+        <Link href="/" className="mt-4 inline-block text-sm font-semibold text-indigo-700 hover:underline">
+          Go back to Home
+        </Link>
+      </div>
+    </main>
+  );
 }
