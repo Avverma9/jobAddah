@@ -3,12 +3,12 @@ import Link from "next/link";
 import { buildMetadata } from "../../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Interview Tips for Government Jobs",
+  title: "Government Job Interview Tips and DV Checklist",
   description:
-    "Practical interview preparation tips with document-verification checklist and question practice framework.",
+    "Practical government job interview preparation guide with a document verification checklist and common question framework.",
   path: "/guides/interview-tips",
   type: "Article",
-  keywords: ["government job interview tips", "document verification checklist", "interview questions"],
+  keywords: ["jobsaddah interview tips", "government job interview tips", "document verification checklist"],
 });
 
 function Badge({ children }) {

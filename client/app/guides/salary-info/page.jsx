@@ -1,12 +1,12 @@
 import { buildMetadata } from "../../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Salary and Pay Scale Guide",
+  title: "Government Salary and Pay Scale Guide",
   description:
-    "Understand pay levels, allowances, deductions, and in-hand salary basics for government jobs.",
+    "Understand pay levels, allowances, deductions, and in-hand salary calculation basics for government jobs.",
   path: "/guides/salary-info",
   type: "Article",
-  keywords: ["pay scale guide", "government salary", "in hand salary calculation"],
+  keywords: ["jobsaddah salary guide", "pay scale guide", "in hand salary calculation"],
 });
 
 export default function SalaryInfo() {

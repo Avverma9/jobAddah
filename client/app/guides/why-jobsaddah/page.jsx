@@ -2,12 +2,12 @@ import VlogSpotlight from "@/app/component/VlogSpotlight";
 import { buildMetadata } from "../../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Why SarkariAfsar Is Reliable",
+  title: "Why Our Job Updates Are Reliable",
   description:
-    "Understand editorial workflow, source checks, correction policy, and quality gates used in SarkariAfsar publishing.",
+    "Understand the editorial workflow, source checks, correction policy, and quality gates used by JobsAddah before indexing pages.",
   path: "/guides/why-jobsaddah",
   type: "Article",
-  keywords: ["editorial policy", "source verification", "content reliability"],
+  keywords: ["jobsaddah reliability", "editorial policy", "source verification"],
 });
 
 const commitments = [
@@ -23,11 +23,11 @@ export default function WhyJobsAddahGuide() {
       <div className="max-w-5xl mx-auto px-4 space-y-6">
         <header className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900">
-            Why SarkariAfsar reliability matters
+            Why JobsAddah reliability matters
           </h1>
           <p className="text-sm text-slate-700 leading-relaxed">
             Recruitment mistakes usually happen when candidates rely on partial
-            summaries. This guide explains how SarkariAfsar structures data,
+            summaries. This guide explains how JobsAddah structures data,
             verifies sources, and reduces low-value pages.
           </p>
         </header>

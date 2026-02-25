@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { buildMetadata } from "../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Post Redirect",
-  description: "Legacy route used for redirecting to canonical post URLs.",
+  title: "Post Redirect Helper",
+  description: "Legacy route used to redirect visitors to canonical JobsAddah post URLs.",
   path: "/post",
   noIndex: true,
 });

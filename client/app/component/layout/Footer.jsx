@@ -37,9 +37,9 @@ const infoLinks = [
 
 const toolLinks = [
   { label: "Image Resizer", href: "/guides", icon: Wrench },
-  { label: "Resume Maker", href: "/guides", icon: FileText },
+  { label: "Resume Maker", href: "/resume-maker", icon: FileText },
   { label: "Typing Test", href: "/mock-test", icon: Keyboard },
-  { label: "Age Calculator", href: "/guides", icon: Calculator },
+  { label: "Age Calculator", href: "/age-calculator", icon: Calculator },
   { label: "Mock Tests", href: "/mock-test", icon: BookOpen },
 ];
 
@@ -89,14 +89,14 @@ export default function Footer() {
                 <BriefcaseBusiness className="h-5 w-5" aria-hidden="true" />
               </div>
               <span className="text-2xl font-bold text-white">
-                Sarkari<span className="text-indigo-400">Afsar</span>
+                Jobs<span className="text-indigo-400">Addah</span>
               </span>
             </div>
 
             <p className="text-sm leading-relaxed text-slate-400">
-              India&apos;s most trusted portal for Sarkari Naukri, Admit Cards,
-              Results, and Exam Preparation tools. We provide the fastest and
-              most accurate updates.
+              JobsAddah is a trusted portal for Sarkari Naukri updates, admit
+              cards, results, answer keys, and exam preparation tools with
+              source-verified information.
             </p>
 
             <div className="flex space-x-4 pt-2">
@@ -201,7 +201,7 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col items-center justify-between border-t border-slate-800 pt-8 text-xs text-slate-500 md:flex-row">
-          <p>&copy; {currentYear} SarkariAfsar. All rights reserved.</p>
+          <p>&copy; {currentYear} JobsAddah. All rights reserved.</p>
           <div className="mt-4 flex space-x-6 md:mt-0">
             <Link
               href="/privacy-policy"
@@ -225,11 +225,10 @@ export default function Footer() {
         </div>
 
         <div className="mt-4 text-center text-[10px] text-slate-600">
-          Disclaimer: SarkariAfsar is not affiliated with any government
+          Disclaimer: JobsAddah is not affiliated with any government
           organization. All information is gathered from official sources.
         </div>
       </div>
     </footer>
   );
 }
-

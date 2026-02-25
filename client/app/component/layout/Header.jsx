@@ -142,14 +142,14 @@ export default function Header({ initialTickerUpdates = [] }) {
                 className="inline-flex items-center gap-3"
               >
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-lg font-extrabold text-white shadow-md shadow-indigo-200">
-                  SA
+                  JA
                 </span>
                 <span className="leading-tight">
                   <span className="block text-xl font-extrabold tracking-tight text-slate-900">
-                    Sarkari<span className="text-indigo-600">Afsar</span>
+                    Jobs<span className="text-indigo-600">Addah</span>
                   </span>
                   <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Place for govt jobs and works
+                    Trusted updates for govt exams
                   </span>
                 </span>
               </Link>

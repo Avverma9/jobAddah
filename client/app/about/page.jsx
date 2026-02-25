@@ -2,12 +2,12 @@ import React from 'react';
 import { buildMetadata } from "../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "About SarkariAfsar",
+  title: "About Us and Editorial Policy",
   description:
-    "Learn how SarkariAfsar verifies recruitment data, tracks official sources, and helps candidates with accurate job updates.",
+    "Learn how JobsAddah verifies recruitment data, tracks official sources, and publishes accurate updates for government exam aspirants.",
   path: "/about",
   type: "AboutPage",
-  keywords: ["about sarkariafsar", "job update verification process", "sarkari portal about"],
+  keywords: ["about jobsaddah", "job update verification process", "government job portal about"],
 });
 
 const AboutPage = () => {
@@ -17,7 +17,7 @@ const AboutPage = () => {
       <div className="bg-blue-700 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            About SarkariAfsar
+            About JobsAddah
           </h1>
           <p className="mt-4 text-xl text-blue-100 max-w-2xl mx-auto">
             Bridging the gap between ambition and opportunity. We are India&apos;s fastest-growing hub for Sarkari Naukri and Private Career updates.
@@ -32,10 +32,10 @@ const AboutPage = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Who We Are</h2>
           <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed">
             <p className="mb-4">
-              Founded in 2025, <span className="font-bold text-blue-700">SarkariAfsar</span> was established with a singular vision: to democratize access to employment news in India. In an era of information overload, finding accurate, timely, and verified job notifications can be overwhelming.
+              Founded in 2025, <span className="font-bold text-blue-700">JobsAddah</span> was established with a singular vision: to democratize access to employment news in India. In an era of information overload, finding accurate, timely, and verified job notifications can be overwhelming.
             </p>
             <p>
-              We are not just a job aggregator; we are a career companion. From fresh graduates looking for their first break in the private sector to aspirants preparing for rigorous government examinations (UPSC, SSC, Banking), SarkariAfsar provides the digital infrastructure to keep you ahead of the competition.
+              We are not just a job aggregator; we are a career companion. From fresh graduates looking for their first break in the private sector to aspirants preparing for rigorous government examinations (UPSC, SSC, Banking), JobsAddah provides the digital infrastructure to keep you ahead of the competition.
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@ const AboutPage = () => {
         <div className="bg-white rounded-2xl shadow-md p-8 sm:p-10 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Our Verification Process</h2>
           <p className="text-gray-600 mb-6">
-            At SarkariAfsar, reliability is our core metric. We understand that a wrong notification can cost a student their career. Here is how we ensure quality:
+            At JobsAddah, reliability is our core metric. We understand that a wrong notification can cost a student their career. Here is how we ensure quality:
           </p>
           <div className="grid md:grid-cols-3 gap-6 text-center">
             <div className="p-4 bg-gray-50 rounded-lg">
@@ -117,11 +117,11 @@ const AboutPage = () => {
           <div className="space-y-4">
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
               <summary className="font-medium text-gray-800 flex justify-between items-center">
-                Is SarkariAfsar a government website?
+                Is JobsAddah a government website?
                 <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
-                No, SarkariAfsar is a private informational entity. We are not affiliated with the Government of India or any State Government. We aggregate information from official sources to help job seekers.
+                No, JobsAddah is a private informational entity. We are not affiliated with the Government of India or any State Government. We aggregate information from official sources to help job seekers.
               </p>
             </details>
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
@@ -130,12 +130,12 @@ const AboutPage = () => {
                 <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
-                Absolutely not. All information on SarkariAfsar is free of cost for students and job seekers.
+                Absolutely not. All information on JobsAddah is free of cost for students and job seekers.
               </p>
             </details>
             <details className="group bg-white rounded-lg shadow-sm p-4 cursor-pointer">
               <summary className="font-medium text-gray-800 flex justify-between items-center">
-                How can I contact the SarkariAfsar team?
+                How can I contact the JobsAddah team?
                 <span className="text-gray-400 group-open:rotate-180 transition-transform">&darr;</span>
               </summary>
               <p className="mt-3 text-gray-600 text-sm">
@@ -149,7 +149,7 @@ const AboutPage = () => {
         <div className="bg-red-50 border border-red-100 rounded-xl p-6 text-center">
           <h3 className="text-red-800 font-bold mb-2 uppercase text-sm tracking-wide">Disclaimer</h3>
           <p className="text-red-700 text-xs sm:text-sm leading-relaxed">
-            SarkariAfsar represents an independent informational platform. While we strive for absolute accuracy, readers are requested to verify details from the official websites linked in our posts before applying. We are not responsible for any inadvertent errors or selection processes.
+            JobsAddah represents an independent informational platform. While we strive for absolute accuracy, readers are requested to verify details from the official websites linked in our posts before applying. We are not responsible for any inadvertent errors or selection processes.
           </p>
         </div>
 
@@ -159,4 +159,3 @@ const AboutPage = () => {
 };
 
 export default AboutPage;
-

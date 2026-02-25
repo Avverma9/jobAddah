@@ -5,13 +5,15 @@ import TrendingCard from "./component/home/TrendingCard";
 import { buildSectionHref } from "./lib/sectionRouting";
 import { buildMetadata, toAbsoluteUrl } from "./lib/seo";
 import { getHomePageData } from "./lib/server-home-data";
+import { SITE_NAME } from "./lib/site-config";
 
 export const metadata = buildMetadata({
   title: "Latest Sarkari Result and Government Jobs",
   description:
-    "Get verified Sarkari Naukri updates, admit cards, answer keys, results, and deadline alerts across SSC, Railway, Bank, UPSC, and state jobs.",
+    "Get verified Sarkari Naukri updates, admit cards, answer keys, results, and deadline alerts for SSC, Railway, Bank, UPSC, and state recruitment exams.",
   path: "/",
   keywords: [
+    "jobsaddah",
     "sarkari result today",
     "latest govt jobs india",
     "admit card download",
@@ -36,7 +38,7 @@ export default async function Home() {
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "SarkariAfsar",
+    name: SITE_NAME,
     url: toAbsoluteUrl("/"),
     potentialAction: {
       "@type": "SearchAction",

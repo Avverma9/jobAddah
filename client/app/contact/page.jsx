@@ -3,12 +3,12 @@ import { Mail, MapPin, Phone, Clock, ShieldAlert, Megaphone, FileQuestion, Exter
 import { buildMetadata } from "../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Contact SarkariAfsar Support",
+  title: "Contact Support and Corrections",
   description:
-    "Contact SarkariAfsar for support, correction requests, and advertising queries.",
+    "Contact JobsAddah support for correction requests, partnerships, advertising, and job update help.",
   path: "/contact",
   type: "ContactPage",
-  keywords: ["contact sarkariafsar", "sarkari update support", "job notification correction"],
+  keywords: ["contact jobsaddah", "jobsaddah support", "job notification correction"],
 });
 
 const ContactPage = () => {
@@ -94,7 +94,7 @@ const ContactPage = () => {
                 style={{ border: 0 }} 
                 allowFullScreen="" 
                 loading="lazy"
-                title="SarkariAfsar Office Location"
+                title="JobsAddah Office Location"
                 className="opacity-80 group-hover:opacity-100 transition-opacity"
               ></iframe>
               <div className="absolute bottom-4 left-4">
@@ -230,4 +230,3 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-

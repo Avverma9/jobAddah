@@ -13,13 +13,13 @@ export async function generateMetadata({ searchParams }) {
   });
 
   return buildMetadata({
-    title: "Answer Key Updates",
+    title: "Latest Answer Key Updates",
     description:
-      "Track latest government exam answer keys with direct links and post-wise detail pages for faster verification.",
+      "Track latest government exam answer keys with direct official links and post-wise detail pages for faster verification.",
     path: "/answer-key",
     type: "CollectionPage",
     noIndex: Boolean(hadOmittedKey || hasExtraQuery),
-    keywords: ["answer key", "govt exam answer key", "official answer key update"],
+    keywords: ["jobsaddah answer key", "latest answer key", "govt exam answer key"],
   });
 }
 
@@ -38,7 +38,7 @@ export default async function AnswerKeyPage({ searchParams }) {
     "@type": "CollectionPage",
     name: "Answer Key Updates",
     url: toAbsoluteUrl("/answer-key"),
-    description: "Latest official answer key updates across government exams.",
+    description: "Latest official answer key updates with direct links across government exams.",
   };
 
   return (

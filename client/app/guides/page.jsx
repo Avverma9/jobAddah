@@ -2,12 +2,12 @@ import Link from "next/link";
 import { buildMetadata } from "../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Guides and Exam Strategy",
+  title: "Government Exam Guides and Strategy",
   description:
-    "Actionable guides for notifications, interview preparation, salary understanding, and form accuracy.",
+    "Explore JobsAddah guides for notification reading, interview preparation, salary understanding, and error-free application strategy.",
   path: "/guides",
   type: "CollectionPage",
-  keywords: ["exam strategy guide", "notification reading guide", "sarkari preparation guides"],
+  keywords: ["jobsaddah guides", "government exam strategy", "notification reading guide"],
 });
 
 const guideCards = [
@@ -30,7 +30,7 @@ const guideCards = [
     focus: "Form accuracy",
   },
   {
-    title: "Why SarkariAfsar Reliability Guide",
+    title: "Why JobsAddah Reliability Guide",
     desc: "Editorial process, source-verification policy, and correction workflow used on job pages.",
     href: "/guides/why-jobsaddah",
     focus: "Trust and policy",

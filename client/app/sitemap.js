@@ -17,11 +17,23 @@ const EXCLUDED_STATIC_ROUTES = new Set([
 const ROUTE_PRIORITY = new Map([
   ["/", { changeFrequency: "hourly", priority: 1 }],
   ["/latest-jobs", { changeFrequency: "hourly", priority: 0.95 }],
-  ["/results", { changeFrequency: "hourly", priority: 0.9 }],
+  ["/results", { changeFrequency: "hourly", priority: 0.92 }],
   ["/admit-card", { changeFrequency: "hourly", priority: 0.9 }],
   ["/answer-key", { changeFrequency: "hourly", priority: 0.9 }],
-  ["/blog", { changeFrequency: "daily", priority: 0.85 }],
-  ["/guides", { changeFrequency: "weekly", priority: 0.8 }],
+  ["/blog", { changeFrequency: "daily", priority: 0.86 }],
+  ["/guides", { changeFrequency: "weekly", priority: 0.84 }],
+  ["/mock-test", { changeFrequency: "weekly", priority: 0.78 }],
+  ["/typing-test", { changeFrequency: "weekly", priority: 0.76 }],
+  ["/resume-maker", { changeFrequency: "weekly", priority: 0.76 }],
+  ["/age-calculator", { changeFrequency: "weekly", priority: 0.74 }],
+  ["/about", { changeFrequency: "monthly", priority: 0.65 }],
+  ["/contact", { changeFrequency: "monthly", priority: 0.65 }],
+  ["/privacy-policy", { changeFrequency: "yearly", priority: 0.35 }],
+  ["/terms-of-service", { changeFrequency: "yearly", priority: 0.35 }],
+  ["/guides/interview-tips", { changeFrequency: "monthly", priority: 0.72 }],
+  ["/guides/notification-reading", { changeFrequency: "monthly", priority: 0.72 }],
+  ["/guides/salary-info", { changeFrequency: "monthly", priority: 0.72 }],
+  ["/guides/why-jobsaddah", { changeFrequency: "monthly", priority: 0.7 }],
 ]);
 
 function isNonDynamicSegment(segment) {
@@ -157,7 +169,7 @@ export default async function sitemap() {
         url: `${siteUrl}${route === "/" ? "" : route}`,
         lastModified: now,
         changeFrequency: routeMeta.changeFrequency || "weekly",
-        priority: Number(routeMeta.priority || 0.8),
+        priority: Number(routeMeta.priority || 0.7),
       };
     });
 

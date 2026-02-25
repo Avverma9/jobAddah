@@ -13,13 +13,13 @@ export async function generateMetadata({ searchParams }) {
   });
 
   return buildMetadata({
-    title: "Recent Results",
+    title: "Latest Sarkari Result Updates",
     description:
-      "Check latest government exam results with post-wise details, key dates, and official result source links.",
+      "Check latest government exam results with official result links, post-wise details, and key timeline updates.",
     path: "/results",
     type: "CollectionPage",
     noIndex: Boolean(hadOmittedKey || hasExtraQuery),
-    keywords: ["sarkari result", "recent exam results", "govt exam result list"],
+    keywords: ["jobsaddah results", "latest sarkari result", "govt exam result list"],
   });
 }
 
@@ -38,7 +38,7 @@ export default async function ResultsPage({ searchParams }) {
     "@type": "CollectionPage",
     name: "Recent Results",
     url: toAbsoluteUrl("/results"),
-    description: "Recent government exam results and related updates.",
+    description: "Latest government exam results with official links and post-wise updates.",
   };
 
   return (

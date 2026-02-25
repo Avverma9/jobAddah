@@ -44,8 +44,8 @@ export async function generateMetadata({ params }) {
   const post = getBlogPostBySlug(resolvedParams.slug);
   if (!post) {
     return buildMetadata({
-      title: "Blog Article",
-      description: "Blog article page.",
+      title: "Blog Article Not Found",
+      description: "Requested JobsAddah blog article could not be found.",
       path: "/blog",
       noIndex: true,
     });
@@ -60,7 +60,7 @@ export async function generateMetadata({ params }) {
     description,
     path,
     type: "article",
-    keywords: [...(Array.isArray(post.tags) ? post.tags : []), post.category, "exam blog"],
+    keywords: [...(Array.isArray(post.tags) ? post.tags : []), post.category, "jobsaddah blog"],
   });
 }
 

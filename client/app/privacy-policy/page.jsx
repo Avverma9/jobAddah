@@ -6,10 +6,10 @@ import { buildMetadata } from "../lib/seo";
 export const metadata = buildMetadata({
   title: "Privacy Policy",
   description:
-    "Read SarkariAfsar privacy policy, cookie usage, advertising disclosures, and data protection details.",
+    "Review JobsAddah privacy policy, cookie usage, Google AdSense disclosures, and data protection rights for users.",
   path: "/privacy-policy",
   type: "WebPage",
-  keywords: ["privacy policy", "cookie policy", "adsense privacy disclosure"],
+  keywords: ["jobsaddah privacy policy", "cookie policy", "adsense privacy disclosure"],
 });
 
 const PrivacyPolicy = () => {
@@ -31,7 +31,7 @@ const PrivacyPolicy = () => {
             </div>
           </div>
           <p className="text-lg text-gray-600 leading-relaxed">
-            At <strong>SarkariAfsar</strong> (accessible from <a href="https://jobsaddah.com" className="text-blue-600 hover:underline">https://jobsaddah.com</a>), we are committed to protecting your privacy. This Privacy Policy explains what information we collect, how we use it, and your rights regarding your personal data. By using SarkariAfsar, you agree to the collection and use of information in accordance with this policy.
+            At <strong>JobsAddah</strong> (accessible from <a href="https://jobsaddah.com" className="text-blue-600 hover:underline">https://jobsaddah.com</a>), we are committed to protecting your privacy. This Privacy Policy explains what information we collect, how we use it, and your rights regarding your personal data. By using JobsAddah, you agree to the collection and use of information in accordance with this policy.
           </p>
         </div>
 
@@ -59,7 +59,7 @@ const PrivacyPolicy = () => {
 
               <h3 className="font-semibold text-gray-800 mt-4 mb-2">1.2 Automatically Collected Information</h3>
               <p className="text-gray-600 leading-relaxed mb-3">
-                When you visit SarkariAfsar, we automatically collect certain information through cookies and similar technologies:
+                When you visit JobsAddah, we automatically collect certain information through cookies and similar technologies:
               </p>
               <ul className="list-disc pl-5 space-y-1 text-gray-600">
                 <li><strong>IP Address:</strong> To understand geographic location and prevent fraud</li>
@@ -67,7 +67,7 @@ const PrivacyPolicy = () => {
                 <li><strong>Device Information:</strong> Device type, operating system, screen resolution</li>
                 <li><strong>Pages Visited:</strong> Which job listings, admit cards, or results you view</li>
                 <li><strong>Time & Date of Visit:</strong> To analyze traffic patterns</li>
-                <li><strong>Referring Website:</strong> How you found SarkariAfsar</li>
+                <li><strong>Referring Website:</strong> How you found JobsAddah</li>
               </ul>
             </div>
           </section>
@@ -102,7 +102,7 @@ const PrivacyPolicy = () => {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-3">3. Cookies and Tracking Technologies</h2>
               <p className="text-gray-600 leading-relaxed mb-4">
-                SarkariAfsar uses cookies and similar tracking technologies to enhance your browsing experience. Cookies are small text files stored on your device that help us remember your preferences and improve site functionality.
+                JobsAddah uses cookies and similar tracking technologies to enhance your browsing experience. Cookies are small text files stored on your device that help us remember your preferences and improve site functionality.
               </p>
 
               <h3 className="font-semibold text-gray-800 mt-4 mb-2">Types of Cookies We Use:</h3>
@@ -153,7 +153,7 @@ const PrivacyPolicy = () => {
 
             <h3 className="font-semibold text-gray-800 mt-4 mb-2">4.1 Google AdSense</h3>
             <p className="text-gray-700 leading-relaxed mb-3">
-              SarkariAfsar uses <strong>Google AdSense</strong>, a third-party advertising service, to display ads on our website. Google AdSense uses cookies (including the <strong>DoubleClick DART cookie</strong>) to serve ads based on your visit to SarkariAfsar and other websites across the internet.
+              JobsAddah uses <strong>Google AdSense</strong>, a third-party advertising service, to display ads on our website. Google AdSense uses cookies (including the <strong>DoubleClick DART cookie</strong>) to serve ads based on your visit to JobsAddah and other websites across the internet.
             </p>
             <p className="text-gray-700 leading-relaxed mb-3">
               Google may collect information such as:
@@ -161,7 +161,7 @@ const PrivacyPolicy = () => {
             <ul className="list-disc pl-5 space-y-1 text-gray-700 mb-3">
               <li>Your IP address</li>
               <li>Browser type and version</li>
-              <li>Pages you visit on SarkariAfsar</li>
+              <li>Pages you visit on JobsAddah</li>
               <li>Time spent on pages</li>
               <li>Other websites you visit (to show relevant ads)</li>
             </ul>
@@ -196,13 +196,13 @@ const PrivacyPolicy = () => {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-3">5. Data Sharing and Disclosure</h2>
               <p className="text-gray-600 leading-relaxed mb-3">
-                SarkariAfsar does not sell, rent, or trade your personal information to third parties. However, we may share information in the following circumstances:
+                JobsAddah does not sell, rent, or trade your personal information to third parties. However, we may share information in the following circumstances:
               </p>
               <ul className="list-disc pl-5 space-y-2 text-gray-600">
                 <li><strong>With Service Providers:</strong> We share data with trusted third parties like Google (AdSense, Analytics), email service providers, and hosting companies to operate our website</li>
                 <li><strong>For Legal Compliance:</strong> If required by law, court order, or government request, we may disclose information</li>
                 <li><strong>To Protect Rights:</strong> We may share data to enforce our terms, protect against fraud, or safeguard user safety</li>
-                <li><strong>Business Transfers:</strong> If SarkariAfsar is acquired or merged, user data may be transferred to the new owner</li>
+                <li><strong>Business Transfers:</strong> If JobsAddah is acquired or merged, user data may be transferred to the new owner</li>
                 <li><strong>With Your Consent:</strong> We may share information for purposes you explicitly approve</li>
               </ul>
             </div>
@@ -280,7 +280,7 @@ const PrivacyPolicy = () => {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-3">9. Children's Privacy</h2>
               <p className="text-gray-600 leading-relaxed">
-                SarkariAfsar is intended for users aged 16 and above. We do not knowingly collect personal information from children under 16. If you are a parent or guardian and believe your child has provided us with personal data, please contact us immediately at <a href="mailto:support@jobsaddah.com" className="text-blue-600 hover:underline">support@jobsaddah.com</a>. We will promptly delete such information from our records.
+                JobsAddah is intended for users aged 16 and above. We do not knowingly collect personal information from children under 16. If you are a parent or guardian and believe your child has provided us with personal data, please contact us immediately at <a href="mailto:support@jobsaddah.com" className="text-blue-600 hover:underline">support@jobsaddah.com</a>. We will promptly delete such information from our records.
               </p>
             </div>
           </section>
@@ -289,7 +289,7 @@ const PrivacyPolicy = () => {
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-3">10. International Data Transfers</h2>
             <p className="text-gray-600 leading-relaxed">
-              SarkariAfsar is operated from India. If you access our website from outside India, your information may be transferred to, stored, and processed in India or other countries where our service providers operate. These countries may have different data protection laws than your jurisdiction. By using SarkariAfsar, you consent to such transfers.
+              JobsAddah is operated from India. If you access our website from outside India, your information may be transferred to, stored, and processed in India or other countries where our service providers operate. These countries may have different data protection laws than your jurisdiction. By using JobsAddah, you consent to such transfers.
             </p>
           </section>
 
@@ -297,7 +297,7 @@ const PrivacyPolicy = () => {
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-3">11. Do Not Track (DNT) Signals</h2>
             <p className="text-gray-600 leading-relaxed">
-              Some browsers have a "Do Not Track" (DNT) feature that signals websites you visit that you do not want your online activity tracked. Currently, there is no industry standard for how to respond to DNT signals. SarkariAfsar does not currently respond to DNT browser signals, but you can opt-out of tracking through cookie settings and Google Ads preferences.
+              Some browsers have a "Do Not Track" (DNT) feature that signals websites you visit that you do not want your online activity tracked. Currently, there is no industry standard for how to respond to DNT signals. JobsAddah does not currently respond to DNT browser signals, but you can opt-out of tracking through cookie settings and Google Ads preferences.
             </p>
           </section>
 
@@ -312,7 +312,7 @@ const PrivacyPolicy = () => {
               <li>Sending an email notification to registered users (for material changes)</li>
             </ul>
             <p className="text-gray-600 leading-relaxed">
-              We encourage you to review this Privacy Policy periodically. Your continued use of SarkariAfsar after changes are posted constitutes your acceptance of the updated policy.
+              We encourage you to review this Privacy Policy periodically. Your continued use of JobsAddah after changes are posted constitutes your acceptance of the updated policy.
             </p>
           </section>
 
@@ -327,7 +327,7 @@ const PrivacyPolicy = () => {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Mailing Address:</h3>
                 <address className="text-gray-600 not-italic text-sm leading-relaxed">
-                  SarkariAfsar - Legal & Privacy Team<br />
+                  JobsAddah - Legal & Privacy Team<br />
                   Bakhtiyarpur, Patna<br />
                   Bihar, India - 803212
                 </address>
@@ -354,7 +354,7 @@ const PrivacyPolicy = () => {
           {/* Footer Note */}
           <section className="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center">
             <p className="text-sm text-gray-700 leading-relaxed">
-              <strong>Note:</strong> This Privacy Policy is compliant with Google AdSense requirements, GDPR (General Data Protection Regulation), and CCPA (California Consumer Privacy Act). By using SarkariAfsar, you acknowledge that you have read and understood this Privacy Policy.
+              <strong>Note:</strong> This Privacy Policy is compliant with Google AdSense requirements, GDPR (General Data Protection Regulation), and CCPA (California Consumer Privacy Act). By using JobsAddah, you acknowledge that you have read and understood this Privacy Policy.
             </p>
           </section>
 
@@ -365,4 +365,3 @@ const PrivacyPolicy = () => {
 };
 
 export default PrivacyPolicy;
-

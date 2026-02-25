@@ -13,13 +13,13 @@ export async function generateMetadata({ searchParams }) {
   });
 
   return buildMetadata({
-    title: "Latest Government Jobs",
+    title: "Latest Govt Jobs Notifications",
     description:
-      "Browse latest government job notifications with official links, important dates, and direct post detail pages.",
+      "Browse latest government job notifications with official links, eligibility details, important dates, and direct post pages.",
     path: "/latest-jobs",
     type: "CollectionPage",
     noIndex: Boolean(hadOmittedKey || hasExtraQuery),
-    keywords: ["latest government jobs", "new sarkari vacancy", "govt jobs updates"],
+    keywords: ["jobsaddah latest jobs", "latest government jobs", "new sarkari vacancy"],
   });
 }
 
@@ -38,7 +38,7 @@ export default async function LatestJobsPage({ searchParams }) {
     "@type": "CollectionPage",
     name: "Latest Government Jobs",
     url: toAbsoluteUrl("/latest-jobs"),
-    description: "Latest government job notifications and deadlines.",
+    description: "Latest government job notifications, deadlines, and official application links.",
   };
 
   return (

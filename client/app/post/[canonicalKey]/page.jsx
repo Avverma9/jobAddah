@@ -78,8 +78,8 @@ export async function generateMetadata({ params }) {
   const canonicalKey = decodeURIComponent(String(resolvedParams?.canonicalKey || "")).trim();
   if (!canonicalKey) {
     return buildMetadata({
-      title: "Post Details",
-      description: "Post details page.",
+      title: "Job Post Details",
+      description: "Requested job post details were not found on JobsAddah.",
       path: "/post",
       noIndex: true,
     });
@@ -96,6 +96,7 @@ export async function generateMetadata({ params }) {
     type: "article",
     noIndex: Boolean(errorMessage || !details),
     keywords: [
+      "jobsaddah",
       cleanText(details?.raw?.megaTitle),
       cleanText(details?.raw?.megaSlug),
       "government recruitment details",

@@ -3,12 +3,12 @@ import { blogPosts } from "../lib/blog-posts";
 import { buildMetadata } from "../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Exam and Application Blog",
+  title: "Government Exam Blog and Preparation Tips",
   description:
-    "Read practical guides on preparation strategy, form accuracy, and interview readiness for government job aspirants.",
+    "Read JobsAddah blog posts on preparation strategy, form accuracy, interview readiness, and practical government exam planning.",
   path: "/blog",
   type: "Blog",
-  keywords: ["government exam blog", "application strategy", "sarkari preparation guide"],
+  keywords: ["jobsaddah blog", "government exam blog", "application strategy"],
 });
 
 const estimateReadTime = (text) => {

@@ -108,8 +108,8 @@ export function buildMetadata({
   noIndex = false,
   keywords = [],
 } = {}) {
-  const normalizedTitle = trimText(title, 90) || SITE_NAME;
-  const normalizedDescription = trimText(description, 170) || DEFAULT_DESCRIPTION;
+  const normalizedTitle = trimText(title, 70) || SITE_NAME;
+  const normalizedDescription = trimText(description, 160) || DEFAULT_DESCRIPTION;
   const canonicalPath = toCanonicalPath(path);
   const canonicalUrl = toAbsoluteUrl(canonicalPath);
 
@@ -126,7 +126,14 @@ export function buildMetadata({
       url: canonicalUrl,
       type: resolveOpenGraphType(type),
       siteName: SITE_NAME,
-      images: [DEFAULT_IMAGE],
+      images: [
+        {
+          url: DEFAULT_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: `${SITE_NAME} preview image`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",

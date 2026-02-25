@@ -2,12 +2,12 @@ import Link from "next/link";
 import { buildMetadata } from "../../lib/seo";
 
 export const metadata = buildMetadata({
-  title: "How to Read Job Notification Properly",
+  title: "How to Read Job Notifications Correctly",
   description:
-    "Step-by-step method to read official job notifications and verify eligibility, age, fee, dates, and required documents.",
+    "Step-by-step guide to read official job notifications and verify eligibility, age, fees, dates, and required documents.",
   path: "/guides/notification-reading",
   type: "Article",
-  keywords: ["job notification guide", "eligibility check", "application checklist"],
+  keywords: ["jobsaddah notification guide", "job notification guide", "application checklist"],
 });
 
 const checklist = [

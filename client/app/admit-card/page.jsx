@@ -13,13 +13,13 @@ export async function generateMetadata({ searchParams }) {
   });
 
   return buildMetadata({
-    title: "Admit Card Updates",
+    title: "Latest Admit Card Updates",
     description:
-      "Download latest admit card updates for government exams with post-wise information and official link verification.",
+      "Download latest government exam admit cards with official links, exam city details, and post-wise verification.",
     path: "/admit-card",
     type: "CollectionPage",
     noIndex: Boolean(hadOmittedKey || hasExtraQuery),
-    keywords: ["admit card", "exam admit card download", "govt exam hall ticket"],
+    keywords: ["jobsaddah admit card", "latest admit card", "govt exam hall ticket"],
   });
 }
 
@@ -38,7 +38,7 @@ export default async function AdmitCardPage({ searchParams }) {
     "@type": "CollectionPage",
     name: "Admit Card Updates",
     url: toAbsoluteUrl("/admit-card"),
-    description: "Government exam admit card and exam city updates.",
+    description: "Government exam admit cards, exam city slips, and official download links.",
   };
 
   return (
