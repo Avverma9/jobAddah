@@ -1,321 +1,302 @@
-"use client";
-
-import {
-  BriefcaseBusiness,
-  Circle,
-  ClipboardCheck,
-  FileCheck2,
-  House,
-  Menu,
-  Search,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, Briefcase, Landmark, Menu, Search, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { buildPublicApiUrl, fetchJsonWithFallback } from "@/app/lib/clientApi";
+import { buildCanonicalKey } from "../../lib/postFormatter";
 
-const FALLBACK_UPDATES = [
-  "RRB Group D 2026 Notification Out",
-  "SSC CGL 2025 Final Result Declared",
-  "UP Police Constable Admit Card Released",
-  "Bihar STET 2026 Online Form Started",
-];
+function firstNonEmpty(values = []) {
+  for (const value of values) {
+    const text = String(value || "").trim();
 
-function getSearchItems(payload) {
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.result)) return payload.result;
-  return [];
+    if (text) {
+      return text;
+    }
+  }
+
+  return "";
 }
 
-export default function Header({ initialTickerUpdates = [] }) {
-  const isHydrated = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const searchContainerRef = useRef(null);
-  const trimmedSearchQuery = searchQuery.trim();
-  const shouldShowSuggestions = showSuggestions && trimmedSearchQuery.length >= 3;
-
-  const tickerUpdates = useMemo(() => {
-    // Keep server HTML and first client render identical to avoid hydration mismatch.
-    if (!isHydrated) return FALLBACK_UPDATES;
-
-    return Array.isArray(initialTickerUpdates) && initialTickerUpdates.length > 0
-      ? initialTickerUpdates
-      : FALLBACK_UPDATES;
-  }, [initialTickerUpdates, isHydrated]);
-
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (!(event.target instanceof Node)) return;
-      if (!searchContainerRef.current?.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (trimmedSearchQuery.length < 3) {
-      setSearchResults([]);
-      setSearchError("");
-      setSearchLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setSearchLoading(true);
-      setSearchError("");
-
-      try {
-        const params = new URLSearchParams({
-          title: trimmedSearchQuery,
-          page: "1",
-          limit: "8",
-        });
-        const localEndpoint = `/api/find-by-title?${params.toString()}`;
-        const fallbackEndpoint = buildPublicApiUrl(`/site/find-by-title?${params.toString()}`);
-        const { response, payload } = await fetchJsonWithFallback({
-          localUrl: localEndpoint,
-          fallbackUrl: fallbackEndpoint,
-          init: {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        });
-        if (isCancelled) return;
-
-        if (!response.ok) {
-          setSearchResults([]);
-          setSearchError(payload?.message || "Search unavailable right now.");
-          return;
-        }
-
-        setSearchResults(getSearchItems(payload));
-      } catch (error) {
-        if (isCancelled || error?.name === "AbortError") return;
-        setSearchResults([]);
-        setSearchError("Search unavailable right now.");
-      } finally {
-        if (!isCancelled) setSearchLoading(false);
-      }
-    }, 1000);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [trimmedSearchQuery]);
-
-  const handleSearchSubmit = (event) => {
-    if (!trimmedSearchQuery) {
-      event.preventDefault();
-      return;
-    }
-    setShowSuggestions(false);
-  };
+export default function Header({
+  scrolled,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  searchQuery = "",
+  setSearchQuery,
+  searchResults = [],
+  showSearchResults = false,
+  searchLoading = false,
+  searchError = "",
+}) {
+  const hasSearch = typeof setSearchQuery === "function";
+  const visibleResults = Array.isArray(searchResults) ? searchResults.slice(0, 8) : [];
+  const menuItems = [
+    { label: "Jobs", href: "/jobs" },
+    { label: "Results", href: "/results" },
+    { label: "Admit Cards", href: "/admit-cards" },
+  ];
 
   return (
-    <>
-      <nav className="glass-header sticky top-0 z-50 border-b border-slate-200 shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative flex h-auto flex-col items-center justify-between gap-2 py-2 md:h-16 md:flex-row md:gap-0 md:py-0">
-            <div className="flex min-w-max items-center">
-              <Link
-                href="/"
-                aria-label="Go to home page"
-                className="inline-flex items-center gap-3"
-              >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-lg font-extrabold text-white shadow-md shadow-indigo-200">
-                  JA
-                </span>
-                <span className="leading-tight">
-                  <span className="block text-xl font-extrabold tracking-tight text-slate-900">
-                    Jobs<span className="text-indigo-600">Addah</span>
-                  </span>
-                  <span className="block text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Trusted updates for govt exams
-                  </span>
-                </span>
-              </Link>
+    <header
+      className={`fixed top-0 z-40 w-full border-b border-slate-200/80 bg-white/95 py-3 backdrop-blur-xl transition-all duration-500 ${
+        scrolled ? "shadow-sm" : "shadow-none"
+      }`}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex shrink-0 items-center gap-3">
+            <div className="rounded-2xl bg-indigo-600 p-2 transition-colors duration-500">
+              <Landmark className="h-6 w-6 text-white sm:h-8 sm:w-8" />
             </div>
+            <div>
+              <h1 className="text-xl leading-none font-black tracking-tight text-slate-900 sm:text-2xl">
+                Jobs
+                <span className="text-indigo-600">Addah</span>
+              </h1>
+            </div>
+          </Link>
 
-            <div ref={searchContainerRef} className="relative order-3 mx-4 w-full max-w-md md:order-2">
-              <form action="/search" method="GET" onSubmit={handleSearchSubmit}>
+          {hasSearch ? (
+            <div className="relative hidden min-w-0 flex-1 px-2 lg:block">
+              <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+                <Search className="mr-3 h-5 w-5 text-indigo-500" />
                 <input
                   type="text"
-                  name="q"
-                  minLength={3}
-                  placeholder="Search for jobs, results, syllabus..."
+                  placeholder="Search jobs... Ex: SSC CGL, UP Police"
                   value={searchQuery}
-                  onChange={(event) => {
-                    setSearchQuery(event.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  className="w-full rounded-full border border-slate-300 bg-slate-50 py-2 pr-4 pl-10 text-sm text-slate-700 placeholder:text-slate-500 placeholder:opacity-100 shadow-inner transition-all focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
                 />
-                <Search
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-slate-500"
-                  strokeWidth={2.4}
-                />
-                <button type="submit" className="sr-only">
-                  Search
-                </button>
-              </form>
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="ml-2 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
 
-              {shouldShowSuggestions && (
-                <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-                  {searchLoading && (
-                    <p className="px-4 py-3 text-xs text-slate-500">Searching...</p>
-                  )}
+              {showSearchResults ? (
+                <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_-25px_rgba(15,23,42,0.45)]">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                    <p className="text-xs font-black tracking-wide text-slate-500 uppercase">
+                      Search Results
+                    </p>
+                    {!searchLoading && !searchError ? (
+                      <p className="text-[11px] font-bold text-slate-400">
+                        {visibleResults.length} item{visibleResults.length === 1 ? "" : "s"}
+                      </p>
+                    ) : null}
+                  </div>
 
-                  {!searchLoading && searchError && (
-                    <p className="px-4 py-3 text-xs text-red-600">{searchError}</p>
-                  )}
+                  <div className="max-h-72 overflow-y-auto p-2">
+                    {searchLoading ? (
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-4 text-sm font-semibold text-slate-500">
+                        <Search className="h-4 w-4 animate-pulse text-indigo-500" />
+                        Searching jobs...
+                      </div>
+                    ) : searchError ? (
+                      <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700">
+                        {searchError}
+                      </div>
+                    ) : visibleResults.length > 0 ? (
+                      visibleResults.map((item, index) => {
+                        const title = firstNonEmpty([item?.title, item?.jobTitle, "Untitled Job"]);
+                        const jobUrl = firstNonEmpty([item?.jobUrl, item?.url, item?.link]);
+                        const jobHref = jobUrl
+                          ? `/post/${buildCanonicalKey({ title, jobUrl })}`
+                          : "";
+                        const key = `job-${title}-${index}`;
 
-                  {!searchLoading && !searchError && searchResults.length === 0 && (
-                    <p className="px-4 py-3 text-xs text-slate-500">No matching posts found.</p>
-                  )}
-
-                  {!searchLoading && !searchError && searchResults.length > 0 && (
-                    <ul className="max-h-80 overflow-y-auto">
-                      {searchResults.map((item, index) => {
-                        const canonicalKey = String(item?.canonicalKey || "").trim();
-                        const itemTitle = String(item?.title || "Untitled Post").trim();
-                        const subText = String(
-                          item?.jobType || item?.megaTitle || item?.megaSlug || "",
-                        ).trim();
-                        const key = String(item?.postId || item?.id || `${canonicalKey}-${index}`);
-
-                        const row = (
-                          <div className="border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50 last:border-b-0">
-                            <p className="line-clamp-2 text-xs font-medium text-slate-800">{itemTitle}</p>
-                            {subText ? (
-                              <p className="mt-0.5 text-[11px] text-slate-500">{subText}</p>
-                            ) : null}
-                          </div>
+                        const content = (
+                          <>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                              <Briefcase className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-extrabold text-slate-800">
+                                {title}
+                              </p>
+                              <span className="mt-1 inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black tracking-wide text-indigo-700">
+                                JOB
+                              </span>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-slate-300" />
+                          </>
                         );
 
-                        if (!canonicalKey) {
+                        if (jobHref) {
                           return (
-                            <li key={key}>
-                              {row}
-                            </li>
+                            <Link
+                              key={key}
+                              href={jobHref}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50"
+                            >
+                              {content}
+                            </Link>
                           );
                         }
 
                         return (
-                          <li key={key}>
-                            <Link
-                              href={`/post/${encodeURIComponent(canonicalKey)}`}
-                              onClick={() => setShowSuggestions(false)}
-                            >
-                              {row}
-                            </Link>
-                          </li>
+                          <div key={key} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+                            {content}
+                          </div>
                         );
-                      })}
-                    </ul>
-                  )}
-
-                  <div className="border-t border-slate-100 px-4 py-2">
-                    <Link
-                      href={`/search?q=${encodeURIComponent(trimmedSearchQuery)}`}
-                      className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
-                      onClick={() => setShowSuggestions(false)}
-                    >
-                      View all results for &quot;{trimmedSearchQuery}&quot;
-                    </Link>
+                      })
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-4 text-sm font-semibold text-slate-500">
+                        <Search className="h-4 w-4 text-slate-300" />
+                        No result found
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
+          ) : null}
 
-            <div className="order-2 hidden min-w-max items-center space-x-6 md:order-3 md:flex">
+          <nav className="ml-auto hidden items-center gap-8 rounded-full border border-slate-200 bg-slate-50 px-6 py-2.5 shadow-sm lg:flex">
+            {menuItems.map((item) => (
               <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-indigo-600"
+                key={item.label}
+                href={item.href}
+                className="text-sm font-bold tracking-wide text-slate-700 transition-colors hover:text-indigo-600"
               >
-                <House aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
-                <span>Home</span>
+                {item.label}
               </Link>
-              <Link
-                href="/latest-jobs"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-indigo-600"
-              >
-                <BriefcaseBusiness aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
-                <span>Latest Jobs</span>
-              </Link>
-              <Link
-                href="/mock-test"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-indigo-600"
-              >
-                <ClipboardCheck aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
-                <span>Mock Test</span>
-              </Link>
-              <Link
-                href="/results"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-indigo-600"
-              >
-                <FileCheck2 aria-hidden="true" className="h-4 w-4" strokeWidth={2.2} />
-                <span>Results</span>
-              </Link>
-            </div>
+            ))}
+          </nav>
 
-            <button
-              type="button"
-              aria-label="Open menu"
-              className="absolute top-5 right-4 text-xl text-slate-600 md:hidden"
-            >
-              <Menu aria-hidden="true" className="h-6 w-6" strokeWidth={2.4} />
-            </button>
-          </div>
+          <button
+            className="rounded-xl p-2 text-slate-800 transition-colors hover:bg-slate-100 md:hidden"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
         </div>
-      </nav>
 
-      <div className="relative overflow-hidden bg-slate-900 py-2 text-sm text-white shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center">
-          <span className="z-10 ml-4 mr-4 shrink-0 rounded bg-red-600 px-3 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-            Updates
-          </span>
-          <div className="news-ticker-container w-full overflow-hidden">
-            <div className="news-ticker inline-flex whitespace-nowrap">
-              {[...tickerUpdates, ...tickerUpdates].map((item, index) => (
-                <span key={`${item}-${index}`} className="mx-4 inline-flex items-center">
-                  {index % tickerUpdates.length === 0 ? (
-                    <Zap aria-hidden="true" className="mr-1 h-3.5 w-3.5 text-yellow-400" strokeWidth={2.5} />
+        {hasSearch ? (
+          <div className="relative mt-3 lg:hidden">
+            <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <Search className="mr-3 h-5 w-5 text-indigo-500" />
+              <input
+                type="text"
+                placeholder="Search jobs... Ex: SSC CGL, UP Police"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="ml-2 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+
+            {showSearchResults ? (
+              <div className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_-25px_rgba(15,23,42,0.45)]">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
+                  <p className="text-xs font-black tracking-wide text-slate-500 uppercase">
+                    Search Results
+                  </p>
+                  {!searchLoading && !searchError ? (
+                    <p className="text-[11px] font-bold text-slate-400">
+                      {visibleResults.length} item{visibleResults.length === 1 ? "" : "s"}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="max-h-72 overflow-y-auto p-2">
+                  {searchLoading ? (
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-4 text-sm font-semibold text-slate-500">
+                      <Search className="h-4 w-4 animate-pulse text-indigo-500" />
+                      Searching jobs...
+                    </div>
+                  ) : searchError ? (
+                    <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700">
+                      {searchError}
+                    </div>
+                  ) : visibleResults.length > 0 ? (
+                    visibleResults.map((item, index) => {
+                      const title = firstNonEmpty([item?.title, item?.jobTitle, "Untitled Job"]);
+                      const jobUrl = firstNonEmpty([item?.jobUrl, item?.url, item?.link]);
+                      const jobHref = jobUrl
+                        ? `/post/${buildCanonicalKey({ title, jobUrl })}`
+                        : "";
+                      const key = `job-${title}-${index}`;
+
+                      const content = (
+                        <>
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                            <Briefcase className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-extrabold text-slate-800">
+                              {title}
+                            </p>
+                            <span className="mt-1 inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black tracking-wide text-indigo-700">
+                              JOB
+                            </span>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-slate-300" />
+                        </>
+                      );
+
+                      if (jobHref) {
+                        return (
+                          <Link key={key} href={jobHref} className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50">
+                            {content}
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                        >
+                          {content}
+                        </div>
+                      );
+                    })
                   ) : (
-                    <Circle
-                      aria-hidden="true"
-                      className="mr-1 h-2.5 w-2.5 text-green-400"
-                      style={{ fill: "currentColor" }}
-                      strokeWidth={0}
-                    />
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-4 text-sm font-semibold text-slate-500">
+                      <Search className="h-4 w-4 text-slate-300" />
+                      No result found
+                    </div>
                   )}
-                  {item}
-                </span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {isMobileMenuOpen && (
+        <div className="animate-in slide-in-from-top-2 absolute top-full left-0 w-full border-t border-slate-100 bg-white shadow-2xl md:hidden">
+          <div className="space-y-4 px-6 py-6">
+            <div className="grid grid-cols-3 gap-3 pt-2">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="rounded-xl bg-slate-50 p-3 text-center font-bold text-slate-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                >
+                  {item.label}
+                </Link>
               ))}
             </div>
           </div>
         </div>
-      </div>
-    </>
+      )}
+    </header>
   );
 }

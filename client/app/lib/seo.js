@@ -1,162 +1,156 @@
-import {
-  DEFAULT_DESCRIPTION,
-  DEFAULT_IMAGE,
-  DEFAULT_KEYWORDS,
-  SITE_BASE_URL,
-  SITE_NAME,
-} from "./site-config";
+const DEFAULT_SITE_URL = "https://jobsaddah.com";
+export const BRAND_NAME = "JobsAddah";
+export const DEFAULT_DESCRIPTION =
+  "Jobs, results, admit cards aur admissions ki latest jankari ek jagah.";
+export const SITE_ICON_PATH = "/sa-favicon.svg";
+const BASE_KEYWORDS = [
+  "sarkari result",
+  "sarkari naukri",
+  "latest jobs",
+  "admit card",
+  "exam result",
+  "government admissions",
+  "india jobs",
+];
 
-function cleanText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
-}
+function isLocalHostname(hostname = "") {
+  const normalized = String(hostname || "").trim().toLowerCase();
 
-function trimText(value, maxLength) {
-  const text = cleanText(value);
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
-}
-
-function toCanonicalPath(pathname = "/") {
-  const raw = cleanText(pathname) || "/";
-  const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
-  if (withSlash === "/") return "/";
-  return withSlash.replace(/\/+$/, "");
-}
-
-export function toAbsoluteUrl(pathname = "/") {
-  return new URL(toCanonicalPath(pathname), SITE_BASE_URL).toString();
-}
-
-function mergeKeywords(extraKeywords = []) {
-  const defaults = Array.isArray(DEFAULT_KEYWORDS) ? DEFAULT_KEYWORDS : [];
-  const extras = Array.isArray(extraKeywords) ? extraKeywords : [];
-  return Array.from(
-    new Set(
-      [...defaults, ...extras]
-        .map((item) => cleanText(item).toLowerCase())
-        .filter(Boolean),
-    ),
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized === "[::1]" ||
+    normalized.endsWith(".localhost")
   );
 }
 
-function resolveOpenGraphType(type = "website") {
-  const normalized = cleanText(type).toLowerCase();
+function normalizeSiteUrl(value) {
+  const text = String(value || "").trim();
 
-  const supported = new Set([
-    "website",
-    "article",
-    "book",
-    "profile",
-    "music.song",
-    "music.album",
-    "music.playlist",
-    "music.radio_station",
-    "video.movie",
-    "video.episode",
-    "video.tv_show",
-    "video.other",
-  ]);
-
-  if (supported.has(normalized)) return normalized;
-
-  const alias = {
-    webpage: "website",
-    collectionpage: "website",
-    searchresultspage: "website",
-    aboutpage: "website",
-    contactpage: "website",
-    blog: "website",
-  };
-
-  return alias[normalized] || "website";
-}
-
-function resolveRobots(noIndex = false) {
-  if (!noIndex) {
-    return {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-        "max-video-preview": -1,
-      },
-    };
+  if (!text) {
+    return "";
   }
 
-  return {
-    index: false,
-    follow: true,
-    googleBot: {
-      index: false,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
-  };
+  if (!/^https?:\/\//i.test(text)) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(text);
+
+    if (isLocalHostname(parsed.hostname)) {
+      return "";
+    }
+
+    return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/g, "");
+  } catch {
+    return "";
+  }
 }
 
-export function buildMetadata({
-  title = "",
+function normalizePath(path = "/") {
+  const text = String(path || "/").trim();
+
+  if (!text) {
+    return "/";
+  }
+
+  return text.startsWith("/") ? text : `/${text}`;
+}
+
+function uniqueKeywords(values = []) {
+  const seen = new Set();
+  const result = [];
+
+  values.forEach((value) => {
+    const text = String(value || "").trim();
+    const key = text.toLowerCase();
+
+    if (!text || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    result.push(text);
+  });
+
+  return result;
+}
+
+export function getSiteUrl() {
+  return (
+    normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL) ||
+    normalizeSiteUrl(process.env.SITE_URL) ||
+    DEFAULT_SITE_URL
+  );
+}
+
+export function absoluteUrl(path = "/") {
+  return `${getSiteUrl()}${normalizePath(path)}`;
+}
+
+export function buildPageMetadata({
+  title = "Latest Job Updates",
   description = DEFAULT_DESCRIPTION,
   path = "/",
+  keywords = [],
   type = "website",
   noIndex = false,
-  keywords = [],
 } = {}) {
-  const normalizedTitle = trimText(title, 70) || SITE_NAME;
-  const normalizedDescription = trimText(description, 160) || DEFAULT_DESCRIPTION;
-  const canonicalPath = toCanonicalPath(path);
-  const canonicalUrl = toAbsoluteUrl(canonicalPath);
+  const canonicalPath = normalizePath(path);
+  const canonicalUrl = absoluteUrl(canonicalPath);
+  const mergedKeywords = uniqueKeywords([...BASE_KEYWORDS, ...keywords]);
 
   return {
-    title: normalizedTitle,
-    description: normalizedDescription,
-    keywords: mergeKeywords(keywords),
+    title,
+    description,
+    keywords: mergedKeywords,
     alternates: {
       canonical: canonicalPath,
     },
     openGraph: {
-      title: normalizedTitle,
-      description: normalizedDescription,
+      type,
       url: canonicalUrl,
-      type: resolveOpenGraphType(type),
-      siteName: SITE_NAME,
+      title: `${title} | ${BRAND_NAME}`,
+      description,
+      siteName: BRAND_NAME,
+      locale: "en_IN",
       images: [
         {
-          url: DEFAULT_IMAGE,
-          width: 1200,
-          height: 630,
-          alt: `${SITE_NAME} preview image`,
+          url: absoluteUrl(SITE_ICON_PATH),
+          width: 256,
+          height: 256,
+          alt: BRAND_NAME,
         },
       ],
     },
     twitter: {
-      card: "summary_large_image",
-      title: normalizedTitle,
-      description: normalizedDescription,
-      images: [DEFAULT_IMAGE],
+      card: "summary",
+      title: `${title} | ${BRAND_NAME}`,
+      description,
+      images: [absoluteUrl(SITE_ICON_PATH)],
     },
-    robots: resolveRobots(noIndex),
-  };
-}
-
-export function buildBreadcrumbSchema(items = []) {
-  const list = Array.isArray(items) ? items : [];
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: list
-      .filter((item) => cleanText(item?.name) && cleanText(item?.path))
-      .map((item, index) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        name: cleanText(item.name),
-        item: toAbsoluteUrl(item.path),
-      })),
+    robots: noIndex
+      ? {
+          index: false,
+          follow: false,
+          nocache: true,
+          googleBot: {
+            index: false,
+            follow: false,
+          },
+        }
+      : {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        },
   };
 }
